@@ -141,7 +141,7 @@ What helped was a patient person showing the next button at the moment she neede
 
 **Considered and not built**
 
-- Database-backed rate limiting by IP: the per-phone cap (R21) plus a monthly spend limit set in the Anthropic console bounds cost at family scale without adding a database; revisit if usage grows beyond people the owner knows. A platform rate-limit rule that needs no database is an open question below.
+- Database-backed rate limiting by IP: the per-phone cap (R21) plus a monthly spend limit set in the Anthropic console bounds cost at family scale without adding a database; revisit if usage grows beyond people the owner knows. A platform rate-limit rule that needs no database is adopted as KTD12.
 - Live camera or screen-sharing guidance: screenshots cover the need with far less complexity and privacy risk.
 
 ### Dependencies / Assumptions
@@ -168,6 +168,7 @@ What helped was a patient person showing the next button at the moment she neede
 - KTD8. **Daily cap counted on the phone (R21).** One helper in the local store checks and increments today's count before every call to `/api/ask` or `/api/locate`, including follow-ups and "Show me how", and resets at local midnight. It stops ordinary over-use, not a determined abuser, so the Anthropic console spend limit is the hard backstop.
 - KTD9. **Installable web app without offline mode.** A web manifest and icons enable "Add to Home Screen" (R14); no service worker, since every answer needs the network.
 - KTD10. **Fake AI mode for tests.** When `FAKE_AI=1`, both routes return fixed fixtures, so unit, component, and end-to-end tests run free and offline.
+- KTD12. **Platform rate limit per IP.** A Vercel Firewall rule allows 40 requests per IP per day across `/api/ask` and `/api/locate`, so a stranger with the link cannot use up the spend limit and take the app offline for the learner; it needs no database. (session-settled: user-approved — chosen over relying only on the phone cap and spend limit: protects the learner's access at no cost.)
 - KTD11. **Server-side request limits.** Both routes reject oversized input before calling Claude: question at most 1,000 characters, guide context at most 4,000 characters, image type png, jpeg, or webp, at most 4 MB and 2576 px on the long edge. Error paths log only an error code, never question text or image data.
 
 ### High-Level Technical Design
@@ -424,7 +425,7 @@ public/icons/
 - **Requirements:** R14, success criteria; KTD1, KTD10
 - **Dependencies:** U4, U5, U6, U7
 - **Files:** `tests/e2e/ask-and-follow.spec.ts`, `tests/e2e/show-me.spec.ts`, `README.md`
-- **Approach:** Playwright runs F1, F2, and F3 at phone screen size against fake mode; create the Vercel project linked to `venyajhunjhunwala2028-dev/my-app`; the owner adds `ANTHROPIC_API_KEY` and sets an Anthropic console spend limit; README explains setup, the key, installing to the home screen before setup, and how to switch the model.
+- **Approach:** Playwright runs F1, F2, and F3 at phone screen size against fake mode; create the Vercel project linked to `venyajhunjhunwala2028-dev/my-app`; the owner adds `ANTHROPIC_API_KEY` and sets an Anthropic console spend limit; add the Vercel Firewall rate-limit rule (KTD12); README explains setup, the key, installing to the home screen before setup, and how to switch the model.
 - **Test scenarios:**
   - Covers F1. Ask, get 3 steps, finish them, and see the guide in My guides.
   - Covers F2. On a step, open Show me on my screen, upload a sample image, and see the circle.
@@ -440,12 +441,8 @@ public/icons/
 | Claude's tap locations miss on real screenshots | U6 checks real screenshots in pixel coordinates before result-screen work; R11's "couldn't find it" path avoids wrong circles; stop and ask if most miss. |
 | AI gives a wrong or outdated step | Steps describe looks and positions (R6); Show me on my screen (R10) and I don't understand (R20) on every step. |
 | Voice fails for a language or in the iPhone home-screen app | Saved speaking language (KTD6); feature detection keeps the text box; U4's real-phone check runs from the home-screen icon. |
-| Cost grows, or someone drains the spend limit and the app stops for the learner | Daily cap (R21), server-side size limits (KTD11), and the console spend limit; see the open question on platform rate limiting. |
+| Cost grows, or someone drains the spend limit and the app stops for the learner | Daily cap (R21), server-side size limits (KTD11), the Vercel per-IP rule (KTD12), and the console spend limit. |
 | A scam question or scam screen slips past | Handover-pattern check plus model classification on both routes (KTD4, KTD5). |
-
-### Open Questions
-
-- Deferred to the owner: whether to add a Vercel Firewall rate-limit rule on `/api/ask` and `/api/locate` (for example 40 requests per IP per day). It needs no database and would stop a stranger who finds the link from using up the monthly spend limit and taking the app offline for the learner. Without it, the cap on the phone and the spend limit are the only protection.
 
 ---
 
