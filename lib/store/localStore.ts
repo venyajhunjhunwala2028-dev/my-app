@@ -1,4 +1,4 @@
-// Everything the app remembers lives on the phone, under one versioned key (KTD7, R13).
+// Everything the app remembers lives on the phone, under one versioned key.
 
 export const STORAGE_KEY = "tech-helper:v1";
 export const DAILY_LIMIT = 30;
@@ -212,13 +212,14 @@ export function getUsage(): Usage {
   return usage.date === date ? usage : { date, count: 0 };
 }
 
-// Call before every AI request (KTD8): counts the request if under today's cap.
+// Call before every AI request: counts the request if under today's cap, and writes nothing when denied.
 export function requestAllowance(): Allowance {
-  const usage = getUsage();
-  if (usage.count >= DAILY_LIMIT) return { allowed: false, remaining: 0 };
-  const count = usage.count + 1;
-  update((s) => {
-    s.usage = { date: usage.date, count };
-  });
+  const state = load();
+  const date = today();
+  const used = state.usage.date === date ? state.usage.count : 0;
+  if (used >= DAILY_LIMIT) return { allowed: false, remaining: 0 };
+  const count = used + 1;
+  state.usage = { date, count };
+  save(state);
   return { allowed: true, remaining: DAILY_LIMIT - count };
 }

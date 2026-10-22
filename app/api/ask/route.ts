@@ -1,15 +1,15 @@
-import { callClaudeJson } from "@/lib/ai/client";
+import { callAndParseAnswer, makeFail } from "@/lib/ai/route";
 import { fakeAskAnswer } from "@/lib/ai/fakes";
 import { ASK_SYSTEM_PROMPT, buildAskUserMessage } from "@/lib/ai/prompts";
 import {
   ASK_ANSWER_JSON_SCHEMA,
   parseAskAnswer,
-  type ApiError,
   type ApiErrorCode,
   type AskMode,
   type AskRequest,
   type GuideContext,
 } from "@/lib/ai/schemas";
+import { isObj } from "@/lib/guards";
 import {
   MAX_DEVICE_CHARS,
   MAX_DEVICES,
@@ -25,17 +25,10 @@ const MESSAGES: Record<ApiErrorCode, string> = {
   setup: "This app is not set up yet. Please ask the person who set it up.",
   retry: "Sorry, something went wrong. Please try again.",
 };
-const STATUS: Record<ApiErrorCode, number> = { bad_request: 400, too_long: 400, setup: 503, retry: 502 };
-
-// Logs only a code, never request content (KTD11, R17).
-function fail(code: ApiErrorCode, logCode?: string): Response {
-  if (logCode) console.error(`ask_error:${logCode}`);
-  const body: ApiError = { error: code, message: MESSAGES[code] };
-  return Response.json(body, { status: STATUS[code] });
-}
+// Logs only a code, never request content.
+const fail = makeFail("ask_error", MESSAGES);
 
 const MODES: readonly AskMode[] = ["ask", "followup", "showMeHow"];
-const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 function parseRequest(raw: unknown): AskRequest | "bad_request" | "too_long" {
   if (!isObj(raw) || typeof raw.question !== "string") return "bad_request";
@@ -91,27 +84,10 @@ export async function POST(request: Request): Promise<Response> {
 
   if (!process.env.ANTHROPIC_API_KEY) return fail("setup", "missing_api_key");
 
-  let result;
-  try {
-    result = await callClaudeJson({
-      system: ASK_SYSTEM_PROMPT,
-      user: buildAskUserMessage(req),
-      schema: ASK_ANSWER_JSON_SCHEMA,
-    });
-  } catch (err) {
-    const status = isObj(err) && typeof err.status === "number" ? err.status : "unknown";
-    return fail("retry", `api_${status}`);
-  }
-
-  if (result.stopReason !== "end_turn") return fail("retry", `stop_${result.stopReason ?? "none"}`);
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(result.text);
-  } catch {
-    return fail("retry", "invalid_json");
-  }
-  const answer = parseAskAnswer(isObj(parsed) ? parsed.answer : undefined);
-  if (!answer) return fail("retry", "invalid_shape");
-  return Response.json(answer);
+  const result = await callAndParseAnswer(
+    { system: ASK_SYSTEM_PROMPT, user: buildAskUserMessage(req), schema: ASK_ANSWER_JSON_SCHEMA },
+    parseAskAnswer,
+  );
+  if ("logCode" in result) return fail("retry", result.logCode);
+  return Response.json(result.answer);
 }

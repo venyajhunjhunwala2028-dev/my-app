@@ -1,10 +1,10 @@
 // Server-side only: import this from route handlers, never from client components.
 import Anthropic from "@anthropic-ai/sdk";
 
-/** The one place the model is chosen (KTD2). Switch to "claude-haiku-5-5" to cut cost. */
+/** The one place the model is chosen. Switch to "claude-haiku-5-5" to cut cost. */
 export const MODEL = "claude-opus-5-5";
 /** Thinking is always on for this model and counts toward this limit. */
-export const MAX_TOKENS = 8000;
+const MAX_TOKENS = 8000;
 
 export interface ClaudeJsonResult {
   stopReason: string | null;

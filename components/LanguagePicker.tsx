@@ -1,6 +1,6 @@
 "use client";
 
-export const LANGUAGES: { code: string; name: string }[] = [
+const LANGUAGES: { code: string; name: string }[] = [
   { code: "en-IN", name: "English" },
   { code: "hi-IN", name: "हिन्दी" },
   { code: "bn-IN", name: "বাংলা" },

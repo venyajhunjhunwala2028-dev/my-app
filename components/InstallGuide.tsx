@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore, type ReactNode } from "react";
-
-const noSubscribe = () => () => {};
+import { noSubscribe } from "@/lib/useIsClient";
 
 // True in an iPhone/iPad Safari tab that was not opened from the home screen icon.
 // The home-screen app keeps separate storage from Safari, so setup must happen inside it.

@@ -1,21 +1,15 @@
 "use client";
 
-import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { getFamilyContact, setFamilyContact, type FamilyContact } from "@/lib/store/localStore";
-
-const noSubscribe = () => () => {};
-
-// The store lives in localStorage, so read it only after the page is running in the browser.
-function useIsClient(): boolean {
-  return useSyncExternalStore(noSubscribe, () => true, () => false);
-}
+import { useIsClient } from "@/lib/useIsClient";
 
 type Mode = "auto" | "form" | "confirm";
 
 export default function CallFamily() {
+  // The store lives in localStorage, so read it only after the page is running in the browser.
   const isClient = useIsClient();
   const [mode, setMode] = useState<Mode>("auto");
-  const [, setVersion] = useState(0);
 
   if (!isClient) return null;
   const contact = getFamilyContact();
@@ -23,7 +17,6 @@ export default function CallFamily() {
 
   function save(next: FamilyContact) {
     setFamilyContact(next);
-    setVersion((v) => v + 1);
     setMode("confirm");
   }
 

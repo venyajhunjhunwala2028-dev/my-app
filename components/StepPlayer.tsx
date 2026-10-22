@@ -8,7 +8,7 @@ import ShowMeOnScreen from "@/components/ShowMeOnScreen";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import { askHelper } from "@/lib/ai/askClient";
 import type { AskAnswer } from "@/lib/ai/schemas";
-import { isSpeechSupported, startListening } from "@/lib/speech/speech";
+import { canSpeakAloud, isSpeechSupported, speak, startListening, stopSpeaking } from "@/lib/speech/speech";
 import {
   getDevices,
   getReadAloud,
@@ -18,22 +18,12 @@ import {
   setReadAloud,
   type SavedGuide,
 } from "@/lib/store/localStore";
+import { noSubscribe } from "@/lib/useIsClient";
 
 export type StepsAnswer = Extract<AskAnswer, { kind: "steps" }>;
 
-const noSubscribe = () => () => {};
-
-function canSpeakAloud(): boolean {
-  return typeof window !== "undefined" && "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function";
-}
-
-function speak(text: string, lang: string) {
-  if (!canSpeakAloud()) return;
-  window.speechSynthesis.cancel();
-  const utterance = new window.SpeechSynthesisUtterance(text);
-  utterance.lang = lang;
-  window.speechSynthesis.speak(utterance);
-}
+/** Steps run from 1 to total; one past the last step means the guide is finished. */
+const isFinished = (step: number, total: number) => step > total;
 
 type Help =
   | { kind: "idle" }
@@ -47,7 +37,6 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
   const total = answer.steps.length;
   const canSpeak = useSyncExternalStore(noSubscribe, canSpeakAloud, () => false);
   const canListen = useSyncExternalStore(noSubscribe, isSpeechSupported, () => false);
-  // Step total + 1 means the guide is finished.
   const [step, setStep] = useState(() => Math.min(Math.max(guide.step, 1), total + 1));
   const [reading, setReading] = useState(getReadAloud);
   const [help, setHelp] = useState<Help>({ kind: "idle" });
@@ -57,7 +46,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
   const busy = useRef(false);
   const lastQuestion = useRef("");
 
-  const finished = step > total;
+  const finished = isFinished(step, total);
   const current = answer.steps[Math.min(step, total) - 1];
 
   useEffect(() => {
@@ -66,7 +55,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Coming back from another app must land on the same step (R8).
+  // Coming back from another app must land on the same step.
   useEffect(() => {
     const save = () => {
       if (document.visibilityState === "hidden") setGuideStep(id, step);
@@ -76,18 +65,16 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
   }, [id, step]);
 
   // Stop talking when the learner leaves the guide.
-  useEffect(() => () => {
-    if (canSpeakAloud()) window.speechSynthesis.cancel();
-  }, []);
+  useEffect(() => stopSpeaking, []);
 
   function goTo(next: number) {
     setStep(next);
     setGuideStep(id, next);
     setHelp({ kind: "idle" });
     setSpecific("");
-    if (next > total) {
+    if (isFinished(next, total)) {
       setCurrentGuide(null);
-      if (canSpeakAloud()) window.speechSynthesis.cancel();
+      stopSpeaking();
     } else if (reading) {
       speak(answer.steps[next - 1].spoken, answer.language);
     }
@@ -102,7 +89,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
   function stopReading() {
     setReading(false);
     setReadAloud(false);
-    if (canSpeakAloud()) window.speechSynthesis.cancel();
+    stopSpeaking();
   }
 
   async function ask(question: string) {

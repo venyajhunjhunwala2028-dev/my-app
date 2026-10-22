@@ -1,4 +1,4 @@
-// Client-side screenshot preparation (KTD5): re-encode as JPEG, shrinking only when the long edge is too big.
+// Client-side screenshot preparation: re-encode as JPEG, shrinking only when the long edge is too big.
 
 import { MAX_IMAGE_LONG_EDGE_PX } from "@/lib/http/limits";
 

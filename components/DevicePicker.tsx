@@ -1,6 +1,6 @@
 "use client";
 
-/** Large buttons asking which device the question is about (R4). */
+/** Large buttons asking which device the question is about. */
 export default function DevicePicker({
   prompt,
   options,

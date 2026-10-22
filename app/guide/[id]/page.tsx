@@ -1,12 +1,11 @@
 "use client";
 
-import { Suspense, use, useState, useSyncExternalStore } from "react";
+import { Suspense, use, useState } from "react";
 import Link from "next/link";
 import ExplanationView, { type ExplanationAnswer } from "@/components/ExplanationView";
 import StepPlayer, { type StepsAnswer } from "@/components/StepPlayer";
 import { getGuide, type SavedGuide } from "@/lib/store/localStore";
-
-const noSubscribe = () => () => {};
+import { useIsClient } from "@/lib/useIsClient";
 
 export default function GuidePage({ params }: { params: Promise<{ id: string }> }) {
   // The id is only known per request, so it is read inside Suspense (Cache Components).
@@ -22,7 +21,7 @@ export default function GuidePage({ params }: { params: Promise<{ id: string }> 
 function Guide({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   // Guides live in localStorage, so read them only once running in the browser.
-  const isClient = useSyncExternalStore(noSubscribe, () => true, () => false);
+  const isClient = useIsClient();
   // Set when "Show me how" turns an explanation into steps.
   const [stepsGuide, setStepsGuide] = useState<SavedGuide<StepsAnswer> | null>(null);
   if (!isClient) return null;

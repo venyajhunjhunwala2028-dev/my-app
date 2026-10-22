@@ -17,8 +17,7 @@ import {
   setDevices,
   setSpeakingLanguage,
 } from "@/lib/store/localStore";
-
-const noSubscribe = () => () => {};
+import { noSubscribe, useIsClient } from "@/lib/useIsClient";
 
 type Status =
   | { kind: "idle" }
@@ -40,7 +39,7 @@ const MIC_HELP: Record<ListenError, string> = {
 export default function AskBox() {
   const router = useRouter();
   // The store and speech support exist only in the browser.
-  const isClient = useSyncExternalStore(noSubscribe, () => true, () => false);
+  const isClient = useIsClient();
   const speech = useSyncExternalStore(noSubscribe, isSpeechSupported, () => false);
   const [question, setQuestion] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });

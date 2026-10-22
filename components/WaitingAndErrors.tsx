@@ -1,11 +1,15 @@
 "use client";
 
 import CallFamily from "@/components/CallFamily";
-import type { ApiErrorCode } from "@/lib/ai/schemas";
+import type { RequestError } from "@/lib/http/postJson";
 
-export type RequestError = { code: ApiErrorCode; message: string };
+export type { RequestError };
 
 const SETUP_MESSAGE = "Sorry, this isn't working right now.";
+
+function learnerMessage(error: RequestError): string {
+  return error.code === "setup" ? SETUP_MESSAGE : error.message;
+}
 
 /** Shown under any AI request: a large waiting message, or a plain error with Try again and Call family. */
 export default function WaitingAndErrors({
@@ -25,12 +29,10 @@ export default function WaitingAndErrors({
     );
   }
   if (!error) return null;
-  // The setup message is meant for whoever deployed the app, never for the learner.
-  const message = error.code === "setup" ? SETUP_MESSAGE : error.message;
   return (
     <div className="flex flex-col gap-4">
       <section role="alert" className="flex flex-col gap-4 rounded-2xl border-2 border-warning bg-warning-surface p-4">
-        <p className="text-xl">{message}</p>
+        <p className="text-xl">{learnerMessage(error)}</p>
         <button type="button" className="btn-primary" onClick={onRetry}>
           Try again
         </button>

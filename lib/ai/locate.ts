@@ -1,5 +1,5 @@
-// Contract, prompt, schema, validator and fake for POST /api/locate (U6, KTD5).
-
+import { str, variant } from "@/lib/ai/schemas";
+import { isObj, isStr } from "@/lib/guards";
 import type { AllowedImageType } from "@/lib/http/limits";
 
 export interface LocateRequest {
@@ -48,13 +48,7 @@ export function buildLocateText(req: LocateRequest): string {
   return lines.join("\n");
 }
 
-const str = (description: string) => ({ type: "string", description });
 const int = (description: string) => ({ type: "integer", description });
-
-function variant(kind: LocateAnswer["kind"], properties: Record<string, unknown>) {
-  const all = { kind: { type: "string", const: kind }, ...properties };
-  return { type: "object", properties: all, required: Object.keys(all), additionalProperties: false };
-}
 
 export const LOCATE_ANSWER_JSON_SCHEMA: Record<string, unknown> = {
   type: "object",
@@ -85,9 +79,6 @@ export const LOCATE_ANSWER_JSON_SCHEMA: Record<string, unknown> = {
   additionalProperties: false,
 };
 
-type Obj = Record<string, unknown>;
-const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
-const isStr = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
 /**
@@ -117,7 +108,7 @@ export function parseLocateAnswer(v: unknown, imageWidth: number, imageHeight: n
   }
 }
 
-// Fixed answers for FAKE_AI=1 (KTD10).
+/** Fixed answers for FAKE_AI=1. */
 export function fakeLocateAnswer(req: LocateRequest): LocateAnswer {
   const step = req.instruction.toLowerCase();
   if (step.includes("scam")) {

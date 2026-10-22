@@ -1,4 +1,4 @@
-// Voice input through the browser's speech recognition (KTD6), feature-detected.
+// Voice input and read-aloud through the browser's Web Speech API, feature-detected.
 // The Web Speech API cannot detect the spoken language, so the caller passes the saved speaking language.
 
 export type ListenError = "denied" | "no-speech" | "failed";
@@ -78,4 +78,21 @@ export function startListening(lang: string, handlers: ListenHandlers): { stop: 
     return null;
   }
   return { stop: () => rec.stop() };
+}
+
+export function canSpeakAloud(): boolean {
+  return typeof window !== "undefined" && "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function";
+}
+
+export function stopSpeaking(): void {
+  if (canSpeakAloud()) window.speechSynthesis.cancel();
+}
+
+/** Reads text aloud, cutting off anything already being read. */
+export function speak(text: string, lang: string): void {
+  if (!canSpeakAloud()) return;
+  window.speechSynthesis.cancel();
+  const utterance = new window.SpeechSynthesisUtterance(text);
+  utterance.lang = lang;
+  window.speechSynthesis.speak(utterance);
 }

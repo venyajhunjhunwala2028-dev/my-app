@@ -1,6 +1,6 @@
 import type { AskAnswer, AskRequest } from "./schemas";
 
-// Fixed answers for FAKE_AI=1 (KTD10): tests and e2e run without calling Claude.
+// Fixed answers for FAKE_AI=1: tests and e2e run without calling Claude.
 
 export function fakeAskAnswer(req: AskRequest): AskAnswer {
   const q = req.question.toLowerCase();

@@ -5,8 +5,8 @@ import DevicePicker from "@/components/DevicePicker";
 import SafetyNotice from "@/components/SafetyNotice";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import type { Box, LocateAnswer } from "@/lib/ai/locate";
-import type { ApiErrorCode } from "@/lib/ai/schemas";
 import { MAX_IMAGE_BYTES } from "@/lib/http/limits";
+import { postJson } from "@/lib/http/postJson";
 import { resizeScreenshot, type PreparedImage } from "@/lib/image/resize";
 import { requestAllowance } from "@/lib/store/localStore";
 
@@ -14,9 +14,6 @@ const DEVICE_OPTIONS = ["iPhone", "Android phone", "iPad or tablet", "Windows co
 const NOT_A_PICTURE = "That is not a picture. Please choose the screenshot you just took.";
 const TOO_BIG = "That picture is too big. Please choose the screenshot you just took.";
 const CANT_OPEN = "Sorry, that picture could not be opened. Please choose your screenshot again.";
-const RETRY_MESSAGE = "Sorry, something went wrong. Please try again.";
-const CODES: readonly ApiErrorCode[] = ["bad_request", "too_long", "setup", "retry"];
-const TIMEOUT_MS = 60_000;
 
 type State =
   | { kind: "idle"; problem?: string }
@@ -24,31 +21,6 @@ type State =
   | { kind: "waiting" }
   | { kind: "error"; error: RequestError }
   | { kind: "answer"; answer: LocateAnswer };
-
-const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
-
-async function postLocate(body: Record<string, unknown>): Promise<LocateAnswer | RequestError> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch("/api/locate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    const data: unknown = await res.json();
-    if (res.ok && isObj(data) && typeof data.kind === "string") return data as LocateAnswer;
-    if (isObj(data) && CODES.includes(data.error as ApiErrorCode) && typeof data.message === "string") {
-      return { code: data.error as ApiErrorCode, message: data.message };
-    }
-    return { code: "retry", message: RETRY_MESSAGE };
-  } catch {
-    return { code: "retry", message: RETRY_MESSAGE };
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 const pct = (n: number) => `${(n * 100).toFixed(2)}%`;
 
@@ -121,7 +93,7 @@ export default function ShowMeOnScreen({
 
   async function send(prepared: PreparedImage) {
     setState({ kind: "waiting" });
-    const result = await postLocate({
+    const result = await postJson<LocateAnswer>("/api/locate", {
       image: prepared.base64,
       mediaType: prepared.mediaType,
       width: prepared.width,
@@ -134,7 +106,7 @@ export default function ShowMeOnScreen({
     else setState({ kind: "error", error: result });
   }
 
-  // Every send counts against today's cap (KTD8), including Try again.
+  // Every send counts against today's cap, including Try again.
   function retry() {
     if (!image) return;
     if (!requestAllowance().allowed) return setState({ kind: "limit" });

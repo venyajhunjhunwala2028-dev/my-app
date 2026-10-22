@@ -1,15 +1,13 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { getSavedGuides, setCurrentGuide, setGuideStep } from "@/lib/store/localStore";
-
-const noSubscribe = () => () => {};
+import { useIsClient } from "@/lib/useIsClient";
 
 export default function MyGuides() {
   const router = useRouter();
   // The store lives in localStorage, so read it only after the page is running in the browser.
-  const isClient = useSyncExternalStore(noSubscribe, () => true, () => false);
+  const isClient = useIsClient();
   if (!isClient) return null;
   const guides = getSavedGuides();
 

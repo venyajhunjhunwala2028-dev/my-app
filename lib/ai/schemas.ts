@@ -1,4 +1,4 @@
-// Shared contract between the ask route and the UI (KTD3).
+import { isObj, isStr } from "@/lib/guards";
 
 export type AskMode = "ask" | "followup" | "showMeHow";
 export interface GuideContext {
@@ -25,7 +25,8 @@ export type AskAnswer =
   | { kind: "scam_warning"; language: string; message: string }
   | { kind: "money_refusal"; language: string; message: string }
   | { kind: "off_topic"; language: string; message: string };
-export type ApiErrorCode = "bad_request" | "too_long" | "setup" | "retry";
+export const API_ERROR_CODES = ["bad_request", "too_long", "setup", "retry"] as const;
+export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
 export interface ApiError {
   error: ApiErrorCode;
   message: string; // plain, learner-safe English
@@ -34,24 +35,28 @@ export interface ApiError {
 // ---- JSON schema sent to Claude (output_config.format) ----
 // Wrapped in a root object so the root is always type "object".
 
-const str = (description: string) => ({ type: "string", description });
+export const str = (description: string) => ({ type: "string", description });
 const strArray = (description: string) => ({ type: "array", items: { type: "string" }, description });
 const LANGUAGE = str("BCP 47 code of the language the learner asked in, e.g. en, hi, es. The answer text uses this language.");
 
-function variant(kind: AskAnswer["kind"], properties: Record<string, unknown>) {
-  const all = { kind: { type: "string", const: kind }, language: LANGUAGE, ...properties };
+/** One anyOf branch: an object whose properties are kind, then `shared`, then `properties`, all required. */
+export function variant(kind: string, properties: Record<string, unknown>, shared: Record<string, unknown> = {}) {
+  const all = { kind: { type: "string", const: kind }, ...shared, ...properties };
   return { type: "object", properties: all, required: Object.keys(all), additionalProperties: false };
 }
 
+const askVariant = (kind: AskAnswer["kind"], properties: Record<string, unknown>) =>
+  variant(kind, properties, { language: LANGUAGE });
+
 const messageVariant = (kind: AskAnswer["kind"], description: string) =>
-  variant(kind, { message: str(description) });
+  askVariant(kind, { message: str(description) });
 
 export const ASK_ANSWER_JSON_SCHEMA: Record<string, unknown> = {
   type: "object",
   properties: {
     answer: {
       anyOf: [
-        variant("steps", {
+        askVariant("steps", {
           title: str("Short name of the task, e.g. Post a story on Instagram."),
           device: { anyOf: [{ type: "string" }, { type: "null" }], description: "Device the steps are for, or null." },
           steps: {
@@ -70,12 +75,12 @@ export const ASK_ANSWER_JSON_SCHEMA: Record<string, unknown> = {
           },
           screenshotHowTo: strArray("Short steps for taking a screenshot on this device."),
         }),
-        variant("explanation", {
+        askVariant("explanation", {
           title: str("Short title."),
           text: str("Short plain-language explanation."),
           offerShowMeHow: { type: "boolean", description: "True when there is something the learner could go and do." },
         }),
-        variant("needs_device", {
+        askVariant("needs_device", {
           prompt: str("Question asking which device they are using."),
           options: strArray("Device choices, e.g. iPhone, Android phone, Windows computer, Mac, TV."),
         }),
@@ -91,9 +96,6 @@ export const ASK_ANSWER_JSON_SCHEMA: Record<string, unknown> = {
 
 // ---- Validator for what comes back from Claude ----
 
-type Obj = Record<string, unknown>;
-const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
-const isStr = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
 const isStrArray = (v: unknown, min = 0): v is string[] =>
   Array.isArray(v) && v.length >= min && v.every(isStr);
 const isStep = (v: unknown): v is Step =>

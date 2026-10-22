@@ -1,4 +1,4 @@
-// Deterministic handover-pattern check (KTD4). Runs before any AI call.
+// Deterministic handover-pattern check. Runs before any AI call.
 // It looks for someone being given a secret, gift cards, remote access, or money,
 // not for bare mentions of "password", "OTP" or "code".
 
