@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import Home from "@/app/page";
 import manifest from "@/app/manifest";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 describe("app scaffold", () => {
   it("renders the home page with the app name and an ask control", () => {

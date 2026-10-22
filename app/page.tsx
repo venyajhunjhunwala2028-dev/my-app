@@ -1,21 +1,40 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import AskBox from "@/components/AskBox";
+import CallFamily from "@/components/CallFamily";
+import InstallGuide from "@/components/InstallGuide";
+import MyGuides from "@/components/MyGuides";
+import { getCurrentGuide, type SavedGuide } from "@/lib/store/localStore";
+
+// Resume only on a cold launch, so going back to home from a guide does not bounce straight back.
+let launchChecked = false;
+
+function isUnfinished(guide: SavedGuide): boolean {
+  const answer = guide.answer as { kind?: string; steps?: unknown[] } | null;
+  if (answer?.kind === "steps" && Array.isArray(answer.steps)) return guide.step <= answer.steps.length;
+  return true;
+}
+
 export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (launchChecked) return;
+    launchChecked = true;
+    const guide = getCurrentGuide();
+    if (guide && isUnfinished(guide)) router.push(`/guide/${guide.id}`);
+  }, [router]);
+
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-8">
-      <h1 className="text-3xl font-bold">Tech Helper</h1>
-      <form className="flex flex-col gap-4">
-        <label htmlFor="question" className="text-xl">
-          What do you need help with?
-        </label>
-        <textarea
-          id="question"
-          name="question"
-          rows={3}
-          className="rounded-2xl border-2 border-muted p-4 text-xl"
-        />
-        <button type="submit" className="btn-primary">
-          Ask
-        </button>
-      </form>
-    </main>
+    <InstallGuide>
+      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-8 px-4 py-8">
+        <h1 className="text-3xl font-bold">Tech Helper</h1>
+        <AskBox />
+        <MyGuides />
+        <CallFamily />
+      </main>
+    </InstallGuide>
   );
 }
