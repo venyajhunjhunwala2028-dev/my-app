@@ -102,11 +102,12 @@ function load(): State {
 }
 
 function save(state: State): void {
-  memory = state;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    memory = null;
   } catch {
     // Storage unavailable or full: keep the in-memory copy only.
+    memory = state;
   }
 }
 
