@@ -31,7 +31,7 @@ function Guide({ params }: { params: Promise<{ id: string }> }) {
   const kind = (guide?.answer as { kind?: string } | undefined)?.kind;
 
   if (guide && kind === "steps") {
-    return <StepPlayer key={guide.savedAt} guide={guide as SavedGuide<StepsAnswer>} />;
+    return <StepPlayer key={`${guide.savedAt}:${guide.step}`} guide={guide as SavedGuide<StepsAnswer>} />;
   }
   if (guide && kind === "explanation") {
     return (
