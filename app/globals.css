@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+/* Large, high-contrast base for older learners (R5): 20px+ text, 56px+ buttons, WCAG AA colours. */
+:root {
+  --background: #ffffff;
+  --foreground: #111827;
+  --muted: #374151;
+  --primary: #1d4ed8;
+  --primary-foreground: #ffffff;
+  --surface: #f3f4f6;
+  --warning: #b91c1c;
+  --warning-surface: #fef2f2;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-surface: var(--surface);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+}
+
+html {
+  font-size: 20px;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+@utility btn {
+  display: inline-flex;
+  min-height: 3.5rem;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  &:focus-visible {
+    outline: 4px solid var(--primary);
+    outline-offset: 2px;
+  }
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+@utility btn-primary {
+  @apply btn bg-primary text-primary-foreground;
+}
+
+@utility btn-secondary {
+  @apply btn border-2 border-primary bg-background text-primary;
+}
+
+@utility btn-text {
+  @apply inline-flex min-h-14 items-center justify-center px-4 text-lg font-semibold text-primary underline;
+}
