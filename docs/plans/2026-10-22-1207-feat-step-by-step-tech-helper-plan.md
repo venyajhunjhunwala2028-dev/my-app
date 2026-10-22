@@ -94,7 +94,7 @@ What helped was a patient person showing the next button at the moment she neede
 - F1. Ask and follow
   - **Trigger:** The learner wants to do something, such as post an Instagram story or connect to Wi-Fi.
   - **Actors:** A1
-  - **Steps:** Taps the microphone and asks; answers the device question if asked; sees step 1 in large text, read aloud; switches to the other app, does it, returns; the same step is waiting; taps "Done, next step" until finished; the guide is saved to "My guides".
+  - **Steps:** Taps the microphone and asks; answers the device question if asked; sees step 1 in large text and can have it read aloud; switches to the other app, does it, returns; the same step is waiting; taps "Done, next step" until finished; the guide is saved to "My guides".
   - **Covered by:** R1, R2, R4, R5, R7, R8, R12
 - F2. Show me on my screen
   - **Trigger:** The learner cannot find what a step describes.
@@ -141,7 +141,7 @@ What helped was a patient person showing the next button at the moment she neede
 
 **Considered and not built**
 
-- Server-side rate limiting by IP: the per-phone cap (R21) plus a monthly spend limit set in the Anthropic console bounds cost at family scale without adding a database; revisit if usage grows beyond people the owner knows.
+- Database-backed rate limiting by IP: the per-phone cap (R21) plus a monthly spend limit set in the Anthropic console bounds cost at family scale without adding a database; revisit if usage grows beyond people the owner knows. A platform rate-limit rule that needs no database is an open question below.
 - Live camera or screen-sharing guidance: screenshots cover the need with far less complexity and privacy risk.
 
 ### Dependencies / Assumptions
@@ -149,6 +149,7 @@ What helped was a patient person showing the next button at the moment she neede
 - The AI service can read a screenshot and locate a described control well enough to circle it; U6 verifies this on real screenshots before building the overlay polish.
 - Per-question AI cost is paid by the owner and stays small at family-and-friends scale, with a spend limit set in the Anthropic console.
 - Saved data is lost if the learner changes phones or clears browser data; accepted for the first version.
+- On iPhones, the home-screen app keeps its own storage separate from Safari, so setup happens inside the installed app (U7).
 - Voice input and read-aloud use the browser's built-in speech features, whose language coverage varies by phone.
 
 ---
@@ -158,19 +159,20 @@ What helped was a patient person showing the next button at the moment she neede
 ### Key Technical Decisions
 
 - KTD1. **Next.js App Router with TypeScript and Tailwind, deployed on Vercel.** One app serves the pages and the server routes that hold the API key, and Vercel deploys it from this repo on every push.
-- KTD2. **Claude Opus 5.5 (`claude-opus-5-5`) through the official `@anthropic-ai/sdk`, called only from server routes.** Most capable current model; run at `low` effort to keep answers fast and cheap. Enable server-side refusal fallbacks (`fallbacks: "default"` with the `server-side-fallback-2026-07-01` beta) and check `stop_reason` before reading content. The model ID lives in one config constant so the owner can switch to `claude-haiku-5-5` later.
-- KTD3. **Structured output for every answer.** The ask route requests a JSON schema via `output_config.format` with a `kind` of `steps`, `explanation`, `needs_device`, `scam_warning`, `money_refusal`, or `off_topic`, the answer language, and for steps an ordered list where each step has the instruction, what it looks like and where it is, and a spoken version. The UI renders by `kind` and never parses free text.
-- KTD4. **Two layers for scam and money safety (R15, R16).** A small deterministic phrase check (OTP, password, gift card, remote access, AnyDesk, send money, and equivalents in common languages) runs before the AI call and returns the warning directly; the system prompt and the `scam_warning` / `money_refusal` kinds cover everything the phrase check misses. The phrase check exists because a missed scam does harm before anyone notices.
-- KTD5. **Screenshot marking returns coordinates, the browser draws the circle.** The client shrinks the image to at most 1568 px on the long edge before upload. The locate route asks Claude for a box in coordinates normalized to 0–1000, a `found` flag, and an instruction. The client draws the circle over its own copy of the image. Nothing is written to disk or logs (R17).
-- KTD6. **Browser speech APIs for voice.** `SpeechRecognition` (with the `webkit` prefix) for input and `speechSynthesis` for read-aloud, both feature-detected. When recognition is missing or fails, the mic button hides and the text box stays (R2).
-- KTD7. **One versioned local store.** A small typed wrapper over `localStorage` holds saved guides, the current guide and step, usual devices, the family contact, and today's question count, under one versioned key so a later format change can migrate it.
-- KTD8. **Daily cap counted on the phone (R21).** The count lives in the local store and resets at local midnight. It stops ordinary over-use, not a determined abuser, so the Anthropic console spend limit is the hard backstop.
+- KTD2. **Claude Opus 5.5 (`claude-opus-5-5`) through the official `@anthropic-ai/sdk`, called only from server routes.** Most capable current model; run at `low` effort to keep answers fast and cheap. Thinking cannot be turned off on this model and counts toward `max_tokens`, so each call sets a fixed `max_tokens` with room for thinking plus the JSON (start at 8000 and tune). Enable server-side refusal fallbacks (`fallbacks: "default"` with the `server-side-fallback-2026-07-01` beta) and check `stop_reason` before reading content. The model ID lives in one config constant so the owner can switch to `claude-haiku-5-5` later.
+- KTD3. **Structured output for every answer.** The ask route requests a JSON schema via `output_config.format` with a `kind` of `steps`, `explanation`, `needs_device`, `scam_warning`, `money_refusal`, or `off_topic`, plus the answer language. A `steps` answer carries an ordered list where each step has the instruction, what it looks like and where it is, and a spoken version, plus a short "how to take a screenshot" list for the guide's device in the answer language (used by U6). The UI renders by `kind` and never parses free text.
+- KTD4. **Two layers for scam and money safety (R15, R16).** A small deterministic check runs before the AI call and returns the warning directly when a question matches a handover pattern: giving, sharing, telling, or reading out an OTP, code, or password to someone; buying gift cards for someone; installing AnyDesk, TeamViewer, or another remote-access app on request; sending or transferring money. Bare mentions of "password", "OTP", or "code" do not trigger it, so "how do I change my password" still gets help. Everything else goes to the model, whose system prompt and `scam_warning` / `money_refusal` kinds catch what the patterns miss. The same rules apply to the screenshot route (KTD5).
+- KTD5. **Screenshot marking returns pixel coordinates, the browser draws the circle.** The client re-encodes the screenshot as JPEG and shrinks it only when the long edge exceeds 2576 px, which keeps uploads under Vercel's 4.5 MB request limit. It sends the image with its width and height. The locate route asks Claude for `found`, a box in that image's pixel coordinates, and an instruction; text inside the screenshot is treated as data, never as instructions. When the screen shows an OTP or password request, a payment, a remote-access app, or a scam-style popup, the route returns `scam_warning` and no box. The client converts the box to display coordinates and draws the circle. Nothing is written to disk or logs (R17).
+- KTD6. **Browser speech APIs for voice, in the learner's chosen language.** `SpeechRecognition` (with the `webkit` prefix) for input and `speechSynthesis` for read-aloud, both feature-detected. The Web Speech API does not detect the spoken language, so recognition uses a saved speaking language (KTD7) that defaults to the device language and can be changed with large language buttons. The same value is the language hint sent to the ask route. When recognition is missing, denied, or fails, the mic explains itself and the text box stays (R2).
+- KTD7. **One versioned local store.** A small typed wrapper over `localStorage` holds saved guides, the current guide and step, usual devices, speaking language, read-aloud on/off, the family contact, and today's usage count, under one versioned key so a later format change can migrate it. It calls `navigator.storage.persist()` where supported to reduce the chance the browser clears it.
+- KTD8. **Daily cap counted on the phone (R21).** One helper in the local store checks and increments today's count before every call to `/api/ask` or `/api/locate`, including follow-ups and "Show me how", and resets at local midnight. It stops ordinary over-use, not a determined abuser, so the Anthropic console spend limit is the hard backstop.
 - KTD9. **Installable web app without offline mode.** A web manifest and icons enable "Add to Home Screen" (R14); no service worker, since every answer needs the network.
 - KTD10. **Fake AI mode for tests.** When `FAKE_AI=1`, both routes return fixed fixtures, so unit, component, and end-to-end tests run free and offline.
+- KTD11. **Server-side request limits.** Both routes reject oversized input before calling Claude: question at most 1,000 characters, guide context at most 4,000 characters, image type png, jpeg, or webp, at most 4 MB and 2576 px on the long edge. Error paths log only an error code, never question text or image data.
 
 ### High-Level Technical Design
 
-Ask flow, including the safety and device branches:
+Ask flow, including the cap, safety, and device branches. Follow-ups, "Show me how", and screenshot requests pass the same cap check.
 
 ```mermaid
 sequenceDiagram
@@ -178,20 +180,22 @@ sequenceDiagram
   participant S as Local store
   participant A as /api/ask
   participant C as Claude
-  L->>S: check daily count (R21)
+  L->>S: check and count today's use (KTD8)
   alt over the cap
     S-->>L: "ready tomorrow" + Call family
   else under the cap
-    L->>A: question, language, usual devices, guide context
-    A->>A: phrase check (KTD4)
-    alt scam or money phrase
+    L->>A: question, speaking language, usual devices, guide context
+    A->>A: size limits (KTD11), handover-pattern check (KTD4)
+    alt scam or money pattern
       A-->>L: scam_warning / money_refusal
     else
       A->>C: system prompt + question, JSON schema (KTD3)
       C-->>A: structured answer
       A-->>L: steps | explanation | needs_device | ...
     end
-    L->>S: save guide, step = 1, count + 1
+    opt steps or explanation
+      L->>S: save guide, current step = 1
+    end
   end
 ```
 
@@ -200,41 +204,48 @@ Step player states:
 ```mermaid
 stateDiagram-v2
   [*] --> Step
+  Step --> Waiting: any AI request
+  Waiting --> Step: answer or friendly error
   Step --> Step: Done, next step / Previous step
   Step --> FollowUp: I don't understand (R20)
-  FollowUp --> Step: answer shown, same step
+  FollowUp --> Step: Back to the step
   Step --> ShowMe: Show me on my screen (R10)
-  ShowMe --> Step: circled screenshot shown
+  ShowMe --> Step: Back to my step
   Step --> Finished: last step done
   Finished --> [*]
 ```
 
-Leaving the page in any state saves the step; returning restores it (R8).
+Leaving the page in any state saves the step. Returning to the guide page, or a cold launch at the home page with an unfinished guide, restores it (R8).
 
 ### Output Structure
 
 ```text
 app/
   layout.tsx
-  page.tsx                  # home: ask, My guides, Call family
+  page.tsx                  # home: continue, ask, My guides, Call family
   guide/[id]/page.tsx       # step player and explanation view
   api/ask/route.ts
   api/locate/route.ts
   manifest.ts
 components/
   AskBox.tsx
+  LanguagePicker.tsx
   DevicePicker.tsx
   StepPlayer.tsx
   ExplanationView.tsx
   ShowMeOnScreen.tsx
+  MyGuides.tsx
   CallFamily.tsx
   SafetyNotice.tsx
+  WaitingAndErrors.tsx
+  InstallGuide.tsx
 lib/
   ai/client.ts              # Anthropic client, model constant
   ai/prompts.ts
   ai/schemas.ts
   ai/fakes.ts
   safety/phraseCheck.ts
+  http/limits.ts
   store/localStore.ts
   speech/speech.ts
   image/resize.ts
@@ -247,8 +258,8 @@ public/icons/
 
 ### Assumptions
 
-- The owner creates an Anthropic API key and a Vercel environment variable `ANTHROPIC_API_KEY`; the app shows a clear setup error when it is missing.
-- Vercel's default function timeout is enough for a `low`-effort answer; if not, the routes stream and the UI shows a "thinking" state.
+- The owner creates an Anthropic API key and a Vercel environment variable `ANTHROPIC_API_KEY`; the app shows the learner a plain "not set up yet" message and logs the setup error for the owner.
+- Vercel's default function timeout is enough for a `low`-effort answer; if not, the routes stream and the waiting state stays up until the answer arrives.
 
 ---
 
@@ -271,17 +282,19 @@ public/icons/
   - The manifest route returns a name, start URL, and at least one icon.
 - **Verification:** The app builds, the dev server shows the home page, and the test runners execute.
 
-### U2. Local store
+### U2. Local store and daily cap
 
-- **Goal:** One place that saves and restores everything the app remembers on the phone.
-- **Requirements:** R8, R12, R13, R18, R21; KTD7, KTD8
+- **Goal:** One place that saves and restores everything the app remembers on the phone, including the daily cap.
+- **Requirements:** R3, R8, R12, R13, R18, R21; KTD6, KTD7, KTD8
 - **Dependencies:** U1
 - **Files:** `lib/store/localStore.ts`, `tests/unit/localStore.test.ts`
-- **Approach:** Typed get/set for saved guides, current guide and step, usual devices, family contact, and daily count with its date; one versioned key; reads that fail or hold bad data return safe defaults.
+- **Approach:** Typed get/set for every field in KTD7; one versioned key; reads that fail or hold bad data return safe defaults; a `useAllowance` helper that checks and increments today's count per KTD8 and reports when the cap is reached.
 - **Test scenarios:**
   - Saving a guide then reloading returns it under My guides, newest first.
   - Setting step 3 on a guide and reading it back returns step 3.
-  - The daily count increments and resets to 0 when the stored date is yesterday.
+  - The allowance helper allows request 30 and refuses request 31 on the same day.
+  - The count resets to 0 when the stored date is yesterday.
+  - The speaking language defaults to the device language and keeps a changed value after reload.
   - Corrupt JSON in storage yields defaults instead of an error.
   - Storage that throws (private mode) does not crash the app; the app still works without saving.
   - Saving the same question twice keeps one guide entry.
@@ -290,93 +303,120 @@ public/icons/
 ### U3. Ask API with safety and structured answers
 
 - **Goal:** A server route that turns any tech or AI question into a structured answer, with scam and money safety.
-- **Requirements:** R1, R3, R4, R6, R15, R16, R19, R20; KTD2, KTD3, KTD4, KTD10
+- **Requirements:** R1, R3, R4, R6, R15, R16, R19, R20; KTD2, KTD3, KTD4, KTD10, KTD11
 - **Dependencies:** U1
-- **Files:** `app/api/ask/route.ts`, `lib/ai/client.ts`, `lib/ai/prompts.ts`, `lib/ai/schemas.ts`, `lib/ai/fakes.ts`, `lib/safety/phraseCheck.ts`, `tests/unit/phraseCheck.test.ts`, `tests/unit/askRoute.test.ts`
+- **Files:** `app/api/ask/route.ts`, `lib/ai/client.ts`, `lib/ai/prompts.ts`, `lib/ai/schemas.ts`, `lib/ai/fakes.ts`, `lib/safety/phraseCheck.ts`, `lib/http/limits.ts`, `tests/unit/phraseCheck.test.ts`, `tests/unit/askRoute.test.ts`
 - **Approach:**
-  1. Validate the request: question text, optional language hint, usual devices, and optional guide context with step number for follow-ups (R20).
-  2. Run the phrase check (KTD4); on a match, return the warning kind without calling the AI.
-  3. Build the system prompt: patient helper for older beginners; one action per step; describe controls by look and position (R6); answer in the question's language (R3); ask for the device when it changes the answer (R4); explain rather than step for "what is" questions (R19); refuse payments (R16); flag scams (R15); decline non-tech topics.
-  4. Call Claude per KTD2 with the schema from KTD3; on refusal or invalid output return a friendly retry message, never a raw error.
+  1. Validate the request and apply KTD11 limits: question text, speaking language, usual devices, and optional guide context with step number for follow-ups (R20).
+  2. Run the handover-pattern check (KTD4); on a match, return the warning kind without calling the AI.
+  3. Build the system prompt: patient helper for older beginners; one action per step; describe controls by look and position (R6); answer in the question's language (R3); ask for the device when it changes the answer (R4); explain rather than step for "what is" questions (R19); refuse payments (R16); flag scams, including OTP or password handover the pattern check missed (R15); decline non-tech topics.
+  4. Call Claude per KTD2 with the schema from KTD3; on refusal, `max_tokens`, or invalid output return a friendly retry message, never a raw error.
   5. Return fixtures when `FAKE_AI=1` (KTD10).
 - **Test scenarios:**
-  - Covers AE2. "The bank called and wants the code they sent me" returns `scam_warning` without calling the AI.
+  - Covers AE2. "The bank called and wants the code they sent me" returns `scam_warning`, from the pattern check or the model (a fixture in fake mode).
+  - "Someone on the phone asked me to tell them my OTP" returns `scam_warning` without calling the AI.
+  - A Hindi handover phrase ("OTP बताओ") also triggers the warning.
+  - "How do I change my email password" and "I didn't get my WhatsApp login code" pass the pattern check and reach the AI.
   - Covers AE3. "How do I send money on Google Pay?" returns `money_refusal`.
-  - A phrase check in Hindi ("OTP बताओ") also triggers the warning.
-  - An ordinary question ("how do I post a story on Instagram") passes the phrase check and returns `steps` from the fake.
+  - An ordinary question ("how do I post a story on Instagram") returns `steps` from the fake, including a screenshot how-to list.
   - A follow-up request with guide context returns an explanation tied to that step.
-  - An empty question returns a 400 with a friendly message.
-  - A missing API key in real mode returns a setup error the UI can show.
+  - An empty question, or one over 1,000 characters, returns a 400 with a friendly message.
+  - A missing API key in real mode returns a setup error code and logs no question text.
   - An AI refusal or malformed response returns the friendly retry message.
 - **Verification:** Route tests pass in fake mode; one manual real call in a few languages returns valid schema-shaped answers.
 
-### U4. Ask screen with voice and device picker
+### U7. Call family, safety notice, and My guides
 
-- **Goal:** The home screen where the learner asks by voice or text and answers the device question when needed.
-- **Requirements:** R2, R3, R4, R13, R21; KTD6, KTD8
-- **Dependencies:** U2, U3
-- **Files:** `app/page.tsx`, `components/AskBox.tsx`, `components/DevicePicker.tsx`, `lib/speech/speech.ts`, `tests/components/AskBox.test.tsx`, `tests/components/DevicePicker.test.tsx`
-- **Approach:** Large mic button and text box; speech recognized in the device's language with the transcript shown for confirmation; check the daily cap before sending; on `needs_device` show the picker, save the choice as a usual device, and resend; route `steps` and `explanation` answers to the guide page; show safety kinds via `SafetyNotice`.
+- **Goal:** The shared Call family and safety components, plus the My guides list.
+- **Requirements:** R12, R13, R14, R18; KTD7, KTD9
+- **Dependencies:** U2
+- **Files:** `components/CallFamily.tsx`, `components/SafetyNotice.tsx`, `components/MyGuides.tsx`, `components/InstallGuide.tsx`, `tests/components/CallFamily.test.tsx`, `tests/components/SafetyNotice.test.tsx`, `tests/components/MyGuides.test.tsx`, `tests/components/InstallGuide.test.tsx`
+- **Approach:**
+  1. CallFamily: setup for name and number with a confirm screen showing the saved contact, then a large button with Call and WhatsApp options using `tel:` and `https://wa.me/` links, and a small "Change family contact" action.
+  2. SafetyNotice: renders `scam_warning`, `money_refusal`, and the daily-cap message, each with CallFamily.
+  3. MyGuides: saved guides as large buttons; opening one sets its saved step to 1, then navigates (F3).
+  4. InstallGuide: on an iPhone browser tab that is not running from the home screen, the first screen walks the family helper through "Add to Home Screen" before any setup, and asks them to use the app only from the icon.
+- **Test scenarios:**
+  - With two saved guides, both show as buttons; tapping one that was left at step 3 opens it at step 1.
+  - With no saved guides, the section shows a friendly hint instead of an empty list.
+  - Saving a family contact shows a confirm screen, then the Call family button with the right `tel:` and WhatsApp links.
+  - Changing the family contact replaces the saved number.
+  - Without a saved contact, the button opens the setup form.
+  - Covers AE2. SafetyNotice for a scam warning shows the Call family button.
+  - An iPhone Safari tab not in standalone mode shows the install walkthrough before setup; standalone mode skips it.
+- **Verification:** Component tests pass and the links open the dialer and WhatsApp on a real phone.
+
+### U4. Home and ask screen with voice
+
+- **Goal:** The home screen where the learner continues an unfinished guide or asks by voice or text.
+- **Requirements:** R2, R3, R4, R8, R13, R21; KTD6, KTD7, KTD8
+- **Dependencies:** U2, U3, U7
+- **Files:** `app/page.tsx`, `components/AskBox.tsx`, `components/LanguagePicker.tsx`, `components/DevicePicker.tsx`, `components/WaitingAndErrors.tsx`, `lib/speech/speech.ts`, `tests/components/HomePage.test.tsx`, `tests/components/AskBox.test.tsx`, `tests/components/DevicePicker.test.tsx`, `tests/components/WaitingAndErrors.test.tsx`
+- **Approach:**
+  1. Home page: if the store holds an unfinished current guide, open it at its saved step, with a large "Continue: <title>" button and a way back to asking; render AskBox, MyGuides, and CallFamily from U7.
+  2. AskBox: large mic and text box; recognition uses the saved speaking language (KTD6) with a "Change language" button opening LanguagePicker; the mic shows a clear "Listening… tap to stop" state, explains and points to the text box when permission is denied, and offers "Try again" when no speech is heard; the transcript is shown for the learner to confirm or edit.
+  3. Before sending, call the allowance helper (KTD8); when over the cap, show SafetyNotice's daily-cap message.
+  4. WaitingAndErrors: every AI request disables its button and shows a large "Thinking, one moment…" message; network failure, timeout, retry message, or setup error shows a plain message with "Try again" that keeps the question, plus Call family; the setup error text never reaches the learner.
+  5. On `needs_device` show DevicePicker, save the choice as a usual device, and resend; on `steps` or `explanation` save the guide at step 1 and go to the guide page; on safety kinds show SafetyNotice.
 - **Test scenarios:**
   - Typing a question and tapping Ask sends it and navigates to the guide.
-  - With no speech support, the mic button is hidden and the text box works.
+  - Double-tapping Ask sends one request and counts one use.
+  - Recognition starts with the saved speaking language, not the device language.
+  - With no speech support, the mic button is hidden and the text box works; with permission denied, the mic explains and the text box works.
   - A recognized transcript fills the box and waits for the learner to confirm.
   - Covers AE7. A `needs_device` answer shows the device buttons; choosing one resends and saves it as a usual device.
-  - Covers AE8. At 30 questions today, asking shows the "ready tomorrow" message and Call family, and no request is sent.
+  - Covers AE8. At 30 uses today, asking shows the "ready tomorrow" message and Call family, and no request is sent.
+  - A network failure shows "Try again" with the question still filled in.
   - A `scam_warning` answer shows the warning and the Call family button, not steps.
-- **Verification:** Component tests pass; on a real phone, speaking a question in English and one other language produces a guide.
+  - With an unfinished guide at step 3 in the store, a cold launch at `/` lands on step 3.
+- **Verification:** Component tests pass; on a real phone, launched from the home-screen icon, speaking a question in English and in one other language produces a guide.
 
 ### U5. Step player and explanation view
 
 - **Goal:** Show answers one step at a time, read aloud, resumable, with follow-up questions.
-- **Requirements:** R5, R6, R7, R8, R12, R19, R20; KTD6, KTD7
-- **Dependencies:** U2, U3
+- **Requirements:** R5, R6, R7, R8, R12, R19, R20, R21; KTD6, KTD7, KTD8
+- **Dependencies:** U2, U3, U4
 - **Files:** `app/guide/[id]/page.tsx`, `components/StepPlayer.tsx`, `components/ExplanationView.tsx`, `tests/components/StepPlayer.test.tsx`, `tests/components/ExplanationView.test.tsx`
-- **Approach:** Render one step with "Step N of M", Read aloud, Done next step, Previous step, I don't understand, and Show me on my screen; save the step on every change and on `visibilitychange`; restore it on load; follow-up answers appear on the same step; explanations show the text and, when offered, a "Show me how" button that asks for steps.
+- **Approach:**
+  1. Layout: "Step N of M", the instruction, Read aloud beneath it, then "Show me on my screen" and "I don't understand" as secondary buttons, and "Done, next step" as the largest bottom-anchored button; "Previous step" is a smaller text button set apart from Done and hidden on step 1.
+  2. Read aloud is tap-to-start because browsers block speech without a tap; once tapped it stays on and reads each new step until turned off (saved in the store).
+  3. Save the step on every change and on `visibilitychange`; restore it on load.
+  4. "I don't understand" sends the current step with no typing and shows a simpler explanation in a panel under the step, with an optional "Ask something specific" that reuses AskBox and a "Back to the step" button.
+  5. Explanations show the text and, when offered, a "Show me how" button that asks for steps.
+  6. Every request here goes through the allowance helper and WaitingAndErrors from U4.
 - **Test scenarios:**
-  - Step 1 of 4 shows only step 1; Done moves to step 2; Previous returns to step 1.
+  - Step 1 of 4 shows only step 1, with no Previous button; Done moves to step 2; Previous returns to step 1.
   - Covers AE1. Reloading the guide page after reaching step 3 shows step 3.
   - Finishing the last step shows a "You did it" screen and the guide stays in My guides.
-  - Read aloud speaks the step's spoken text in the answer language; with no speech support the button is hidden.
-  - I don't understand sends the step context and shows the answer without leaving the step.
+  - After tapping Read aloud once, moving to the next step reads it automatically; with no speech support the button is hidden.
+  - I don't understand sends the step context with no typing and shows the answer under the same step.
   - Covers AE6. An explanation answer shows text and a Show me how button that loads steps.
-- **Verification:** Component tests pass; on a phone, switching to another app and back keeps the step.
+  - At 30 uses today, I don't understand shows the "ready tomorrow" message and sends nothing.
+- **Verification:** Component tests pass; on a phone launched from the home-screen icon, switching to another app and back keeps the step.
 
 ### U6. Show me on my screen
 
 - **Goal:** Teach the learner to take a screenshot, then circle where to tap on it.
-- **Requirements:** R10, R11, R17; KTD2, KTD5
-- **Dependencies:** U3, U5
+- **Requirements:** R10, R11, R15, R16, R17, R21; KTD2, KTD4, KTD5, KTD8, KTD11
+- **Dependencies:** U3, U5, U7
 - **Files:** `components/ShowMeOnScreen.tsx`, `lib/image/resize.ts`, `app/api/locate/route.ts`, `tests/unit/resize.test.ts`, `tests/unit/locateRoute.test.ts`, `tests/components/ShowMeOnScreen.test.tsx`
 - **Approach:**
-  1. Show device-specific "how to take a screenshot" steps (iPhone with and without Home button, Android, computer), then the privacy reminder (R17), then a large upload button.
-  2. Shrink the image on the phone per KTD5 and send it with the current step's instruction.
-  3. The locate route asks Claude for `found`, a 0–1000 box, and an instruction; it keeps no copy of the image.
-  4. Draw a thick circle and arrow over the image when `found`; otherwise show the "couldn't find it" description (R11).
-- **Execution note:** Before building the overlay, run the locate prompt against 5–10 real phone screenshots and check the boxes land on the right control; record the result and stop to ask if most miss.
+  1. Show the guide's "how to take a screenshot" list from the answer (KTD3), in the learner's language; when the guide has no known device, show DevicePicker first.
+  2. Show the privacy reminder (R17), then a large button labelled "Choose your screenshot" with the hint "Pick the newest picture, the one you just took."
+  3. Check the allowance (KTD8), resize per KTD5, and send the image, its size, and the current step's instruction.
+  4. The locate route applies KTD11 limits and the KTD5 prompt, keeps no copy of the image, and returns `found`, a pixel box, and an instruction, or `scam_warning`.
+  5. The result screen shows the instruction above the full-width image with a thick circle and arrow of a minimum visible size, tap-to-zoom, and a large "Back to my step" button; `found: false` shows the "couldn't find it" description (R11); `scam_warning` shows SafetyNotice.
+- **Execution note:** Before building the result screen, run the locate prompt against 5–10 real phone screenshots and check the boxes land on the right control; record the result and stop to ask if most miss.
 - **Test scenarios:**
-  - A 3000×6000 image is resized to at most 1568 px on the long edge, keeping its aspect ratio.
-  - The privacy reminder shows before the upload button is enabled.
+  - A 3000×6000 image is resized to 2576 px on the long edge, keeping its aspect ratio; a 1179×2556 image is not resized.
+  - The privacy reminder shows before the choose button is enabled.
   - Covers AE5. A `found: false` answer shows the description and draws no circle.
-  - A `found: true` box at (500, 900) draws the circle at the matching position on the displayed image at any display size.
-  - A non-image file is rejected with a friendly message.
+  - A pixel box at (590, 2300) on a 1179×2556 image draws the circle at the matching position at any display size.
+  - A fake screenshot answer of `scam_warning` shows SafetyNotice and no circle.
+  - A non-image file, or an image over 4 MB, is rejected with a friendly message.
+  - At 30 uses today, sending a screenshot shows the "ready tomorrow" message and sends nothing.
   - The locate route returns fixtures in fake mode and never writes the image anywhere.
 - **Verification:** Tests pass, and the real-screenshot check from the execution note hits the right control in most cases.
-
-### U7. My guides and Call family
-
-- **Goal:** Let the learner replay saved guides and reach family with one tap.
-- **Requirements:** R12, R13, R18; KTD7
-- **Dependencies:** U2, U4
-- **Files:** `components/MyGuides.tsx`, `components/CallFamily.tsx`, `components/SafetyNotice.tsx`, `tests/components/MyGuides.test.tsx`, `tests/components/CallFamily.test.tsx`
-- **Approach:** My guides lists saved guides as large buttons that open at step 1 (F3); Call family shows a one-time setup for name and phone number, then a large button with Call and WhatsApp options using `tel:` and `https://wa.me/` links; SafetyNotice reuses Call family.
-- **Test scenarios:**
-  - With two saved guides, both show as buttons and tapping one opens it at step 1.
-  - With no saved guides, the section shows a friendly hint instead of an empty list.
-  - Saving a family contact shows the Call family button with the right `tel:` and WhatsApp links.
-  - Without a saved contact, the button opens the setup form.
-  - Covers AE2. The scam warning shows the Call family button.
-- **Verification:** Component tests pass and the links open the dialer and WhatsApp on a real phone.
 
 ### U8. End-to-end check and deploy to Vercel
 
@@ -384,11 +424,11 @@ public/icons/
 - **Requirements:** R14, success criteria; KTD1, KTD10
 - **Dependencies:** U4, U5, U6, U7
 - **Files:** `tests/e2e/ask-and-follow.spec.ts`, `tests/e2e/show-me.spec.ts`, `README.md`
-- **Approach:** Playwright runs F1, F2, and F3 at phone screen size against fake mode; create the Vercel project linked to `venyajhunjhunwala2028-dev/my-app`; the owner adds `ANTHROPIC_API_KEY` and sets an Anthropic console spend limit; README explains setup, the key, and how to switch the model.
+- **Approach:** Playwright runs F1, F2, and F3 at phone screen size against fake mode; create the Vercel project linked to `venyajhunjhunwala2028-dev/my-app`; the owner adds `ANTHROPIC_API_KEY` and sets an Anthropic console spend limit; README explains setup, the key, installing to the home screen before setup, and how to switch the model.
 - **Test scenarios:**
   - Covers F1. Ask, get 3 steps, finish them, and see the guide in My guides.
   - Covers F2. On a step, open Show me on my screen, upload a sample image, and see the circle.
-  - Covers F3. Reopen a saved guide from the home page.
+  - Covers F3. Reopen a saved guide from the home page and start at step 1.
 - **Verification:** End-to-end tests pass, the Vercel deployment loads on a phone, and a real question returns a guide once the key is set.
 
 ---
@@ -397,11 +437,15 @@ public/icons/
 
 | Risk | Mitigation |
 |---|---|
-| Claude's tap locations miss on real screenshots | U6 checks real screenshots before overlay work; R11's "couldn't find it" path avoids wrong circles; stop and ask if most miss. |
+| Claude's tap locations miss on real screenshots | U6 checks real screenshots in pixel coordinates before result-screen work; R11's "couldn't find it" path avoids wrong circles; stop and ask if most miss. |
 | AI gives a wrong or outdated step | Steps describe looks and positions (R6); Show me on my screen (R10) and I don't understand (R20) on every step. |
-| Speech recognition is missing for a language or browser | Feature detection hides the mic and keeps the text box (KTD6). |
-| Cost grows if the link spreads | Daily cap (R21) plus console spend limit; server-side limiting is recorded as considered and not built. |
-| A scam question slips past | Phrase check plus model classification (KTD4). |
+| Voice fails for a language or in the iPhone home-screen app | Saved speaking language (KTD6); feature detection keeps the text box; U4's real-phone check runs from the home-screen icon. |
+| Cost grows, or someone drains the spend limit and the app stops for the learner | Daily cap (R21), server-side size limits (KTD11), and the console spend limit; see the open question on platform rate limiting. |
+| A scam question or scam screen slips past | Handover-pattern check plus model classification on both routes (KTD4, KTD5). |
+
+### Open Questions
+
+- Deferred to the owner: whether to add a Vercel Firewall rate-limit rule on `/api/ask` and `/api/locate` (for example 40 requests per IP per day). It needs no database and would stop a stranger who finds the link from using up the monthly spend limit and taking the app offline for the learner. Without it, the cap on the phone and the spend limit are the only protection.
 
 ---
 
@@ -415,7 +459,7 @@ public/icons/
 | End-to-end tests | `npx playwright test` (fake mode, phone viewport) | U8 |
 | Production build | `npm run build` | U1, U8 |
 | Real-screenshot locate check | manual, 5–10 screenshots | U6 |
-| Live check | open the Vercel URL on a phone and ask a real question | U8 |
+| Live check | open the Vercel URL from the home-screen icon on a phone and ask a real question | U8 |
 
 ---
 
@@ -425,4 +469,4 @@ public/icons/
 - The app is live on Vercel from this repo, and a real question returns a guide on a phone.
 - No API key, screenshot, or personal data is committed, logged, or stored on the server.
 - No dead-end or experimental code from abandoned approaches remains in the diff.
-- The README explains how to set the API key, set a spend limit, and change the model.
+- The README explains how to set the API key, set a spend limit, install to the home screen, and change the model.
