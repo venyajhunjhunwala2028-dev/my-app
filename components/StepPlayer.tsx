@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } fro
 import Link from "next/link";
 import { AnswerBody } from "@/components/ExplanationView";
 import SafetyNotice from "@/components/SafetyNotice";
+import ShowMeOnScreen from "@/components/ShowMeOnScreen";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import { askHelper } from "@/lib/ai/askClient";
 import type { AskAnswer } from "@/lib/ai/schemas";
@@ -166,8 +167,13 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
           <h1 id="show-me-heading" className="text-3xl font-bold">
             Show me on my screen
           </h1>
-          {/* U6 renders the screenshot marking for `current` here. */}
-          {null}
+          <ShowMeOnScreen
+            instruction={current.instruction}
+            lookFor={current.lookFor}
+            device={answer.device}
+            screenshotHowTo={answer.screenshotHowTo}
+            language={answer.language}
+          />
         </section>
         <button type="button" className="btn-secondary" onClick={() => setShowMe(false)}>
           Back to my step

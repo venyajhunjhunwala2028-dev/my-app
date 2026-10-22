@@ -20,7 +20,8 @@ let client: Anthropic | null = null;
  */
 export async function callClaudeJson(args: {
   system: string;
-  user: string;
+  /** Plain text, or content blocks (for example an image plus text). */
+  user: string | Anthropic.Beta.BetaContentBlockParam[];
   schema: Record<string, unknown>;
 }): Promise<ClaudeJsonResult> {
   client ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
