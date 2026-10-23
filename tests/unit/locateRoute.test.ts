@@ -53,6 +53,13 @@ describe("POST /api/locate", () => {
     expect(((await res.json()) as ApiError).error).toBe("bad_request");
   });
 
+  it("rejects an image over 3 MB", async () => {
+    const big = Buffer.alloc(3 * 1024 * 1024 + 1, 1).toString("base64");
+    const res = await locate({ instruction: "Tap Share.", image: big });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as ApiError).error).toBe("too_long");
+  });
+
   it("rejects an image over 4 MB", async () => {
     const big = Buffer.alloc(4 * 1024 * 1024 + 1, 1).toString("base64");
     const res = await locate({ instruction: "Tap Share.", image: big });

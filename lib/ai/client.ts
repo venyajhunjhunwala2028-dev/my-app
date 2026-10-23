@@ -24,7 +24,8 @@ export async function callClaudeJson(args: {
   user: string | Anthropic.Beta.BetaContentBlockParam[];
   schema: Record<string, unknown>;
 }): Promise<ClaudeJsonResult> {
-  client ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  // One 50 s attempt plus one retry; the route's maxDuration (60 s) is the hard cap.
+  client ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 50_000, maxRetries: 1 });
   const response = await client.beta.messages.create({
     model: MODEL,
     max_tokens: MAX_TOKENS,

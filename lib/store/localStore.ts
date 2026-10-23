@@ -88,26 +88,42 @@ function sanitize(raw: unknown): State {
   };
 }
 
-// Used when the browser refuses storage (private mode): the app keeps working, it just forgets on reload.
+export const MAX_GUIDES = 50;
+
+// Used when the browser refuses storage (private mode, or full): the app keeps working, it just forgets on reload.
+// When set, it is newer than anything in localStorage, so reads prefer it.
 let memory: State | null = null;
 
 function load(): State {
+  if (memory) return structuredClone(memory);
   try {
     const text = localStorage.getItem(STORAGE_KEY);
     if (text !== null) return sanitize(JSON.parse(text));
-    return memory ?? defaults();
+    return defaults();
   } catch {
-    return memory ?? defaults();
+    return defaults();
   }
+}
+
+function write(state: State): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  memory = null;
 }
 
 function save(state: State): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    memory = null;
+    write(state);
   } catch {
-    // Storage unavailable or full: keep the in-memory copy only.
-    memory = state;
+    // Storage full: drop the oldest half of the guides and retry once.
+    try {
+      if (state.guides.length === 0) throw new Error("nothing to drop");
+      const newest = [...state.guides].sort((a, b) => b.savedAt - a.savedAt);
+      state.guides = newest.slice(0, Math.ceil(newest.length / 2));
+      write(state);
+    } catch {
+      // Storage unavailable or still full: keep the in-memory copy only.
+      memory = state;
+    }
   }
 }
 
@@ -137,7 +153,9 @@ export function saveGuide<A>(guide: NewGuide<A>): SavedGuide<A> {
   const saved: SavedGuide<A> = { ...guide, savedAt: Date.now(), step: 1 };
   const question = guide.question.trim();
   update((s) => {
-    s.guides = [saved, ...s.guides.filter((g) => g.id !== guide.id && g.question.trim() !== question)];
+    s.guides = [saved, ...s.guides.filter((g) => g.id !== guide.id && g.question.trim() !== question)]
+      .sort((a, b) => b.savedAt - a.savedAt)
+      .slice(0, MAX_GUIDES);
   });
   return saved;
 }

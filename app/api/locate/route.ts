@@ -12,6 +12,7 @@ import { isObj, isStr } from "@/lib/guards";
 import {
   ALLOWED_IMAGE_TYPES,
   MAX_IMAGE_BYTES,
+  base64DecodedBytes,
   MAX_IMAGE_LONG_EDGE_PX,
   MAX_LANGUAGE_CHARS,
   MAX_QUESTION_CHARS,
@@ -30,17 +31,12 @@ const fail = makeFail("locate_error", MESSAGES);
 const isSize = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v > 0;
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
-function decodedBytes(base64: string): number {
-  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
-  return Math.floor((base64.length * 3) / 4) - padding;
-}
-
 function parseRequest(raw: unknown): LocateRequest | "bad_request" | "too_long" {
   if (!isObj(raw)) return "bad_request";
   const { image, mediaType, width, height, instruction, lookFor, language } = raw;
   if (!ALLOWED_IMAGE_TYPES.includes(mediaType as AllowedImageType)) return "bad_request";
   if (typeof image !== "string" || !image) return "bad_request";
-  if (decodedBytes(image) > MAX_IMAGE_BYTES) return "too_long";
+  if (base64DecodedBytes(image) > MAX_IMAGE_BYTES) return "too_long";
   if (image.length % 4 !== 0 || !BASE64.test(image)) return "bad_request";
   if (!isSize(width) || !isSize(height)) return "bad_request";
   if (Math.max(width, height) > MAX_IMAGE_LONG_EDGE_PX) return "too_long";
@@ -66,6 +62,9 @@ function parseRequest(raw: unknown): LocateRequest | "bad_request" | "too_long" 
 }
 
 // The image lives only in this request's memory: it is sent to Claude and never stored.
+// Allowed with cacheComponents (only dynamic, dynamicParams, revalidate, fetchCache and runtime are not).
+export const maxDuration = 60;
+
 export async function POST(request: Request): Promise<Response> {
   let raw: unknown;
   try {

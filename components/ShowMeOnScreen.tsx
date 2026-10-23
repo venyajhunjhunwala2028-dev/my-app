@@ -5,7 +5,7 @@ import DevicePicker from "@/components/DevicePicker";
 import SafetyNotice from "@/components/SafetyNotice";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import type { Box, LocateAnswer } from "@/lib/ai/locate";
-import { MAX_IMAGE_BYTES } from "@/lib/http/limits";
+import { MAX_IMAGE_BYTES, MAX_SCREENSHOT_FILE_BYTES, base64DecodedBytes } from "@/lib/http/limits";
 import { postJson } from "@/lib/http/postJson";
 import { resizeScreenshot, type PreparedImage } from "@/lib/image/resize";
 import { requestAllowance } from "@/lib/store/localStore";
@@ -103,6 +103,7 @@ export default function ShowMeOnScreen({
       language,
     });
     if ("kind" in result) setState({ kind: "answer", answer: result });
+    else if (result.code === "rate_limited") setState({ kind: "limit" });
     else setState({ kind: "error", error: result });
   }
 
@@ -118,8 +119,8 @@ export default function ShowMeOnScreen({
     e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) return setState({ kind: "idle", problem: NOT_A_PICTURE });
-    if (file.size > MAX_IMAGE_BYTES) return setState({ kind: "idle", problem: TOO_BIG });
-    if (!requestAllowance().allowed) return setState({ kind: "limit" });
+    // Phone photos are often bigger than the upload limit; the resize shrinks them, so only refuse what is too big to open.
+    if (file.size > MAX_SCREENSHOT_FILE_BYTES) return setState({ kind: "idle", problem: TOO_BIG });
 
     let prepared: PreparedImage;
     try {
@@ -127,6 +128,9 @@ export default function ShowMeOnScreen({
     } catch {
       return setState({ kind: "idle", problem: CANT_OPEN });
     }
+    if (base64DecodedBytes(prepared.base64) > MAX_IMAGE_BYTES) return setState({ kind: "idle", problem: TOO_BIG });
+    // Count the use only once there is a picture to send.
+    if (!requestAllowance().allowed) return setState({ kind: "limit" });
     setImage(prepared);
     await send(prepared);
   }

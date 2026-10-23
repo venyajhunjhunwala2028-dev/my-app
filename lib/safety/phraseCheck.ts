@@ -12,14 +12,18 @@ const RECIPIENT = String.raw`(?:him|her|them|someone|somebody|the caller|a calle
 const REQUESTER = String.raw`(?:someone|somebody|he|she|they|(?:the |a )?(?:caller|man|woman|person|bank|agent|officer|stranger|executive|guy|lady)|customer care)`;
 const ASKS = String.raw`(?:ask(?:ed|ing|s)?|want(?:s|ed)?|need(?:s|ed)?|request(?:ed|ing|s)?|told me|tells me)`;
 const GAP = String.raw`[^.?!]{0,40}`;
+// What is being asked for: "(me) (for) my/the/your SECRET".
+const HANDOVER_OBJECT = String.raw`(?:me\s+)?(?:for\s+)?(?:my|the|your|their|that|this)\s+${SECRET}\b`;
 const REMOTE_APP = String.raw`(?:any ?desk|team ?viewer|quick ?support|rust ?desk|remote access|remote desktop|remote control app)`;
 const MONEY = String.raw`(?:\b(?:money|cash|funds|rupees|rs|dollars)\b|₹|\$)`;
 
 const rx = (s: string) => new RegExp(s, "iu");
 
 const SCAM_EN = [
-  // "the bank wants the code they sent me", "someone asked me for my OTP"
-  rx(String.raw`\b${REQUESTER}\b${GAP}\b${ASKS}\b${GAP}\b${SECRET}\b`),
+  // "the bank wants the code they sent me", "someone asked me for my OTP".
+  // The secret must be the object of the ask (a handover), so
+  // "she wants me to change my password" does not match.
+  rx(String.raw`\b${REQUESTER}\b${GAP}\b${ASKS}\s+${HANDOVER_OBJECT}`),
   // "tell them my OTP", "give him the code"
   rx(String.raw`\b${HANDOVER_VERB}\s+(?:it\s+)?(?:to\s+)?${RECIPIENT}\b${GAP}\b${SECRET}\b`),
   // "share my password with the caller"
@@ -44,7 +48,7 @@ const MONEY_EN = [
 // Hindi (Devanagari) and Hinglish. \b does not work around Devanagari, so use explicit edges.
 const END = String.raw`(?=$|[\s.,!?।])`;
 const H_SECRET = String.raw`(?:otp|ओटीपी|code|कोड|pin|पिन|password|पासवर्ड)`;
-const H_GIVE = String.raw`(?:bata|batao|bataiye|bataye|bata do|batado|de do|dedo|do|bhejo|bhej do|share karo|बताओ|बता|बताइए|बताएं|बता दो|दे दो|दो|भेजो|भेज दो|शेयर करो)`;
+const H_GIVE = String.raw`(?:bata|batao|bataiye|bataye|bata do|batado|de do|dedo|bhejo|bhej do|share karo|बताओ|बता|बताइए|बताएं|बता दो|दे दो|दो|भेजो|भेज दो|शेयर करो)`;
 const H_MONEY = String.raw`(?:paise|paisa|pese|rupaye|rupees|पैसे|पैसा|रुपये|रुपए)`;
 const H_SEND = String.raw`(?:bhej\S*|transfer\S*|भेज\S*|ट्रांसफर\S*)`;
 

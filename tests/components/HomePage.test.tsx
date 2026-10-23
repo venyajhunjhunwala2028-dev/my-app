@@ -27,4 +27,22 @@ describe("Home page", () => {
     render(<Home />);
     await waitFor(() => expect(push).toHaveBeenCalledWith("/guide/photo"));
   });
+
+  it("on a cold launch with a current explanation guide, stays on the home screen", async () => {
+    vi.resetModules();
+    const store = await import("@/lib/store/localStore");
+    const { default: FreshHome } = await import("@/app/page");
+    store.saveGuide({
+      id: "wifi",
+      question: "What is wifi?",
+      title: "Wifi",
+      answer: { kind: "explanation", language: "en", title: "Wifi", paragraphs: ["Wifi is wireless internet."] },
+    });
+    store.setCurrentGuide("wifi");
+
+    const { findByRole } = render(<FreshHome />);
+    await findByRole("heading", { name: "Tech Helper" });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(push).not.toHaveBeenCalled();
+  });
 });

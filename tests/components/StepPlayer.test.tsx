@@ -145,4 +145,78 @@ describe("StepPlayer", () => {
     await waitFor(() => expect(screen.getByText(/ready again tomorrow/i)).toBeInTheDocument());
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("drops a late follow-up answer after moving to the next step, and I don't understand works again", async () => {
+    let resolveFirst: (r: Response) => void = () => {};
+    const json = (text: string) =>
+      new Response(JSON.stringify({ kind: "explanation", language: "hi", title: "Help", text, offerShowMeHow: false }), { status: 200 });
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => new Promise<Response>((r) => (resolveFirst = r)))
+      .mockImplementation(async () => json("Second answer"));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<StepPlayer guide={seed()} />);
+    await userEvent.click(screen.getByRole("button", { name: "I don't understand" }));
+    await done();
+    expect(screen.getByText("Step 2 of 4")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveFirst(json("Late answer for step 1"));
+    });
+    expect(screen.queryByText("Late answer for step 1")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Help with this step" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "I don't understand" }));
+    expect(await screen.findByText("Second answer")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("drops a late follow-up answer after Back to the step", async () => {
+    let resolveFirst: (r: Response) => void = () => {};
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((r) => (resolveFirst = r))));
+    render(<StepPlayer guide={seed()} />);
+    await userEvent.click(screen.getByRole("button", { name: "I don't understand" }));
+    await userEvent.click(screen.getByRole("button", { name: "Back to the step" }));
+    await act(async () => {
+      resolveFirst(
+        new Response(JSON.stringify({ kind: "explanation", language: "hi", title: "Help", text: "Too late", offerShowMeHow: false }), { status: 200 }),
+      );
+    });
+    expect(screen.queryByText("Too late")).not.toBeInTheDocument();
+  });
+
+  it("stops listening for a specific question when moving to the next step or leaving", async () => {
+    const stops: ReturnType<typeof vi.fn>[] = [];
+    vi.stubGlobal(
+      "SpeechRecognition",
+      class {
+        lang = "";
+        continuous = false;
+        interimResults = false;
+        maxAlternatives = 1;
+        onresult = null;
+        onerror = null;
+        onend = null;
+        start = vi.fn();
+        stop = vi.fn();
+        constructor() {
+          stops.push(this.stop);
+        }
+      },
+    );
+    mockFetch({ kind: "explanation", language: "hi", title: "Help", text: "It is the blue button.", offerShowMeHow: false });
+    const { unmount } = render(<StepPlayer guide={seed()} />);
+    await userEvent.click(screen.getByRole("button", { name: "I don't understand" }));
+    await screen.findByText("It is the blue button.");
+    await userEvent.click(screen.getByRole("button", { name: "Speak" }));
+    expect(stops).toHaveLength(1);
+    await done();
+    expect(stops[0]).toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "I don't understand" }));
+    await screen.findByText("It is the blue button.");
+    await userEvent.click(screen.getByRole("button", { name: "Speak" }));
+    unmount();
+    expect(stops[1]).toHaveBeenCalled();
+  });
 });

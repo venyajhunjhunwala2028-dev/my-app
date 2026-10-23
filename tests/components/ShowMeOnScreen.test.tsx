@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ShowMeOnScreen from "@/components/ShowMeOnScreen";
-import { requestAllowance } from "@/lib/store/localStore";
+import { resizeScreenshot } from "@/lib/image/resize";
+import { STORAGE_KEY, getUsage, requestAllowance } from "@/lib/store/localStore";
 
 // jsdom cannot decode or draw images, so the resize step is replaced.
 vi.mock("@/lib/image/resize", async (importOriginal) => ({
@@ -33,7 +34,11 @@ async function chooseScreenshot(file = png()) {
   await u.upload(screen.getByTestId("screenshot-input"), file);
 }
 
-beforeEach(() => answerWith({ kind: "not_found", description: "unused" }));
+beforeEach(() => {
+  localStorage.setItem(STORAGE_KEY, "{}");
+  vi.mocked(resizeScreenshot).mockClear();
+  answerWith({ kind: "not_found", description: "unused" });
+});
 afterEach(() => vi.unstubAllGlobals());
 
 describe("ShowMeOnScreen", () => {
@@ -99,11 +104,43 @@ describe("ShowMeOnScreen", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rejects a picture over 4 MB with a friendly message", async () => {
+  it("rejects a picture too big to open (over 25 MB) with a friendly message", async () => {
     render(<ShowMeOnScreen {...props} />);
-    await chooseScreenshot(png(4 * 1024 * 1024 + 1));
+    await chooseScreenshot(png(25 * 1024 * 1024 + 1));
     expect(screen.getByText(/too big/i)).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(resizeScreenshot).not.toHaveBeenCalled();
+    expect(getUsage().count).toBe(0);
+  });
+
+  it("sends a large photo that shrinks under 3 MB once resized", async () => {
+    render(<ShowMeOnScreen {...props} />);
+    await chooseScreenshot(png(5 * 1024 * 1024));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(getUsage().count).toBe(1);
+  });
+
+  it("rejects a picture still over 3 MB after resizing, without spending a use", async () => {
+    vi.mocked(resizeScreenshot).mockResolvedValueOnce({
+      base64: "A".repeat(4 * 1024 * 1024 + 4), // decodes to 3 MB + 3 bytes
+      mediaType: "image/jpeg",
+      width: 1179,
+      height: 2556,
+    });
+    render(<ShowMeOnScreen {...props} />);
+    await chooseScreenshot();
+    expect(await screen.findByText(/too big/i)).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(getUsage().count).toBe(0);
+  });
+
+  it("does not spend a use when the picture cannot be opened", async () => {
+    vi.mocked(resizeScreenshot).mockRejectedValueOnce(new Error("decode"));
+    render(<ShowMeOnScreen {...props} />);
+    await chooseScreenshot();
+    expect(await screen.findByText(/could not be opened/i)).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(getUsage().count).toBe(0);
   });
 
   it("at 30 uses today, shows the ready-tomorrow message and sends nothing", async () => {
@@ -112,5 +149,13 @@ describe("ShowMeOnScreen", () => {
     await chooseScreenshot();
     expect(screen.getByText(/ready again tomorrow/i)).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("shows the ready-tomorrow message when the server rate-limits the request (HTTP 429)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("Too Many Requests", { status: 429 })));
+    render(<ShowMeOnScreen {...props} />);
+    await chooseScreenshot();
+    expect(await screen.findByText(/ready again tomorrow/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
 });

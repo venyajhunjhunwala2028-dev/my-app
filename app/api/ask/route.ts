@@ -67,6 +67,9 @@ function parseRequest(raw: unknown): AskRequest | "bad_request" | "too_long" {
   return req;
 }
 
+// Allowed with cacheComponents (only dynamic, dynamicParams, revalidate, fetchCache and runtime are not).
+export const maxDuration = 60;
+
 export async function POST(request: Request): Promise<Response> {
   let raw: unknown;
   try {

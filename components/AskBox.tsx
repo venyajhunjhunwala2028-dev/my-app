@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import DevicePicker from "@/components/DevicePicker";
 import LanguagePicker, { languageName } from "@/components/LanguagePicker";
@@ -49,6 +49,9 @@ export default function AskBox() {
   const busy = useRef(false);
   const listener = useRef<{ stop: () => void } | null>(null);
 
+  // Leaving the page must not leave the microphone open.
+  useEffect(() => () => listener.current?.stop(), []);
+
   if (!isClient) return null;
   const speakingLanguage = language ?? getSpeakingLanguage();
 
@@ -56,6 +59,8 @@ export default function AskBox() {
     const q = text.trim();
     // A double tap must send one request only.
     if (!q || busy.current) return;
+    // Once a question is sent, a late voice result must not replace it.
+    cancelListening();
     busy.current = true;
     setStatus({ kind: "waiting" });
     const result = await askHelper({ question: q, language: speakingLanguage, devices: getDevices() });
@@ -99,20 +104,37 @@ export default function AskBox() {
     void send(question);
   }
 
+  // Stops listening and ignores anything it still hears.
+  function cancelListening() {
+    const active = listener.current;
+    if (!active) return;
+    listener.current = null;
+    active.stop();
+    setMic("idle");
+  }
+
   function toggleMic() {
     if (mic === "listening") {
       listener.current?.stop();
       return;
     }
     setMic("listening");
-    listener.current = startListening(speakingLanguage, {
-      onResult: (text) => setQuestion(text),
-      onError: (error) => setMic(error),
+    // Declared first: startListening can call back synchronously when it fails to start.
+    let handle: { stop: () => void } | null = null;
+    handle = startListening(speakingLanguage, {
+      onResult: (text) => {
+        if (listener.current === handle) setQuestion(text);
+      },
+      onError: (error) => {
+        if (listener.current === handle) setMic(error);
+      },
       onEnd: () => {
+        if (listener.current !== handle) return;
         listener.current = null;
         setMic((m) => (m === "listening" ? "idle" : m));
       },
     });
+    listener.current = handle;
   }
 
   function chooseLanguage(code: string) {

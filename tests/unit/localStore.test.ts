@@ -101,4 +101,47 @@ describe("localStore", () => {
     expect(guides).toHaveLength(1);
     expect(guides[0].id).toBe("b");
   });
+
+  it("reads the newest state when storage reads but refuses writes", async () => {
+    const store = await loadStore();
+    store.saveGuide({ id: "old", question: "old q", title: "t", answer: {} });
+    store.requestAllowance();
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("full", "QuotaExceededError");
+    });
+    store.saveGuide({ id: "new", question: "new q", title: "t", answer: {} });
+    expect(store.getGuide("new")?.id).toBe("new");
+    store.setGuideStep("new", 2);
+    expect(store.getGuideStep("new")).toBe(2);
+    expect(store.getUsage().count).toBe(1);
+    store.requestAllowance();
+    expect(store.getUsage().count).toBe(2);
+  });
+
+  it("keeps only the newest 50 guides", async () => {
+    const store = await loadStore();
+    for (let i = 1; i <= 55; i++) store.saveGuide({ id: `g${i}`, question: `q${i}`, title: "t", answer: {} });
+    const ids = store.getSavedGuides().map((g) => g.id);
+    expect(ids).toHaveLength(50);
+    expect(store.getGuide("g55")).not.toBeNull();
+    expect(store.getGuide("g5")).toBeNull();
+  });
+
+  it("drops the oldest half of guides and retries once when storage is full", async () => {
+    const store = await loadStore();
+    for (let i = 1; i <= 10; i++) store.saveGuide({ id: `g${i}`, question: `q${i}`, title: "t", answer: {} });
+    const real = Storage.prototype.setItem;
+    let calls = 0;
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, k: string, v: string) {
+      calls++;
+      if (calls === 1) throw new DOMException("full", "QuotaExceededError");
+      real.call(this, k, v);
+    });
+    store.saveGuide({ id: "g11", question: "q11", title: "t", answer: {} });
+    expect(calls).toBe(2);
+    const stored = JSON.parse(localStorage.getItem(KEY) ?? "{}");
+    expect(stored.guides.map((g: { id: string }) => g.id)).toContain("g11");
+    expect(stored.guides).toHaveLength(6);
+    expect(stored.guides.map((g: { id: string }) => g.id)).not.toContain("g1");
+  });
 });

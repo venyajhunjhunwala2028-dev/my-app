@@ -45,6 +45,9 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
   const [listening, setListening] = useState(false);
   const busy = useRef(false);
   const lastQuestion = useRef("");
+  // Bumped when the learner moves on, so a follow-up answer that arrives late is dropped.
+  const requestId = useRef(0);
+  const listener = useRef<{ stop: () => void } | null>(null);
 
   const finished = isFinished(step, total);
   const current = answer.steps[Math.min(step, total) - 1];
@@ -67,10 +70,28 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
   // Stop talking when the learner leaves the guide.
   useEffect(() => stopSpeaking, []);
 
+  // Leaving the guide must not leave the microphone open.
+  useEffect(() => () => listener.current?.stop(), []);
+
+  function stopListening() {
+    const active = listener.current;
+    listener.current = null;
+    active?.stop();
+    setListening(false);
+  }
+
+  function closeHelp() {
+    // Drop any follow-up still in flight; the learner can ask again straight away.
+    requestId.current++;
+    busy.current = false;
+    setHelp({ kind: "idle" });
+  }
+
   function goTo(next: number) {
     setStep(next);
     setGuideStep(id, next);
-    setHelp({ kind: "idle" });
+    closeHelp();
+    stopListening();
     setSpecific("");
     if (isFinished(next, total)) {
       setCurrentGuide(null);
@@ -96,19 +117,26 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
     const q = question.trim();
     if (!q || busy.current) return;
     busy.current = true;
+    const myId = ++requestId.current;
     lastQuestion.current = q;
     setHelp({ kind: "waiting" });
-    const result = await askHelper({
-      question: q,
-      mode: "followup",
-      language: getSpeakingLanguage(),
-      devices: getDevices(),
-      guideContext: { title: guide.title, steps: answer.steps.map((s) => s.instruction), stepIndex: step - 1 },
-    });
-    busy.current = false;
-    if (result.type === "limit") setHelp({ kind: "limit" });
-    else if (result.type === "error") setHelp({ kind: "error", error: { code: result.code, message: result.message } });
-    else setHelp({ kind: "answer", answer: result.answer });
+    try {
+      const result = await askHelper({
+        question: q,
+        mode: "followup",
+        language: getSpeakingLanguage(),
+        devices: getDevices(),
+        guideContext: { title: guide.title, steps: answer.steps.map((s) => s.instruction), stepIndex: step - 1 },
+      });
+      // The learner moved on or closed help while waiting.
+      if (myId !== requestId.current) return;
+      if (result.type === "limit") setHelp({ kind: "limit" });
+      else if (result.type === "error") setHelp({ kind: "error", error: { code: result.code, message: result.message } });
+      else setHelp({ kind: "answer", answer: result.answer });
+    } finally {
+      // A dropped request already released busy; do not release a newer one's.
+      if (myId === requestId.current) busy.current = false;
+    }
   }
 
   function submitSpecific(e: FormEvent) {
@@ -118,12 +146,21 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
 
   function listen() {
     setListening(true);
-    const started = startListening(getSpeakingLanguage(), {
-      onResult: (text) => setSpecific(text),
+    // Declared first: startListening can call back synchronously when it fails to start.
+    let handle: { stop: () => void } | null = null;
+    handle = startListening(getSpeakingLanguage(), {
+      onResult: (text) => {
+        if (listener.current === handle) setSpecific(text);
+      },
       onError: () => {},
-      onEnd: () => setListening(false),
+      onEnd: () => {
+        if (listener.current !== handle) return;
+        listener.current = null;
+        setListening(false);
+      },
     });
-    if (!started) setListening(false);
+    listener.current = handle;
+    if (!handle) setListening(false);
   }
 
   const home = (
@@ -248,7 +285,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
               )}
             </>
           )}
-          <button type="button" className="btn-secondary" onClick={() => setHelp({ kind: "idle" })}>
+          <button type="button" className="btn-secondary" onClick={closeHelp}>
             Back to the step
           </button>
         </section>

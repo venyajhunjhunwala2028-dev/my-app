@@ -14,7 +14,8 @@ let launchChecked = false;
 function isUnfinished(guide: SavedGuide): boolean {
   const answer = guide.answer as { kind?: string; steps?: unknown[] } | null;
   if (answer?.kind === "steps" && Array.isArray(answer.steps)) return guide.step <= answer.steps.length;
-  return true;
+  // Explanations (and anything else) have no unfinished state to resume.
+  return false;
 }
 
 export default function Home() {

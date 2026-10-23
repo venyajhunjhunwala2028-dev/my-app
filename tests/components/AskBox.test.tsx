@@ -152,4 +152,43 @@ describe("AskBox", () => {
     expect(push).not.toHaveBeenCalled();
     expect(getCurrentGuide()).toBeNull();
   });
+
+  it("stops listening when the learner taps Ask, and a late result does not change the sent question", async () => {
+    vi.stubGlobal("SpeechRecognition", FakeRecognition);
+    const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AskBox />);
+    await userEvent.click(screen.getByRole("button", { name: "Speak" }));
+    const rec = lastRecognition();
+    rec.stop.mockImplementation(() => {}); // a real browser ends a little later
+    act(() => {
+      rec.onresult?.({ results: [[{ transcript: "how do I send a photo" }]] });
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Ask" }));
+    expect(rec.stop).toHaveBeenCalled();
+    act(() => {
+      rec.onresult?.({ results: [[{ transcript: "something else entirely" }]] });
+      rec.onend?.();
+    });
+    expect(screen.getByLabelText("What do you need help with?")).toHaveValue("how do I send a photo");
+    const body = JSON.parse(String(((fetchMock.mock.calls[0] as unknown[])[1] as RequestInit).body));
+    expect(body).toMatchObject({ question: "how do I send a photo" });
+  });
+
+  it("stops listening when the ask box goes away", async () => {
+    vi.stubGlobal("SpeechRecognition", FakeRecognition);
+    const { unmount } = render(<AskBox />);
+    await userEvent.click(screen.getByRole("button", { name: "Speak" }));
+    unmount();
+    expect(lastRecognition().stop).toHaveBeenCalled();
+  });
+
+  it("shows the ready-tomorrow message when the server rate-limits the request (HTTP 429)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("Too Many Requests", { status: 429 })));
+    render(<AskBox />);
+    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I send a photo?");
+    await userEvent.click(screen.getByRole("button", { name: "Ask" }));
+    expect(await screen.findByText(/ready again tomorrow/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+  });
 });
