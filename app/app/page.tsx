@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } fro
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AskBox, { type AskBoxHandle } from "@/components/AskBox";
+import AskFamilySheet from "@/components/AskFamilySheet";
 import CallFamily from "@/components/CallFamily";
 import InstallGuide from "@/components/InstallGuide";
 import MyGuides from "@/components/MyGuides";
@@ -41,6 +42,7 @@ export default function Home() {
   const askBox = useRef<AskBoxHandle>(null);
   const speech = useSyncExternalStore(noSubscribe, isSpeechSupported, () => false);
   const [listening, setListening] = useState(false);
+  const [askFamily, setAskFamily] = useState(false);
 
   useEffect(() => {
     if (launchChecked) return;
@@ -102,8 +104,13 @@ export default function Home() {
               </Link>
             </li>
             <li>
-              <a href="#call-family" className="btn-secondary justify-start">
+              <button type="button" className="btn-secondary justify-start" onClick={() => setAskFamily(true)}>
                 <Label emoji="👨‍👩‍👧">{t("home.family")}</Label>
+              </button>
+            </li>
+            <li>
+              <a href="#call-family" className="btn-secondary justify-start">
+                <Label emoji="📞">{t("home.callFamily")}</Label>
               </a>
             </li>
           </ul>
@@ -113,6 +120,8 @@ export default function Home() {
         <div id="call-family" className="scroll-mt-4">
           <CallFamily />
         </div>
+        {/* From home there is no guide yet, so the message is the generic one. */}
+        {askFamily && <AskFamilySheet context={{}} onClose={() => setAskFamily(false)} />}
       </main>
     </InstallGuide>
   );

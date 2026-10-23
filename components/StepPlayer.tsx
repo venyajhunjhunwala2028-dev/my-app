@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
+import AskFamilySheet from "@/components/AskFamilySheet";
 import { AnswerBody, ExplainOtherLanguage } from "@/components/ExplanationView";
 import SafetyNotice from "@/components/SafetyNotice";
 import ShowMeOnScreen from "@/components/ShowMeOnScreen";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import { askHelper } from "@/lib/ai/askClient";
 import type { AskAnswer, AskRequest, Step } from "@/lib/ai/schemas";
+import { guideGoal } from "@/lib/family/message";
 import { useT, type MessageKey } from "@/lib/i18n";
 import { warningFor, warningLanguage } from "@/lib/safety/stepWarnings";
 import {
@@ -85,6 +87,7 @@ export default function StepPlayer({
   const [cheer, setCheer] = useState<string | null>(null);
   const [helpful, setHelpful] = useState<boolean | null>(null);
   const [showMe, setShowMe] = useState(false);
+  const [askFamily, setAskFamily] = useState(false);
   const [specific, setSpecific] = useState("");
   const [troubleText, setTroubleText] = useState("");
   const [listening, setListening] = useState(false);
@@ -480,6 +483,12 @@ export default function StepPlayer({
         <button type="button" className="btn-secondary" onClick={openTrouble}>
           {t("steps.stuck")}
         </button>
+        <button type="button" className="btn-secondary" onClick={() => setAskFamily(true)}>
+          <span aria-hidden="true" className="mr-2">
+            👨‍👩‍👧
+          </span>
+          {t("askFamily.open")}
+        </button>
         <button type="button" className="btn-secondary" onClick={() => setShowMe(true)}>
           {t("steps.showOnScreen")}
         </button>
@@ -569,6 +578,13 @@ export default function StepPlayer({
           )}
           {backToStep}
         </section>
+      )}
+
+      {askFamily && (
+        <AskFamilySheet
+          context={{ goal: guideGoal(guide), step: { number: step, total, instruction: current.instruction } }}
+          onClose={() => setAskFamily(false)}
+        />
       )}
 
       <div className="sticky bottom-0 mt-auto bg-background py-4">

@@ -71,7 +71,8 @@ describe("Home page", () => {
     expect(screen.getByRole("button", { name: "Ask a question" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "What do I press?" })).toHaveAttribute("href", "/app/press");
     expect(screen.getByRole("link", { name: "Is this a scam?" })).toHaveAttribute("href", "/app/scam");
-    expect(screen.getByRole("link", { name: "Ask my family" })).toHaveAttribute("href", "#call-family");
+    expect(screen.getByRole("button", { name: "Ask my family" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Call my family" })).toHaveAttribute("href", "#call-family");
     expect(document.getElementById("call-family")).toBeInTheDocument();
     expect(screen.getByText("📷")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
@@ -80,8 +81,18 @@ describe("Home page", () => {
     expect(screen.getByText("🧑‍🏫")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByText("📚")).toHaveAttribute("aria-hidden", "true");
     const nav = screen.getByRole("navigation", { name: "What would you like to do?" });
-    // Ask, What do I press?, Is this a scam?, Teach me, Help library, Ask my family (Speak is hidden here).
-    expect(within(nav).getAllByRole("listitem")).toHaveLength(6);
+    // Ask, What do I press?, Is this a scam?, Teach me, Help library, Ask my family, Call my family (Speak is hidden here).
+    expect(within(nav).getAllByRole("listitem")).toHaveLength(7);
+  });
+
+  it("Ask my family opens the sheet with only the generic message, and Close goes back", async () => {
+    render(<Home />);
+    await userEvent.click(screen.getByRole("button", { name: "Ask my family" }));
+    const dialog = screen.getByRole("dialog", { name: "Ask my family" });
+    expect(within(dialog).getByTestId("family-message")).toHaveTextContent("I need help with my phoneSent from Tech Helper");
+    expect(within(dialog).getByRole("link", { name: "Send on WhatsApp" }).getAttribute("href")).toMatch(/^https:\/\/wa\.me\/\?text=/);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("Ask a question puts the cursor in the question box", async () => {

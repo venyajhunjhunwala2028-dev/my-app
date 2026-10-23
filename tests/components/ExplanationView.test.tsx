@@ -54,4 +54,14 @@ describe("ExplanationView (AE6)", () => {
     expect(body).toMatchObject({ question: "What is ChatGPT?", mode: "showMeHow" });
     expect(getGuide("gpt")?.answer).toMatchObject({ kind: "steps", title: "Start using ChatGPT" });
   });
+
+  it("offers Ask my family for help with the explanation's title and no step", async () => {
+    saveGuide({ id: "gpt", question: "What is ChatGPT?", title: explanation.title, answer: explanation });
+    await act(async () => {
+      render(<GuidePage params={Promise.resolve({ id: "gpt" })} />);
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "Ask my family for help" }));
+    const lines = [...screen.getByTestId("family-message").querySelectorAll("p")].map((p) => p.textContent);
+    expect(lines).toEqual(["I need help with: What is ChatGPT?", "Sent from Tech Helper"]);
+  });
 });

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { useT } from "@/lib/i18n";
 import { getFamilyContact, setFamilyContact, type FamilyContact } from "@/lib/store/localStore";
 import { useIsClient } from "@/lib/useIsClient";
 
 type Mode = "auto" | "form" | "confirm";
 
-export default function CallFamily() {
+export default function CallFamily({ onSaved }: { onSaved?: (contact: FamilyContact) => void } = {}) {
   // The store lives in localStorage, so read it only after the page is running in the browser.
   const isClient = useIsClient();
   const t = useT();
@@ -20,6 +20,7 @@ export default function CallFamily() {
   function save(next: FamilyContact) {
     setFamilyContact(next);
     setMode("confirm");
+    onSaved?.(next);
   }
 
   return (
@@ -60,6 +61,8 @@ function ContactForm({ initial, onSave }: { initial: FamilyContact | null; onSav
   const t = useT();
   const [name, setName] = useState(initial?.name ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
+  // Unique ids: the form can show twice on the home screen (there and in Ask my family).
+  const id = useId();
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -69,21 +72,21 @@ function ContactForm({ initial, onSave }: { initial: FamilyContact | null; onSav
   return (
     <form className="flex flex-col gap-4" onSubmit={submit}>
       <h2 className="text-2xl font-bold">{t("family.who")}</h2>
-      <label htmlFor="family-name" className="text-xl">
+      <label htmlFor={`${id}-name`} className="text-xl">
         {t("family.name")}
       </label>
       <input
-        id="family-name"
+        id={`${id}-name`}
         required
         value={name}
         onChange={(e) => setName(e.target.value)}
         className="rounded-2xl border-2 border-muted bg-background p-4 text-xl"
       />
-      <label htmlFor="family-phone" className="text-xl">
+      <label htmlFor={`${id}-phone`} className="text-xl">
         {t("family.phone")}
       </label>
       <input
-        id="family-phone"
+        id={`${id}-phone`}
         type="tel"
         required
         value={phone}

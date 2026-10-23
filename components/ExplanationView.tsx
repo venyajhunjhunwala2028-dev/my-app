@@ -1,10 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
+import AskFamilySheet from "@/components/AskFamilySheet";
 import SafetyNotice from "@/components/SafetyNotice";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import { askHelper } from "@/lib/ai/askClient";
 import type { AskAnswer, AskMode } from "@/lib/ai/schemas";
+import { guideGoal } from "@/lib/family/message";
 import { getLocale, uiLanguageFor, useLocale, useT } from "@/lib/i18n";
 import { getDevices, saveGuide, setCurrentGuide, setGuideStep, type SavedGuide } from "@/lib/store/localStore";
 import type { StepsAnswer } from "@/components/StepPlayer";
@@ -160,6 +162,7 @@ export default function ExplanationView({
   const { answer } = guide;
   const t = useT();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [askFamily, setAskFamily] = useState(false);
   const busy = useRef(false);
 
   async function showMeHow() {
@@ -206,6 +209,14 @@ export default function ExplanationView({
           {onReplace && <ExplainOtherLanguage guide={guide} mode="ask" onReplace={onReplace} />}
         </>
       )}
+      {/* An explanation has no success screen, so asking family is offered here. */}
+      <button type="button" className="btn-secondary" onClick={() => setAskFamily(true)}>
+        <span aria-hidden="true" className="mr-2">
+          👨‍👩‍👧
+        </span>
+        {t("askFamily.open")}
+      </button>
+      {askFamily && <AskFamilySheet context={{ goal: guideGoal(guide) }} onClose={() => setAskFamily(false)} />}
     </div>
   );
 }

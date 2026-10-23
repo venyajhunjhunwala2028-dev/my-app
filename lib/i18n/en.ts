@@ -26,6 +26,7 @@ export const en = {
   "home.press": "What do I press?",
   "home.scam": "Is this a scam?",
   "home.family": "Ask my family",
+  "home.callFamily": "Call my family",
   "home.learn": "Teach me",
   "home.library": "Help library",
 
@@ -186,6 +187,29 @@ export const en = {
   "family.name": "Name",
   "family.phone": "Phone number (with country code, like +44)",
   "family.save": "Save",
+
+  // Ask my family
+  "askFamily.title": "Ask my family",
+  "askFamily.open": "Ask my family for help",
+  "askFamily.close": "Close",
+  "askFamily.willSend": "This message will be sent to {name}:",
+  "askFamily.chooseWho": "This message will be sent to the person you choose:",
+  "askFamily.noContact": "You haven't saved a family contact yet. Add one here, or just send the message and choose who gets it.",
+  "askFamily.whatsapp": "Send on WhatsApp",
+  "askFamily.sms": "Send a text message",
+  "askFamily.share": "Share another way",
+  "askFamily.shareWithPicture": "Send with my picture",
+  "askFamily.addPicture": "Add a picture of my screen",
+  "askFamily.privacy":
+    "Don't add screenshots of bank apps, passwords, OTPs or private messages. The picture goes straight from your phone to your family. Tech Helper never uploads or saves it.",
+  "askFamily.pictureAdded": "Picture added. Tap Send with my picture to send it with the message.",
+  "askFamily.removePicture": "Remove the picture",
+  "askFamily.shareFailed": "That didn't work. Please try WhatsApp or a text message.",
+  "askFamily.msg.goal": "I need help with: {goal}",
+  "askFamily.msg.generic": "I need help with my phone",
+  "askFamily.msg.step": "I'm on step {step} of {total}: {instruction}",
+  "askFamily.msg.stepOnly": "I'm on step {step} of {total}.",
+  "askFamily.msg.from": "Sent from Tech Helper",
 
   // iPhone install guide
   "install.title": "First, put Tech Helper on the home screen",

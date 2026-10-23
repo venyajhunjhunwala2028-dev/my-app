@@ -28,6 +28,7 @@ export const hi: Messages = {
   "home.press": "क्या दबाऊँ?",
   "home.scam": "क्या यह धोखा है?",
   "home.family": "परिवार से पूछें",
+  "home.callFamily": "परिवार को फ़ोन करें",
   "home.learn": "मुझे सिखाइए",
   "home.library": "मदद की लाइब्रेरी",
 
@@ -187,6 +188,29 @@ export const hi: Messages = {
   "family.name": "नाम",
   "family.phone": "फ़ोन नंबर (देश के कोड के साथ, जैसे +91)",
   "family.save": "सेव करें",
+
+  // Ask my family
+  "askFamily.title": "परिवार से पूछें",
+  "askFamily.open": "परिवार से मदद माँगें",
+  "askFamily.close": "बंद करें",
+  "askFamily.willSend": "यह मैसेज {name} को भेजा जाएगा:",
+  "askFamily.chooseWho": "यह मैसेज उसे भेजा जाएगा जिसे आप चुनेंगे:",
+  "askFamily.noContact": "आपने अभी परिवार का नंबर सेव नहीं किया है। यहाँ जोड़ें, या मैसेज भेजकर ख़ुद चुनें कि किसे जाए।",
+  "askFamily.whatsapp": "WhatsApp पर भेजें",
+  "askFamily.sms": "SMS भेजें",
+  "askFamily.share": "किसी और तरीके से भेजें",
+  "askFamily.shareWithPicture": "मेरी तस्वीर के साथ भेजें",
+  "askFamily.addPicture": "मेरी स्क्रीन की तस्वीर जोड़ें",
+  "askFamily.privacy":
+    "बैंक ऐप, पासवर्ड, OTP या निजी मैसेज की स्क्रीनशॉट न जोड़ें। तस्वीर सीधे आपके फ़ोन से आपके परिवार को जाती है। Tech Helper इसे न कहीं भेजता है, न सेव करता है।",
+  "askFamily.pictureAdded": "तस्वीर जुड़ गई। मैसेज के साथ भेजने के लिए \"मेरी तस्वीर के साथ भेजें\" दबाएँ।",
+  "askFamily.removePicture": "तस्वीर हटाएँ",
+  "askFamily.shareFailed": "यह काम नहीं किया। कृपया WhatsApp या SMS से भेजें।",
+  "askFamily.msg.goal": "मुझे इसमें मदद चाहिए: {goal}",
+  "askFamily.msg.generic": "मुझे अपने फ़ोन में मदद चाहिए",
+  "askFamily.msg.step": "मैं {total} में से स्टेप {step} पर हूँ: {instruction}",
+  "askFamily.msg.stepOnly": "मैं {total} में से स्टेप {step} पर हूँ।",
+  "askFamily.msg.from": "Tech Helper से भेजा गया",
 
   // iPhone install guide
   "install.title": "पहले, Tech Helper को होम स्क्रीन पर लगाइए",

@@ -511,4 +511,16 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
     await done();
     expect(screen.getByRole("heading", { name: "You did it!" })).toBeInTheDocument();
   });
+
+  it("Ask my family for help shares the guide title and the current step, and closing keeps the step", async () => {
+    render(<StepPlayer guide={seed()} />);
+    await done();
+    await userEvent.click(screen.getByRole("button", { name: "Ask my family for help" }));
+    const dialog = screen.getByRole("dialog", { name: "Ask my family" });
+    const lines = [...within(dialog).getByTestId("family-message").querySelectorAll("p")].map((p) => p.textContent);
+    expect(lines).toEqual(["I need help with: Post a story", "I'm on step 2 of 4: Do thing 2", "Sent from Tech Helper"]);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByText("Step 2 of 4")).toBeInTheDocument();
+  });
 });
