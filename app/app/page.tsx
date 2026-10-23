@@ -92,6 +92,16 @@ export default function Home() {
               </Link>
             </li>
             <li>
+              <Link href="/app/learn" className="btn-secondary justify-start">
+                <Label emoji="🧑‍🏫">{t("home.learn")}</Label>
+              </Link>
+            </li>
+            <li>
+              <Link href="/app/library" className="btn-secondary justify-start">
+                <Label emoji="📚">{t("home.library")}</Label>
+              </Link>
+            </li>
+            <li>
               <a href="#call-family" className="btn-secondary justify-start">
                 <Label emoji="👨‍👩‍👧">{t("home.family")}</Label>
               </a>

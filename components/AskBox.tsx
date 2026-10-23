@@ -7,7 +7,7 @@ import LanguagePicker, { languageName } from "@/components/LanguagePicker";
 import SafetyNotice from "@/components/SafetyNotice";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import { askHelper } from "@/lib/ai/askClient";
-import type { AskAnswer, ClarifyAbout } from "@/lib/ai/schemas";
+import type { AskAnswer, AskMode, ClarifyAbout } from "@/lib/ai/schemas";
 import { useT, type MessageKey } from "@/lib/i18n";
 import { isSpeechSupported, startListening, type ListenError } from "@/lib/speech/speech";
 import {
@@ -37,15 +37,28 @@ const MIC_HELP: Record<ListenError, MessageKey> = {
   failed: "ask.mic.failed",
 };
 
-/** Lets the home screen's big buttons put the cursor in the box or start the microphone. */
-export type AskBoxHandle = { focusQuestion: () => void; toggleSpeak: () => void };
+/** How a ready-made question (a lesson) is asked; a typed question uses neither. */
+export type AskOptions = { mode?: AskMode; lessonId?: string };
+
+/**
+ * Lets the home screen's big buttons put the cursor in the box or start the microphone,
+ * and the Teach me and Help library pages ask a ready-made question exactly as if it were typed.
+ */
+export type AskBoxHandle = {
+  focusQuestion: () => void;
+  toggleSpeak: () => void;
+  ask: (question: string, options?: AskOptions) => void;
+};
 
 export default function AskBox({
   ref,
   showSpeakButton = true,
   onListeningChange,
+  showForm = true,
 }: {
   ref?: Ref<AskBoxHandle>;
+  /** False on pages whose own buttons ask the questions (see `ref`): only the answer flow shows. */
+  showForm?: boolean;
   /** False when the page shows its own Speak button (see `ref`). */
   showSpeakButton?: boolean;
   onListeningChange?: (listening: boolean) => void;
@@ -61,6 +74,8 @@ export default function AskBox({
   const [choosingLanguage, setChoosingLanguage] = useState(false);
   const [language, setLanguage] = useState<string | null>(null);
   const busy = useRef(false);
+  // Kept for a clarifying answer, which asks the same question again.
+  const options = useRef<AskOptions>({});
   const listener = useRef<{ stop: () => void } | null>(null);
   const textBox = useRef<HTMLTextAreaElement>(null);
   const [focusRequest, setFocusRequest] = useState(0);
@@ -95,6 +110,13 @@ export default function AskBox({
       if (busy.current) return;
       showBox();
       toggleMic();
+    },
+    ask: (text, askOptions = {}) => {
+      if (busy.current) return;
+      options.current = askOptions;
+      setChoosingLanguage(false);
+      setQuestion(text);
+      void send(text);
     },
   }));
 
@@ -145,14 +167,22 @@ export default function AskBox({
     cancelListening();
     busy.current = true;
     setStatus({ kind: "waiting" });
-    const result = await askHelper({ question: q, language: speakingLanguage, devices: getDevices(), ...(app ? { app } : {}) });
+    const { mode, lessonId } = options.current;
+    const result = await askHelper({
+      question: q,
+      language: speakingLanguage,
+      devices: getDevices(),
+      ...(app ? { app } : {}),
+      ...(mode ? { mode } : {}),
+    });
     busy.current = false;
     if (result.type === "limit") setStatus({ kind: "limit" });
     else if (result.type === "error") setStatus({ kind: "error", error: { code: result.code, message: result.message } });
-    else route(q, result.answer);
+    else route(q, result.answer, lessonId);
   }
 
-  function route(q: string, answer: AskAnswer) {
+  function route(q: string, answer: AskAnswer, lessonId?: string) {
+
     switch (answer.kind) {
       case "needs_device":
         setStatus({ kind: "clarify", prompt: answer.prompt, options: answer.options, about: "device", language: answer.language });
@@ -166,7 +196,7 @@ export default function AskBox({
       case "steps":
       case "explanation": {
         const id = crypto.randomUUID();
-        saveGuide({ id, question: q, title: answer.title, answer });
+        saveGuide({ id, question: q, title: answer.title, answer, ...(lessonId ? { lessonId } : {}) });
         setCurrentGuide(id);
         setStatus({ kind: "idle" });
         router.push(`/guide/${id}`);
@@ -197,12 +227,14 @@ export default function AskBox({
 
   // An example question goes in the box, so the learner sees what was asked, and is sent straight away.
   function askExample(example: string) {
+    options.current = {};
     setQuestion(example);
     void send(example);
   }
 
   function submit(e: FormEvent) {
     e.preventDefault();
+    options.current = {};
     void send(question);
   }
 
@@ -245,7 +277,12 @@ export default function AskBox({
 
   return (
     <div className="flex flex-col gap-4">
-      {speech && (
+      {!showForm && status.kind !== "idle" && question.trim() && (
+        <p className="text-xl text-muted">
+          {t("ask.youAsked")} <span className="font-semibold text-foreground">{question.trim()}</span>
+        </p>
+      )}
+      {showForm && speech && (
         <div className="flex flex-col gap-3">
           {showSpeakButton && (
             <button
@@ -276,23 +313,25 @@ export default function AskBox({
           </button>
         </div>
       )}
-      <form className="flex flex-col gap-4" onSubmit={submit}>
-        <label htmlFor="question" className="text-xl">
-          {t("ask.label")}
-        </label>
-        <textarea
-          ref={textBox}
-          id="question"
-          name="question"
-          rows={3}
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          className="rounded-2xl border-2 border-muted p-4 text-xl"
-        />
-        <button type="submit" className="btn-primary" disabled={waiting}>
-          {t("common.ask")}
-        </button>
-      </form>
+      {showForm && (
+        <form className="flex flex-col gap-4" onSubmit={submit}>
+          <label htmlFor="question" className="text-xl">
+            {t("ask.label")}
+          </label>
+          <textarea
+            ref={textBox}
+            id="question"
+            name="question"
+            rows={3}
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            className="rounded-2xl border-2 border-muted p-4 text-xl"
+          />
+          <button type="submit" className="btn-primary" disabled={waiting}>
+            {t("common.ask")}
+          </button>
+        </form>
+      )}
       {status.kind === "message" && (
         <div className="flex flex-col gap-2 rounded-2xl bg-surface p-4 text-xl">
           <p>{status.message}</p>

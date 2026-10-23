@@ -254,4 +254,47 @@ describe("localStore", () => {
     expect(store.getCurrentGuide()).toBeNull();
     expect(store.getTextSize()).toBe("xl");
   });
+
+  it("has no completed lessons at first, and remembers a completed lesson once after reload", async () => {
+    let store = await loadStore();
+    expect(store.getCompletedLessons()).toEqual([]);
+    store.markLessonComplete("screenshot");
+    store.markLessonComplete("screenshot");
+    store.markLessonComplete("wifi");
+    store = await loadStore();
+    expect(store.getCompletedLessons()).toEqual(["screenshot", "wifi"]);
+    expect(Object.keys(JSON.parse(localStorage.getItem(KEY) ?? "{}"))).toContain("completedLessons");
+  });
+
+  it("reads older saves with no completed lessons, and drops malformed entries", async () => {
+    localStorage.setItem(KEY, JSON.stringify({ textSize: "large" }));
+    let store = await loadStore();
+    expect(store.getCompletedLessons()).toEqual([]);
+    expect(store.getTextSize()).toBe("large");
+
+    localStorage.setItem(KEY, JSON.stringify({ completedLessons: ["wifi", 3, null, "wifi", "email"] }));
+    store = await loadStore();
+    expect(store.getCompletedLessons()).toEqual(["wifi", "email"]);
+
+    localStorage.setItem(KEY, JSON.stringify({ completedLessons: "wifi" }));
+    store = await loadStore();
+    expect(store.getCompletedLessons()).toEqual([]);
+  });
+
+  it("keeps working in memory when storage refuses to save a completed lesson", async () => {
+    const store = await loadStore();
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("full");
+    });
+    expect(() => store.markLessonComplete("email")).not.toThrow();
+    expect(store.getCompletedLessons()).toEqual(["email"]);
+  });
+
+  it("keeps a guide's lesson when the same guide is saved again without one", async () => {
+    let store = await loadStore();
+    store.saveGuide({ id: "a", question: "Teach me how to take a screenshot", title: "t", answer: {}, lessonId: "screenshot" });
+    store.saveGuide({ id: "a", question: "Teach me how to take a screenshot", title: "t2", answer: {} });
+    store = await loadStore();
+    expect(store.getGuide("a")).toMatchObject({ title: "t2", lessonId: "screenshot" });
+  });
 });

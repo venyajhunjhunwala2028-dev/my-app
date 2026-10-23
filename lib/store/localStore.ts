@@ -15,6 +15,8 @@ export type SavedGuide<A = unknown> = {
   step: number;
   /** The learner's answer to "Was this helpful?" on the finish screen; unset until they answer. */
   helpful?: boolean;
+  /** Set when the guide is a "Teach me" lesson; finishing it marks that lesson complete. */
+  lessonId?: string;
 };
 
 export type NewGuide<A = unknown> = Omit<SavedGuide<A>, "savedAt" | "step" | "helpful">;
@@ -43,6 +45,8 @@ type State = {
   familyContact: FamilyContact | null;
   usage: Usage;
   textSize: TextSize;
+  /** Ids of the "Teach me" lessons finished at least once. */
+  completedLessons: string[];
 };
 
 function today(): string {
@@ -69,6 +73,7 @@ function defaults(): State {
     familyContact: null,
     usage: { date: today(), count: 0 },
     textSize: "normal",
+    completedLessons: [],
   };
 }
 
@@ -112,6 +117,9 @@ function sanitize(raw: unknown): State {
         ? { date: usage.date, count: usage.count as number }
         : base.usage,
     textSize: TEXT_SIZES.includes(raw.textSize as TextSize) ? (raw.textSize as TextSize) : base.textSize,
+    completedLessons: Array.isArray(raw.completedLessons)
+      ? [...new Set(raw.completedLessons.filter(isString))]
+      : base.completedLessons,
   };
 }
 
@@ -176,10 +184,13 @@ export function getGuide(id: string): SavedGuide | null {
 }
 
 // Saving the same question again replaces the old entry and moves it to the front, at step 1.
+// A guide saved again under the same id (say in another language) stays the same lesson.
 export function saveGuide<A>(guide: NewGuide<A>): SavedGuide<A> {
   const saved: SavedGuide<A> = { ...guide, savedAt: Date.now(), step: 1 };
   const question = guide.question.trim();
   update((s) => {
+    const lessonId = s.guides.find((g) => g.id === guide.id)?.lessonId;
+    if (!saved.lessonId && isString(lessonId)) saved.lessonId = lessonId;
     s.guides = [saved, ...s.guides.filter((g) => g.id !== guide.id && g.question.trim() !== question)]
       .sort((a, b) => b.savedAt - a.savedAt)
       .slice(0, MAX_GUIDES);
@@ -351,4 +362,15 @@ export function requestAllowance(): Allowance {
   state.usage = { date, count };
   save(state);
   return { allowed: true, remaining: DAILY_LIMIT - count };
+}
+
+export function getCompletedLessons(): string[] {
+  return load().completedLessons;
+}
+
+export function markLessonComplete(id: string): void {
+  if (!isString(id) || !id) return;
+  update((s) => {
+    if (!s.completedLessons.includes(id)) s.completedLessons.push(id);
+  });
 }

@@ -26,6 +26,19 @@ export const en = {
   "home.press": "What do I press?",
   "home.scam": "Is this a scam?",
   "home.family": "Ask my family",
+  "home.learn": "Teach me",
+  "home.library": "Help library",
+
+  // Teach me
+  "learn.title": "Teach me",
+  "learn.intro": "Pick a lesson. I'll show you how, one step at a time.",
+  "learn.progress": "You've finished {done} of {total} lessons",
+
+  // Help library
+  "library.title": "Help library",
+  "library.intro": "Choose a topic, then tap a question.",
+  "library.allTopics": "All topics",
+  "library.pickQuestion": "Tap a question:",
 
   // Ask box
   "ask.label": "What do you need help with?",

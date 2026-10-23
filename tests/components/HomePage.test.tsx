@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { STORAGE_KEY, saveGuide, setCurrentGuide, setGuideStep } from "@/lib/store/localStore";
 import Home from "@/app/app/page";
@@ -75,7 +75,13 @@ describe("Home page", () => {
     expect(document.getElementById("call-family")).toBeInTheDocument();
     expect(screen.getByText("📷")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Teach me/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Teach me" })).toHaveAttribute("href", "/app/learn");
+    expect(screen.getByRole("link", { name: "Help library" })).toHaveAttribute("href", "/app/library");
+    expect(screen.getByText("🧑‍🏫")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText("📚")).toHaveAttribute("aria-hidden", "true");
+    const nav = screen.getByRole("navigation", { name: "What would you like to do?" });
+    // Ask, What do I press?, Is this a scam?, Teach me, Help library, Ask my family (Speak is hidden here).
+    expect(within(nav).getAllByRole("listitem")).toHaveLength(6);
   });
 
   it("Ask a question puts the cursor in the question box", async () => {

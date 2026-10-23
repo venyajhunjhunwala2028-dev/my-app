@@ -28,6 +28,19 @@ export const hi: Messages = {
   "home.press": "क्या दबाऊँ?",
   "home.scam": "क्या यह धोखा है?",
   "home.family": "परिवार से पूछें",
+  "home.learn": "मुझे सिखाइए",
+  "home.library": "मदद की लाइब्रेरी",
+
+  // Teach me
+  "learn.title": "मुझे सिखाइए",
+  "learn.intro": "एक पाठ चुनें। मैं आपको एक-एक कदम करके दिखाऊँगा।",
+  "learn.progress": "आपने {total} में से {done} पाठ पूरे कर लिए हैं",
+
+  // Help library
+  "library.title": "मदद की लाइब्रेरी",
+  "library.intro": "एक विषय चुनें, फिर कोई सवाल दबाएँ।",
+  "library.allTopics": "सभी विषय",
+  "library.pickQuestion": "कोई सवाल दबाएँ:",
 
   // Ask box
   "ask.label": "आपको किस चीज़ में मदद चाहिए?",

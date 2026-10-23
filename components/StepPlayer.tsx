@@ -26,6 +26,7 @@ import {
   getReadAloud,
   getSlowSpeech,
   getSpeakingLanguage,
+  markLessonComplete,
   setCurrentGuide,
   setGuideHelpful,
   setGuideStep,
@@ -115,6 +116,12 @@ export default function StepPlayer({
     document.addEventListener("visibilitychange", save);
     return () => document.removeEventListener("visibilitychange", save);
   }, [id, step]);
+
+  // A "Teach me" lesson counts as done once its success screen shows.
+  const { lessonId } = guide;
+  useEffect(() => {
+    if (finished && lessonId) markLessonComplete(lessonId);
+  }, [finished, lessonId]);
 
   // Stop talking when the learner leaves the guide.
   useEffect(() => stopSpeaking, []);
@@ -320,7 +327,7 @@ export default function StepPlayer({
           <Link href="/app#question" className="btn-secondary">
             {t("success.another")}
           </Link>
-          <Link href="/app" className="btn-secondary">
+          <Link href="/app/learn" className="btn-secondary">
             {t("success.learn")}
           </Link>
         </div>

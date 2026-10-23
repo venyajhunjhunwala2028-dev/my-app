@@ -3,6 +3,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   STORAGE_KEY,
+  getCompletedLessons,
   getCurrentGuide,
   getGuide,
   getSavedGuides,
@@ -123,6 +124,18 @@ describe("StepPlayer", () => {
     expect(screen.getByRole("link", { name: "Go home" })).toHaveAttribute("href", "/app");
     expect(getSavedGuides().map((g) => g.id)).toContain("story");
     expect(getCurrentGuide()).toBeNull();
+    expect(screen.getByRole("link", { name: "Learn something else" })).toHaveAttribute("href", "/app/learn");
+    expect(getCompletedLessons()).toEqual([]);
+  });
+
+  it("marks the lesson complete when a lesson's guide reaches the success screen", async () => {
+    const saved = saveGuide({ id: "lesson", question: "Teach me how to take a screenshot", title: "Post a story", answer, lessonId: "screenshot" });
+    render(<StepPlayer guide={saved} />);
+    for (let i = 0; i < 3; i++) await done();
+    expect(getCompletedLessons()).toEqual([]);
+    await done();
+    expect(screen.getByRole("heading", { name: "You did it!" })).toBeInTheDocument();
+    expect(getCompletedLessons()).toEqual(["screenshot"]);
   });
 
   it("after tapping Play once, the next step is read automatically in the answer's language", async () => {
