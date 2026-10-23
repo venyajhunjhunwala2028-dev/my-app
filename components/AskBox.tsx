@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, useSyncExternalStore, type FormEvent, type Ref } from "react";
 import { useRouter } from "next/navigation";
 import DevicePicker from "@/components/DevicePicker";
 import LanguagePicker, { languageName } from "@/components/LanguagePicker";
@@ -14,7 +14,7 @@ import {
   getSpeakingLanguage,
   saveGuide,
   setCurrentGuide,
-  setDevices,
+  setPreferredDevice,
   setSpeakingLanguage,
 } from "@/lib/store/localStore";
 import { noSubscribe, useIsClient } from "@/lib/useIsClient";
@@ -24,7 +24,7 @@ type Status =
   | { kind: "waiting" }
   | { kind: "error"; error: RequestError }
   | { kind: "limit" }
-  | { kind: "device"; prompt: string; options: string[]; about: ClarifyAbout }
+  | { kind: "clarify"; prompt: string; options: string[]; about: ClarifyAbout; language: string }
   | { kind: "safety"; safety: "scam_warning" | "money_refusal"; message: string }
   | { kind: "message"; message: string; examples?: string[] };
 
@@ -36,7 +36,19 @@ const MIC_HELP: Record<ListenError, string> = {
   failed: "The microphone didn't work. You can type your question in the box instead.",
 };
 
-export default function AskBox() {
+/** Lets the home screen's big buttons put the cursor in the box or start the microphone. */
+export type AskBoxHandle = { focusQuestion: () => void; toggleSpeak: () => void };
+
+export default function AskBox({
+  ref,
+  showSpeakButton = true,
+  onListeningChange,
+}: {
+  ref?: Ref<AskBoxHandle>;
+  /** False when the page shows its own Speak button (see `ref`). */
+  showSpeakButton?: boolean;
+  onListeningChange?: (listening: boolean) => void;
+} = {}) {
   const router = useRouter();
   // The store and speech support exist only in the browser.
   const isClient = useIsClient();
@@ -48,12 +60,80 @@ export default function AskBox() {
   const [language, setLanguage] = useState<string | null>(null);
   const busy = useRef(false);
   const listener = useRef<{ stop: () => void } | null>(null);
+  const textBox = useRef<HTMLTextAreaElement>(null);
+  const [focusRequest, setFocusRequest] = useState(0);
 
   // Leaving the page must not leave the microphone open.
   useEffect(() => () => listener.current?.stop(), []);
 
+  useEffect(() => {
+    if (focusRequest === 0) return;
+    textBox.current?.focus();
+    textBox.current?.scrollIntoView?.({ block: "center" });
+  }, [focusRequest]);
+
+  const listening = mic === "listening";
+  useEffect(() => {
+    onListeningChange?.(listening);
+  }, [listening, onListeningChange]);
+
+  // Back to the question box from a clarifying question, notice or language list.
+  function showBox() {
+    if (busy.current) return;
+    setChoosingLanguage(false);
+    setStatus((s) => (s.kind === "waiting" ? s : { kind: "idle" }));
+  }
+
+  useImperativeHandle(ref, () => ({
+    focusQuestion: () => {
+      showBox();
+      setFocusRequest((n) => n + 1);
+    },
+    toggleSpeak: () => {
+      if (busy.current) return;
+      showBox();
+      toggleMic();
+    },
+  }));
+
+  // Read only on the client; also used by toggleMic, which runs from a tap.
+  const currentLanguage = () => language ?? getSpeakingLanguage();
+
+  // Stops listening and ignores anything it still hears.
+  function cancelListening() {
+    const active = listener.current;
+    if (!active) return;
+    listener.current = null;
+    active.stop();
+    setMic("idle");
+  }
+
+  function toggleMic() {
+    if (mic === "listening") {
+      listener.current?.stop();
+      return;
+    }
+    setMic("listening");
+    // Declared first: startListening can call back synchronously when it fails to start.
+    let handle: { stop: () => void } | null = null;
+    handle = startListening(currentLanguage(), {
+      onResult: (text) => {
+        if (listener.current === handle) setQuestion(text);
+      },
+      onError: (error) => {
+        if (listener.current === handle) setMic(error);
+      },
+      onEnd: () => {
+        if (listener.current !== handle) return;
+        listener.current = null;
+        setMic((m) => (m === "listening" ? "idle" : m));
+      },
+    });
+    listener.current = handle;
+  }
+
   if (!isClient) return null;
-  const speakingLanguage = language ?? getSpeakingLanguage();
+  const speakingLanguage = currentLanguage();
 
   async function send(text: string, app?: string) {
     const q = text.trim();
@@ -73,10 +153,10 @@ export default function AskBox() {
   function route(q: string, answer: AskAnswer) {
     switch (answer.kind) {
       case "needs_device":
-        setStatus({ kind: "device", prompt: answer.prompt, options: answer.options, about: "device" });
+        setStatus({ kind: "clarify", prompt: answer.prompt, options: answer.options, about: "device", language: answer.language });
         return;
       case "clarify":
-        setStatus({ kind: "device", prompt: answer.prompt, options: answer.options, about: answer.about });
+        setStatus({ kind: "clarify", prompt: answer.prompt, options: answer.options, about: answer.about, language: answer.language });
         return;
       case "unclear":
         setStatus({ kind: "message", message: answer.message, examples: answer.examples });
@@ -103,7 +183,8 @@ export default function AskBox() {
   // One clarifying question at most: the answer goes back with the same question.
   function choose(about: ClarifyAbout, choice: string) {
     if (about === "device") {
-      setDevices([choice, ...getDevices().filter((d) => d !== choice)]);
+      // Remembered as the learner's own device, so later questions do not ask again.
+      setPreferredDevice(choice);
       void send(question);
     } else if (about === "app") {
       void send(question, choice);
@@ -112,42 +193,15 @@ export default function AskBox() {
     }
   }
 
+  // An example question goes in the box, so the learner sees what was asked, and is sent straight away.
+  function askExample(example: string) {
+    setQuestion(example);
+    void send(example);
+  }
+
   function submit(e: FormEvent) {
     e.preventDefault();
     void send(question);
-  }
-
-  // Stops listening and ignores anything it still hears.
-  function cancelListening() {
-    const active = listener.current;
-    if (!active) return;
-    listener.current = null;
-    active.stop();
-    setMic("idle");
-  }
-
-  function toggleMic() {
-    if (mic === "listening") {
-      listener.current?.stop();
-      return;
-    }
-    setMic("listening");
-    // Declared first: startListening can call back synchronously when it fails to start.
-    let handle: { stop: () => void } | null = null;
-    handle = startListening(speakingLanguage, {
-      onResult: (text) => {
-        if (listener.current === handle) setQuestion(text);
-      },
-      onError: (error) => {
-        if (listener.current === handle) setMic(error);
-      },
-      onEnd: () => {
-        if (listener.current !== handle) return;
-        listener.current = null;
-        setMic((m) => (m === "listening" ? "idle" : m));
-      },
-    });
-    listener.current = handle;
   }
 
   function chooseLanguage(code: string) {
@@ -171,9 +225,13 @@ export default function AskBox() {
       </div>
     );
   }
-  if (status.kind === "device") {
+  if (status.kind === "clarify") {
+    // One simple question with big answer buttons; the choice goes back with the same question.
     return (
-      <div className="flex flex-col gap-4">
+      <div lang={status.language} className="flex flex-col gap-4">
+        <p className="text-xl text-muted">
+          You asked: <span className="font-semibold text-foreground">{question.trim()}</span>
+        </p>
         <DevicePicker prompt={status.prompt} options={status.options} onChoose={(c) => choose(status.about, c)} />
         {askAgain}
       </div>
@@ -182,21 +240,22 @@ export default function AskBox() {
   if (choosingLanguage) return <LanguagePicker current={speakingLanguage} onChoose={chooseLanguage} />;
 
   const waiting = status.kind === "waiting";
-  const listening = mic === "listening";
 
   return (
     <div className="flex flex-col gap-4">
       {speech && (
         <div className="flex flex-col gap-3">
-          <button
-            type="button"
-            aria-pressed={listening}
-            className={listening ? "btn border-4 border-warning bg-warning-surface text-warning" : "btn-primary"}
-            onClick={toggleMic}
-            disabled={waiting}
-          >
-            {listening ? "Listening… tap to stop" : "Speak"}
-          </button>
+          {showSpeakButton && (
+            <button
+              type="button"
+              aria-pressed={listening}
+              className={listening ? "btn border-4 border-warning bg-warning-surface text-warning" : "btn-primary"}
+              onClick={toggleMic}
+              disabled={waiting}
+            >
+              {listening ? "Listening… tap to stop" : "Speak"}
+            </button>
+          )}
           {mic !== "idle" && !listening && (
             <div role="status" className="flex flex-col gap-3">
               <p className="text-xl">{MIC_HELP[mic]}</p>
@@ -220,6 +279,7 @@ export default function AskBox() {
           What do you need help with?
         </label>
         <textarea
+          ref={textBox}
           id="question"
           name="question"
           rows={3}
@@ -235,11 +295,18 @@ export default function AskBox() {
         <div className="flex flex-col gap-2 rounded-2xl bg-surface p-4 text-xl">
           <p>{status.message}</p>
           {status.examples && status.examples.length > 0 && (
-            <ul className="list-disc pl-6">
-              {status.examples.map((example) => (
-                <li key={example}>{example}</li>
-              ))}
-            </ul>
+            <>
+              <p className="font-semibold">You could ask:</p>
+              <ul className="flex flex-col gap-3">
+                {status.examples.map((example) => (
+                  <li key={example}>
+                    <button type="button" className="btn-secondary" onClick={() => askExample(example)}>
+                      {example}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
       )}

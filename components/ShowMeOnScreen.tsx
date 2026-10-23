@@ -1,22 +1,25 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import DevicePicker from "@/components/DevicePicker";
+import PrivacyReminder from "@/components/PrivacyReminder";
 import SafetyNotice from "@/components/SafetyNotice";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import type { Box, LocateAnswer } from "@/lib/ai/locate";
-import { MAX_IMAGE_BYTES, MAX_SCREENSHOT_FILE_BYTES, base64DecodedBytes } from "@/lib/http/limits";
+import { screenshotHowTo as howToFor } from "@/lib/device";
 import { postJson } from "@/lib/http/postJson";
-import { resizeScreenshot, type PreparedImage } from "@/lib/image/resize";
-import { requestAllowance } from "@/lib/store/localStore";
+import { prepareScreenshot } from "@/lib/image/prepare";
+import type { PreparedImage } from "@/lib/image/resize";
+import { MIC_HELP, useDictation } from "@/lib/speech/useDictation";
+import { requestAllowance, setPreferredDevice } from "@/lib/store/localStore";
 
 const DEVICE_OPTIONS = ["iPhone", "Android phone", "iPad or tablet", "Windows computer", "Mac"];
-const NOT_A_PICTURE = "That is not a picture. Please choose the screenshot you just took.";
-const TOO_BIG = "That picture is too big. Please choose the screenshot you just took.";
-const CANT_OPEN = "Sorry, that picture could not be opened. Please choose your screenshot again.";
+const NO_QUESTION = "Please say or type what you want to do.";
 
 type State =
   | { kind: "idle"; problem?: string }
+  /** "What do I press?" only: the picture is ready and the learner says what they want to do. */
+  | { kind: "question"; problem?: string }
   | { kind: "limit" }
   | { kind: "waiting" }
   | { kind: "error"; error: RequestError }
@@ -59,6 +62,7 @@ function MarkedScreenshot({ image, box }: { image: PreparedImage; box: Box }) {
           />
           <span
             aria-hidden="true"
+            data-testid="tap-arrow"
             className={`absolute left-1/2 -translate-x-1/2 text-6xl font-black leading-none text-warning [text-shadow:0_0_4px_white] ${
               arrowBelow ? "top-full" : "bottom-full"
             }`}
@@ -72,6 +76,11 @@ function MarkedScreenshot({ image, box }: { image: PreparedImage; box: Box }) {
   );
 }
 
+/**
+ * Circles the place to tap on the learner's own screenshot.
+ * In a guide it is given the step's `instruction`. Without one ("What do I press?"), it asks the learner
+ * what they want to do after they choose the screenshot, and sends that as the `question`.
+ */
 export default function ShowMeOnScreen({
   instruction,
   lookFor,
@@ -79,17 +88,21 @@ export default function ShowMeOnScreen({
   screenshotHowTo,
   language,
 }: {
-  instruction: string;
+  instruction?: string;
   lookFor?: string;
   device: string | null;
-  screenshotHowTo: string[];
+  /** Steps from the guide; when missing, plain steps for the chosen device are shown. */
+  screenshotHowTo?: string[];
   language: string;
 }) {
+  const asking = instruction === undefined;
   const [chosenDevice, setChosenDevice] = useState(device);
   const [understood, setUnderstood] = useState(false);
   const [state, setState] = useState<State>({ kind: "idle" });
   const [image, setImage] = useState<PreparedImage | null>(null);
+  const [question, setQuestion] = useState("");
   const input = useRef<HTMLInputElement>(null);
+  const dictation = useDictation(setQuestion);
 
   async function send(prepared: PreparedImage) {
     setState({ kind: "waiting" });
@@ -99,6 +112,7 @@ export default function ShowMeOnScreen({
       width: prepared.width,
       height: prepared.height,
       instruction,
+      question: asking ? question.trim() : undefined,
       lookFor,
       language,
     });
@@ -118,78 +132,151 @@ export default function ShowMeOnScreen({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!file.type.startsWith("image/")) return setState({ kind: "idle", problem: NOT_A_PICTURE });
-    // Phone photos are often bigger than the upload limit; the resize shrinks them, so only refuse what is too big to open.
-    if (file.size > MAX_SCREENSHOT_FILE_BYTES) return setState({ kind: "idle", problem: TOO_BIG });
-
-    let prepared: PreparedImage;
-    try {
-      prepared = await resizeScreenshot(file);
-    } catch {
-      return setState({ kind: "idle", problem: CANT_OPEN });
-    }
-    if (base64DecodedBytes(prepared.base64) > MAX_IMAGE_BYTES) return setState({ kind: "idle", problem: TOO_BIG });
+    const result = await prepareScreenshot(file);
+    if ("problem" in result) return setState({ kind: "idle", problem: result.problem });
+    const prepared = result.image;
+    setImage(prepared);
+    if (asking) return setState({ kind: "question" });
     // Count the use only once there is a picture to send.
     if (!requestAllowance().allowed) return setState({ kind: "limit" });
-    setImage(prepared);
     await send(prepared);
   }
+
+  function ask(e: FormEvent) {
+    e.preventDefault();
+    if (!image) return;
+    if (!question.trim()) return setState({ kind: "question", problem: NO_QUESTION });
+    dictation.stop();
+    if (!requestAllowance().allowed) return setState({ kind: "limit" });
+    void send(image);
+  }
+
+  function startAgain() {
+    setImage(null);
+    setQuestion("");
+    setState({ kind: "idle" });
+  }
+
+  function chooseDevice(choice: string) {
+    // "What do I press?" remembers the device; inside a guide the guide already knows it.
+    if (asking) setPreferredDevice(choice);
+    setChosenDevice(choice);
+  }
+
+  const anotherScreen = asking && (
+    <button type="button" className="btn-secondary" onClick={startAgain}>
+      Ask about another screen
+    </button>
+  );
 
   if (state.kind === "limit") return <SafetyNotice kind="daily_limit" />;
 
   if (state.kind === "answer") {
     const { answer } = state;
-    if (answer.kind === "scam_warning") return <SafetyNotice kind="scam_warning" message={answer.message} />;
+    if (answer.kind === "scam_warning") {
+      return (
+        <div className="flex flex-col gap-6">
+          <SafetyNotice kind="scam_warning" message={answer.message} />
+          {anotherScreen}
+        </div>
+      );
+    }
     if (answer.kind === "not_found") {
       return (
-        <section className="flex flex-col gap-3 rounded-2xl bg-surface p-4">
-          <h2 className="text-2xl font-bold">I couldn&apos;t find it on your screen</h2>
-          <p lang={language} className="text-xl">
-            {answer.description}
-          </p>
-        </section>
+        <div className="flex flex-col gap-6">
+          <section className="flex flex-col gap-3 rounded-2xl bg-surface p-4">
+            <h2 className="text-2xl font-bold">I couldn&apos;t find it on your screen</h2>
+            <p lang={language} className="text-xl">
+              {answer.description}
+            </p>
+          </section>
+          {anotherScreen}
+        </div>
       );
     }
     return (
       <div className="flex flex-col gap-4">
-        <p lang={language} className="text-2xl font-semibold">
+        <p lang={language} className={asking ? "text-3xl font-bold" : "text-2xl font-semibold"}>
           {answer.instruction}
         </p>
         {image && <MarkedScreenshot image={image} box={answer.box} />}
+        {anotherScreen}
       </div>
     );
   }
 
   if (chosenDevice === null) {
-    return <DevicePicker prompt="Which device are you using?" options={DEVICE_OPTIONS} onChoose={setChosenDevice} />;
+    return <DevicePicker prompt="Which device are you using?" options={DEVICE_OPTIONS} onChoose={chooseDevice} />;
   }
+
+  if (state.kind === "question" && image) {
+    const listening = dictation.mic === "listening";
+    return (
+      <form className="flex flex-col gap-4" onSubmit={ask}>
+        {/* A small preview, so the learner can see it is the right screen. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`data:${image.mediaType};base64,${image.base64}`}
+          alt="The screenshot you chose"
+          className="mx-auto block max-h-64 w-auto rounded-2xl border-2 border-muted"
+        />
+        <label htmlFor="press-question" className="text-2xl font-bold">
+          What do you want to do?
+        </label>
+        <p className="text-xl text-muted">For example: send this photo, or turn on wifi.</p>
+        <textarea
+          id="press-question"
+          rows={3}
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          className="rounded-2xl border-2 border-muted p-4 text-xl"
+        />
+        {dictation.supported && (
+          <button
+            type="button"
+            aria-pressed={listening}
+            className={listening ? "btn border-4 border-warning bg-warning-surface text-warning" : "btn-secondary"}
+            onClick={() => dictation.toggle(language)}
+          >
+            {listening ? "Listening… tap to stop" : "Speak"}
+          </button>
+        )}
+        {dictation.mic !== "idle" && dictation.mic !== "listening" && (
+          <p role="status" className="text-xl">
+            {MIC_HELP[dictation.mic]}
+          </p>
+        )}
+        {state.problem && (
+          <p role="alert" className="rounded-2xl border-2 border-warning bg-warning-surface p-4 text-xl">
+            {state.problem}
+          </p>
+        )}
+        <button type="submit" className="btn-primary min-h-20 text-2xl">
+          Show me
+        </button>
+        <button type="button" className="btn-text" onClick={startAgain}>
+          Choose a different screenshot
+        </button>
+      </form>
+    );
+  }
+
+  const howTo = screenshotHowTo ?? howToFor(chosenDevice);
 
   return (
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-3">
         <h2 className="text-2xl font-bold">First, take a screenshot</h2>
         <p className="text-xl text-muted">A screenshot is a picture of your screen. Go to the screen you need help with, then:</p>
-        <ol lang={language} className="flex list-decimal flex-col gap-2 pl-8 text-xl">
-          {screenshotHowTo.map((line) => (
+        <ol lang={screenshotHowTo ? language : "en"} className="flex list-decimal flex-col gap-2 pl-8 text-xl">
+          {howTo.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ol>
         <p className="text-xl text-muted">Then come back to this app.</p>
       </section>
 
-      <section className="flex flex-col gap-3 rounded-2xl border-2 border-warning bg-warning-surface p-4">
-        <p className="text-xl">
-          Don&apos;t send screenshots of bank apps, passwords or private messages. This app doesn&apos;t save your
-          screenshot; it&apos;s sent to an AI service to be read.
-        </p>
-        {understood ? (
-          <p className="text-xl font-semibold">Thank you.</p>
-        ) : (
-          <button type="button" className="btn-secondary" onClick={() => setUnderstood(true)}>
-            I understand
-          </button>
-        )}
-      </section>
+      <PrivacyReminder understood={understood} onUnderstand={() => setUnderstood(true)} />
 
       <section className="flex flex-col gap-3">
         <button

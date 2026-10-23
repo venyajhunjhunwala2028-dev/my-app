@@ -4,8 +4,10 @@ import userEvent from "@testing-library/user-event";
 import {
   STORAGE_KEY,
   getCurrentGuide,
+  getDevices,
   getUsage,
   requestAllowance,
+  setDevices,
   setFamilyContact,
   setSpeakingLanguage,
 } from "@/lib/store/localStore";
@@ -231,5 +233,65 @@ describe("AskBox", () => {
     expect(await screen.findByText(/not completely sure what you mean/)).toBeInTheDocument();
     expect(screen.getByText("How do I send a photo?")).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
+  });
+
+  function answerInOrder(...bodies: unknown[]) {
+    const fetchMock = vi.fn();
+    for (const b of bodies) fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(b)));
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+  const bodyOf = (fetchMock: ReturnType<typeof vi.fn>, n: number) =>
+    JSON.parse(String(((fetchMock.mock.calls[n] as unknown[])[1] as RequestInit).body));
+
+  it("asks which device as one question with big buttons, saves the choice first and asks again", async () => {
+    setDevices(["Windows computer"]);
+    const fetchMock = answerInOrder(
+      { kind: "clarify", language: "en", prompt: "Which device are you using?", options: ["iPhone", "Android phone"], about: "device" },
+      stepsAnswer,
+    );
+    render(<AskBox />);
+    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I take a screenshot?");
+    await userEvent.click(screen.getByRole("button", { name: "Ask" }));
+
+    expect(await screen.findByRole("heading", { name: "Which device are you using?" })).toBeInTheDocument();
+    expect(screen.getByText("How do I take a screenshot?")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Android phone" }));
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    expect(getDevices()).toEqual(["Android phone", "Windows computer"]);
+    expect(bodyOf(fetchMock, 1)).toMatchObject({ question: "How do I take a screenshot?", devices: ["Android phone", "Windows computer"] });
+  });
+
+  it("adds an 'other' clarification choice to the same question", async () => {
+    const fetchMock = answerInOrder(
+      { kind: "clarify", language: "en", prompt: "Photo or video?", options: ["Photo", "Video"], about: "other" },
+      stepsAnswer,
+    );
+    render(<AskBox />);
+    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I send it?");
+    await userEvent.click(screen.getByRole("button", { name: "Ask" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Video" }));
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    expect(bodyOf(fetchMock, 1).question).toBe("How do I send it? (Video)");
+  });
+
+  it("an example question for an unclear answer fills the box and asks it", async () => {
+    const fetchMock = answerInOrder(
+      {
+        kind: "unclear",
+        language: "en",
+        message: "I'm not completely sure what you mean.",
+        examples: ["How do I make a video call?", "How do I send a photo?"],
+      },
+      stepsAnswer,
+    );
+    render(<AskBox />);
+    await userEvent.type(screen.getByLabelText("What do you need help with?"), "help");
+    await userEvent.click(screen.getByRole("button", { name: "Ask" }));
+    await userEvent.click(await screen.findByRole("button", { name: "How do I send a photo?" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    expect(bodyOf(fetchMock, 1).question).toBe("How do I send a photo?");
+    expect(getCurrentGuide()?.question).toBe("How do I send a photo?");
   });
 });

@@ -22,6 +22,10 @@ export type Usage = { date: string; count: number };
 
 export type Allowance = { allowed: boolean; remaining: number };
 
+/** How big the app's text is: the root font size is 20px, 24px or 28px. */
+export type TextSize = "normal" | "large" | "xl";
+export const TEXT_SIZES: readonly TextSize[] = ["normal", "large", "xl"];
+
 type State = {
   guides: SavedGuide[];
   currentGuideId: string | null;
@@ -31,6 +35,7 @@ type State = {
   slowSpeech: boolean;
   familyContact: FamilyContact | null;
   usage: Usage;
+  textSize: TextSize;
 };
 
 function today(): string {
@@ -54,6 +59,7 @@ function defaults(): State {
     slowSpeech: false,
     familyContact: null,
     usage: { date: today(), count: 0 },
+    textSize: "normal",
   };
 }
 
@@ -90,6 +96,7 @@ function sanitize(raw: unknown): State {
       isRecord(usage) && isString(usage.date) && Number.isInteger(usage.count) && (usage.count as number) >= 0
         ? { date: usage.date, count: usage.count as number }
         : base.usage,
+    textSize: TEXT_SIZES.includes(raw.textSize as TextSize) ? (raw.textSize as TextSize) : base.textSize,
   };
 }
 
@@ -202,6 +209,23 @@ export function getDevices(): string[] {
 export function setDevices(devices: string[]): void {
   update((s) => {
     s.devices = [...devices];
+  });
+}
+
+/** The learner's own device goes first, so answers are written for it. */
+export function setPreferredDevice(device: string): void {
+  update((s) => {
+    s.devices = [device, ...s.devices.filter((d) => d !== device)];
+  });
+}
+
+export function getTextSize(): TextSize {
+  return load().textSize;
+}
+
+export function setTextSize(size: TextSize): void {
+  update((s) => {
+    s.textSize = size;
   });
 }
 

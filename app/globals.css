@@ -10,6 +10,11 @@
   --surface: #f3f4f6;
   --warning: #b91c1c;
   --warning-surface: #fef2f2;
+  /* Scam check results: always shown with an icon and a word too, never colour alone. */
+  --safe: #166534;
+  --safe-surface: #f0fdf4;
+  --caution: #92400e;
+  --caution-surface: #fffbeb;
 }
 
 @theme inline {
@@ -21,6 +26,10 @@
   --color-surface: var(--surface);
   --color-warning: var(--warning);
   --color-warning-surface: var(--warning-surface);
+  --color-safe: var(--safe);
+  --color-safe-surface: var(--safe-surface);
+  --color-caution: var(--caution);
+  --color-caution-surface: var(--caution-surface);
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
 }
 
@@ -28,11 +37,22 @@ html {
   font-size: 20px;
 }
 
+/* Text size from Settings; every size in the app is in rem, so buttons and spacing grow with it. */
+html[data-text-size="large"] {
+  font-size: 24px;
+}
+
+html[data-text-size="xl"] {
+  font-size: 28px;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   line-height: 1.5;
+  /* Long words and pasted links wrap instead of making the page wider than the phone. */
+  overflow-wrap: anywhere;
 }
 
 @utility btn {

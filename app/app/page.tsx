@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import AskBox from "@/components/AskBox";
+import AskBox, { type AskBoxHandle } from "@/components/AskBox";
 import CallFamily from "@/components/CallFamily";
 import InstallGuide from "@/components/InstallGuide";
 import MyGuides from "@/components/MyGuides";
+import Settings from "@/components/Settings";
+import { isSpeechSupported } from "@/lib/speech/speech";
 import { getCurrentGuide, type SavedGuide } from "@/lib/store/localStore";
+import { noSubscribe } from "@/lib/useIsClient";
 
 // Resume only on a cold launch, so going back to home from a guide does not bounce straight back.
 let launchChecked = false;
@@ -18,8 +22,23 @@ function isUnfinished(guide: SavedGuide): boolean {
   return false;
 }
 
+/** A big action label; the emoji is decoration, so screen readers hear only the words. */
+function Label({ emoji, children }: { emoji: string; children: ReactNode }) {
+  return (
+    <>
+      <span aria-hidden="true" className="mr-3 text-2xl">
+        {emoji}
+      </span>
+      {children}
+    </>
+  );
+}
+
 export default function Home() {
   const router = useRouter();
+  const askBox = useRef<AskBoxHandle>(null);
+  const speech = useSyncExternalStore(noSubscribe, isSpeechSupported, () => false);
+  const [listening, setListening] = useState(false);
 
   useEffect(() => {
     if (launchChecked) return;
@@ -32,9 +51,56 @@ export default function Home() {
     <InstallGuide>
       <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-8 px-4 py-8">
         <h1 className="text-3xl font-bold">Tech Helper</h1>
-        <AskBox />
+        <AskBox ref={askBox} showSpeakButton={false} onListeningChange={setListening} />
+        <nav aria-label="What would you like to do?">
+          <ul className="flex flex-col gap-3">
+            <li>
+              <button
+                type="button"
+                className="btn-secondary justify-start"
+                onClick={() => askBox.current?.focusQuestion()}
+              >
+                <Label emoji="💬">Ask a question</Label>
+              </button>
+            </li>
+            {speech && (
+              <li>
+                <button
+                  type="button"
+                  aria-pressed={listening}
+                  className={
+                    listening
+                      ? "btn justify-start border-4 border-warning bg-warning-surface text-warning"
+                      : "btn-secondary justify-start"
+                  }
+                  onClick={() => askBox.current?.toggleSpeak()}
+                >
+                  <Label emoji="🎤">{listening ? "Listening… tap to stop" : "Speak"}</Label>
+                </button>
+              </li>
+            )}
+            <li>
+              <Link href="/app/press" className="btn-secondary justify-start">
+                <Label emoji="📷">What do I press?</Label>
+              </Link>
+            </li>
+            <li>
+              <Link href="/app/scam" className="btn-secondary justify-start">
+                <Label emoji="🔒">Is this a scam?</Label>
+              </Link>
+            </li>
+            <li>
+              <a href="#call-family" className="btn-secondary justify-start">
+                <Label emoji="👨‍👩‍👧">Ask my family</Label>
+              </a>
+            </li>
+          </ul>
+        </nav>
+        <Settings />
         <MyGuides />
-        <CallFamily />
+        <div id="call-family" className="scroll-mt-4">
+          <CallFamily />
+        </div>
       </main>
     </InstallGuide>
   );

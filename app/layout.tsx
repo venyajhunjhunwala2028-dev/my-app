@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import AppPreferences from "@/components/AppPreferences";
+import { TEXT_SIZE_SCRIPT } from "@/lib/textSize";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,8 +18,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+    // The inline script sets data-text-size before React hydrates, so <html> may differ from the server's.
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: TEXT_SIZE_SCRIPT }} />
+      </head>
+      <body className="min-h-full flex flex-col">
+        <AppPreferences />
+        {children}
+      </body>
     </html>
   );
 }
