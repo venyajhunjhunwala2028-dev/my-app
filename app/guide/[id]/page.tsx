@@ -35,7 +35,7 @@ function Guide({ params }: { params: Promise<{ id: string }> }) {
   if (guide && kind === "explanation") {
     return (
       <>
-        <Link href="/" className="btn-text self-start">
+        <Link href="/app" className="btn-text self-start">
           Home
         </Link>
         <ExplanationView guide={guide as SavedGuide<ExplanationAnswer>} onSteps={setStepsGuide} />
@@ -45,7 +45,7 @@ function Guide({ params }: { params: Promise<{ id: string }> }) {
   return (
     <>
       <h1 className="text-3xl font-bold">I couldn&apos;t find that guide</h1>
-      <Link href="/" className="btn-primary">
+      <Link href="/app" className="btn-primary">
         Go to Home
       </Link>
     </>

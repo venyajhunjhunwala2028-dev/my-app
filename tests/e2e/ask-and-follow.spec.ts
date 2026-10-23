@@ -6,7 +6,7 @@ const QUESTION = "how do I post a story on Instagram";
 const TITLE = "Post a story on Instagram";
 
 async function askForGuide(page: Page) {
-  await page.goto("/");
+  await page.goto("/app");
   await expect(page.getByRole("heading", { name: "Tech Helper" })).toBeVisible();
   // Pixel 7 is Android Chrome, so the iPhone install walkthrough must not appear.
   await expect(page.getByRole("heading", { name: /put Tech Helper on the home screen/ })).toHaveCount(0);
@@ -29,7 +29,7 @@ test("F1: ask, follow all 3 steps, and find the guide in My guides", async ({ pa
   await expect(page.getByRole("heading", { name: "You did it!" })).toBeVisible();
   await page.getByRole("link", { name: "Home" }).click();
 
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/app$/);
   const myGuides = page.locator("section").filter({ has: page.getByRole("heading", { name: "My guides" }) });
   await expect(myGuides.getByRole("button", { name: TITLE })).toBeVisible();
 });
@@ -41,7 +41,7 @@ test("F3: reopen a saved guide from the home page and start at step 1", async ({
   await expect(page.getByText("Step 2 of 3")).toBeVisible();
 
   await page.getByRole("link", { name: "Home" }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/app$/);
   await page.getByRole("button", { name: TITLE }).click();
 
   await expect(page).toHaveURL(/\/guide\/[^/]+$/);

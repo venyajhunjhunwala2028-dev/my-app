@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
 const SCREENSHOT = path.join(__dirname, "fixtures", "sample-screenshot.png");
 
 test("F2: show me on my screen circles the place to tap", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByLabel("What do you need help with?").fill("how do I post a story on Instagram");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   await expect(page.getByText("Step 1 of 3")).toBeVisible();

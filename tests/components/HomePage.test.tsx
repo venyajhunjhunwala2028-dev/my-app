@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import { STORAGE_KEY, saveGuide, setCurrentGuide, setGuideStep } from "@/lib/store/localStore";
-import Home from "@/app/page";
+import Home from "@/app/app/page";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
@@ -31,7 +31,7 @@ describe("Home page", () => {
   it("on a cold launch with a current explanation guide, stays on the home screen", async () => {
     vi.resetModules();
     const store = await import("@/lib/store/localStore");
-    const { default: FreshHome } = await import("@/app/page");
+    const { default: FreshHome } = await import("@/app/app/page");
     store.saveGuide({
       id: "wifi",
       question: "What is wifi?",

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Tech Helper",
     short_name: "Tech Helper",
     description: "Simple steps for any tech or AI question.",
-    start_url: "/",
+    start_url: "/app",
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#1d4ed8",

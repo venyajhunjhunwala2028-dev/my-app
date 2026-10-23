@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import Home from "@/app/page";
+import Home from "@/app/app/page";
 import manifest from "@/app/manifest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -15,7 +15,7 @@ describe("app scaffold", () => {
   it("serves an installable manifest", () => {
     const m = manifest();
     expect(m.name).toBe("Tech Helper");
-    expect(m.start_url).toBe("/");
+    expect(m.start_url).toBe("/app");
     expect(m.icons?.length).toBeGreaterThan(0);
   });
 });

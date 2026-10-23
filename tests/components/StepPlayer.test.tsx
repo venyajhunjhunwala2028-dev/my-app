@@ -86,7 +86,7 @@ describe("StepPlayer", () => {
     render(<StepPlayer guide={seed()} />);
     for (let i = 0; i < 4; i++) await done();
     expect(screen.getByRole("heading", { name: "You did it!" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/app");
     expect(getSavedGuides().map((g) => g.id)).toContain("story");
     expect(getCurrentGuide()).toBeNull();
   });
