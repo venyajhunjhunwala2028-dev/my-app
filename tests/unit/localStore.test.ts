@@ -68,6 +68,37 @@ describe("localStore", () => {
     expect(store.getSpeakingLanguage()).toBe("ta-IN");
   });
 
+  it("remembers the slower voice setting after reload, off by default", async () => {
+    let store = await loadStore();
+    expect(store.getSlowSpeech()).toBe(false);
+    store.setSlowSpeech(true);
+    store = await loadStore();
+    expect(store.getSlowSpeech()).toBe(true);
+    store.setSlowSpeech(false);
+    store = await loadStore();
+    expect(store.getSlowSpeech()).toBe(false);
+  });
+
+  it("falls back to normal speed when the saved slower voice value is malformed", async () => {
+    localStorage.setItem(KEY, JSON.stringify({ slowSpeech: "yes" }));
+    const store = await loadStore();
+    expect(store.getSlowSpeech()).toBe(false);
+  });
+
+  it("saves whether a guide was helpful and keeps it after reload", async () => {
+    let store = await loadStore();
+    store.saveGuide({ id: "a", question: "q", title: "t", answer: {} });
+    expect(store.getGuide("a")?.helpful).toBeUndefined();
+    store.setGuideHelpful("a", true);
+    store = await loadStore();
+    expect(store.getGuide("a")?.helpful).toBe(true);
+    store.setGuideHelpful("a", false);
+    store.setGuideHelpful("missing", true);
+    store = await loadStore();
+    expect(store.getGuide("a")?.helpful).toBe(false);
+    expect(store.getGuide("missing")).toBeNull();
+  });
+
   it("returns defaults when storage holds corrupt JSON", async () => {
     localStorage.setItem(KEY, "{not json");
     const store = await loadStore();

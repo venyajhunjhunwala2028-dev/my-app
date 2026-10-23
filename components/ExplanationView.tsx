@@ -15,9 +15,22 @@ export function AnswerBody({ answer }: { answer: AskAnswer }) {
   switch (answer.kind) {
     case "explanation":
       return (
-        <p lang={answer.language} className="text-2xl">
-          {answer.text}
-        </p>
+        <div className="flex flex-col gap-4">
+          <p lang={answer.language} className="text-2xl">
+            {answer.text}
+          </p>
+          {/* Only "I'm stuck" answers carry another way; older saved answers have none. */}
+          {answer.alternative && (
+            <section aria-labelledby="another-way" className="flex flex-col gap-2">
+              <h2 id="another-way" className="text-2xl font-bold">
+                Another way
+              </h2>
+              <p lang={answer.language} className="text-2xl">
+                {answer.alternative}
+              </p>
+            </section>
+          )}
+        </div>
       );
     case "steps":
       return (

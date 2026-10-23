@@ -10,9 +10,11 @@ export type SavedGuide<A = unknown> = {
   answer: A;
   savedAt: number;
   step: number;
+  /** The learner's answer to "Was this helpful?" on the finish screen; unset until they answer. */
+  helpful?: boolean;
 };
 
-export type NewGuide<A = unknown> = Omit<SavedGuide<A>, "savedAt" | "step">;
+export type NewGuide<A = unknown> = Omit<SavedGuide<A>, "savedAt" | "step" | "helpful">;
 
 export type FamilyContact = { name: string; phone: string };
 
@@ -26,6 +28,7 @@ type State = {
   devices: string[];
   speakingLanguage: string;
   readAloud: boolean;
+  slowSpeech: boolean;
   familyContact: FamilyContact | null;
   usage: Usage;
 };
@@ -48,6 +51,7 @@ function defaults(): State {
     devices: [],
     speakingLanguage: deviceLanguage(),
     readAloud: false,
+    slowSpeech: false,
     familyContact: null,
     usage: { date: today(), count: 0 },
   };
@@ -80,6 +84,7 @@ function sanitize(raw: unknown): State {
     devices: Array.isArray(raw.devices) ? raw.devices.filter(isString) : base.devices,
     speakingLanguage: isString(raw.speakingLanguage) && raw.speakingLanguage ? raw.speakingLanguage : base.speakingLanguage,
     readAloud: typeof raw.readAloud === "boolean" ? raw.readAloud : base.readAloud,
+    slowSpeech: typeof raw.slowSpeech === "boolean" ? raw.slowSpeech : base.slowSpeech,
     familyContact: isRecord(contact) && isString(contact.name) && isString(contact.phone) ? { name: contact.name, phone: contact.phone } : null,
     usage:
       isRecord(usage) && isString(usage.date) && Number.isInteger(usage.count) && (usage.count as number) >= 0
@@ -172,6 +177,13 @@ export function setGuideStep(id: string, step: number): void {
   });
 }
 
+export function setGuideHelpful(id: string, helpful: boolean): void {
+  update((s) => {
+    const guide = s.guides.find((g) => g.id === id);
+    if (guide) guide.helpful = helpful;
+  });
+}
+
 export function getCurrentGuide(): SavedGuide | null {
   const state = load();
   return state.guides.find((g) => g.id === state.currentGuideId) ?? null;
@@ -210,6 +222,16 @@ export function getReadAloud(): boolean {
 export function setReadAloud(on: boolean): void {
   update((s) => {
     s.readAloud = on;
+  });
+}
+
+export function getSlowSpeech(): boolean {
+  return load().slowSpeech;
+}
+
+export function setSlowSpeech(on: boolean): void {
+  update((s) => {
+    s.slowSpeech = on;
   });
 }
 

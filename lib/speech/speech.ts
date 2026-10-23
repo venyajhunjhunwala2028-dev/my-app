@@ -88,11 +88,35 @@ export function stopSpeaking(): void {
   if (canSpeakAloud()) window.speechSynthesis.cancel();
 }
 
+/** Normal speaking speed, and the slower one for "Slower voice". */
+export const NORMAL_RATE = 1;
+export const SLOW_RATE = 0.75;
+
+export type SpeakOptions = {
+  /** Speaking speed; 1 is normal. */
+  rate?: number;
+  /** Called when this text has been read to the end. */
+  onEnd?: () => void;
+};
+
 /** Reads text aloud, cutting off anything already being read. */
-export function speak(text: string, lang: string): void {
+export function speak(text: string, lang: string, options: SpeakOptions = {}): void {
   if (!canSpeakAloud()) return;
   window.speechSynthesis.cancel();
+  // Some browsers stay paused after cancel, so new speech would never start.
+  if (window.speechSynthesis.paused) window.speechSynthesis.resume();
   const utterance = new window.SpeechSynthesisUtterance(text);
   utterance.lang = lang;
+  utterance.rate = options.rate ?? NORMAL_RATE;
+  if (options.onEnd) utterance.onend = options.onEnd;
   window.speechSynthesis.speak(utterance);
+}
+
+/** Pauses reading so resumeSpeaking can carry on from the same place. */
+export function pauseSpeaking(): void {
+  if (canSpeakAloud()) window.speechSynthesis.pause();
+}
+
+export function resumeSpeaking(): void {
+  if (canSpeakAloud()) window.speechSynthesis.resume();
 }
