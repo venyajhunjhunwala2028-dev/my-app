@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import Link from "next/link";
 import AskBox, { type AskBoxHandle } from "@/components/AskBox";
+import TechConfidence from "@/components/TechConfidence";
 import { ALL_LESSONS, LESSON_GROUPS, type Lesson } from "@/lib/content/lessons";
 import { useT, useUiLanguage } from "@/lib/i18n";
 import { getCompletedLessons } from "@/lib/store/localStore";
@@ -33,11 +34,12 @@ export default function LearnPage() {
       <Link href="/app" className="btn-text self-start">
         {t("common.backHome")}
       </Link>
-      <h1 className="text-3xl font-bold">
+      <h1 className="text-3xl font-extrabold">
         <span aria-hidden="true">🧑‍🏫 </span>
         {t("learn.title")}
       </h1>
       <p className="text-xl">{t("learn.intro")}</p>
+      <TechConfidence onStartLesson={start} />
       <div className="flex flex-col gap-2">
         <p id="lesson-progress" className="text-xl font-semibold text-muted">
           {progress}
@@ -49,7 +51,7 @@ export default function LearnPage() {
           aria-valuemax={total}
           aria-valuenow={done}
           aria-valuetext={progress}
-          className="h-4 w-full overflow-hidden rounded-full border-2 border-muted bg-surface"
+          className="h-4 w-full overflow-hidden rounded-full bg-lavender-strong"
         >
           <div className="h-full bg-primary" style={{ width: `${(done / total) * 100}%` }} />
         </div>
@@ -59,7 +61,7 @@ export default function LearnPage() {
       </div>
       {LESSON_GROUPS.map((group) => (
         <section key={group.id} aria-labelledby={`lessons-${group.id}`} className="flex flex-col gap-3">
-          <h2 id={`lessons-${group.id}`} className="text-2xl font-bold">
+          <h2 id={`lessons-${group.id}`} className="mt-2 text-2xl font-bold">
             {group.title[language]}
           </h2>
           <ul className="flex flex-col gap-3">
@@ -67,7 +69,7 @@ export default function LearnPage() {
               <li key={lesson.id}>
                 <button
                   type="button"
-                  className="btn-secondary justify-between gap-3 text-left"
+                  className="card-action items-center justify-between gap-3 text-xl font-semibold"
                   onClick={() => start(lesson)}
                 >
                   <span>{lesson.title[language]}</span>

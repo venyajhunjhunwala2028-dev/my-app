@@ -28,7 +28,7 @@ function simpleDate(savedAt: number, dateLocale: string, t: T): string {
 /** Yes / No before anything is deleted. */
 function Confirm({ onYes, onNo, t }: { onYes: () => void; onNo: () => void; t: T }) {
   return (
-    <div role="alert" className="flex flex-col gap-3 rounded-2xl border-2 border-warning bg-warning-surface p-4">
+    <div role="alert" className="flex flex-col gap-3 rounded-3xl border-2 border-warning bg-warning-surface p-4">
       <p className="text-xl font-semibold">{t("history.confirm")}</p>
       <div className="grid grid-cols-2 gap-3">
         <button type="button" className="btn-primary" onClick={onYes}>
@@ -72,9 +72,9 @@ export default function MyGuides() {
 
   const item = (g: SavedGuide) => (
     <li key={g.id} className="flex flex-col gap-2">
-      <button type="button" className="btn-secondary flex-col items-start! gap-1 py-3 text-left" onClick={() => open(g.id)}>
-        <span>{g.question}</span>
-        <span className="text-lg font-normal text-muted">{simpleDate(g.savedAt, speechCode, t)}</span>
+      <button type="button" className="card-action flex-col items-start gap-1 text-left" onClick={() => open(g.id)}>
+        <span className="text-xl font-bold">{g.question}</span>
+        <span className="text-lg text-muted">{simpleDate(g.savedAt, speechCode, t)}</span>
       </button>
       {confirming === g.id ? (
         <Confirm t={t} onYes={() => remove(g.id)} onNo={() => setConfirming(null)} />
@@ -93,9 +93,14 @@ export default function MyGuides() {
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="text-2xl font-bold">{t("history.heading")}</h2>
+      <h2 className="text-2xl font-bold">
+        <span aria-hidden="true" className="mr-2">
+          🕘
+        </span>
+        {t("history.heading")}
+      </h2>
       {guides.length === 0 ? (
-        <p className="text-xl text-muted">{t("history.empty")}</p>
+        <p className="card-lavender text-xl text-muted">{t("history.empty")}</p>
       ) : (
         <>
           <ul className="flex flex-col gap-4">{guides.slice(0, shown).map(item)}</ul>

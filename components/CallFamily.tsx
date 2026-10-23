@@ -24,7 +24,7 @@ export default function CallFamily({ onSaved }: { onSaved?: (contact: FamilyCont
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl bg-surface p-4">
+    <section className="card flex flex-col gap-4">
       {view === "form" && <ContactForm initial={contact} onSave={save} />}
       {view === "confirm" && contact && (
         <div className="flex flex-col gap-4">
@@ -41,13 +41,22 @@ export default function CallFamily({ onSaved }: { onSaved?: (contact: FamilyCont
       )}
       {view === "ready" && contact && (
         <div className="flex flex-col gap-4">
-          <h2 className="text-2xl font-bold">{t("family.callName", { name: contact.name })}</h2>
-          <a href={`tel:${contact.phone}`} className="btn-primary">
-            {t("family.call")}
-          </a>
-          <a href={`https://wa.me/${contact.phone.replace(/\D/g, "")}`} className="btn-secondary">
-            {t("family.whatsapp")}
-          </a>
+          <h2 className="text-2xl font-bold">
+            <span aria-hidden="true" className="mr-2">
+              📞
+            </span>
+            {t("family.callName", { name: contact.name })}
+          </h2>
+          <div className="@container">
+            <div className="grid grid-cols-1 gap-3 @[17rem]:grid-cols-2">
+              <a href={`tel:${contact.phone}`} className="btn-primary">
+                {t("family.call")}
+              </a>
+              <a href={`https://wa.me/${contact.phone.replace(/\D/g, "")}`} className="btn-secondary">
+                {t("family.whatsapp")}
+              </a>
+            </div>
+          </div>
           <button type="button" className="btn-text" onClick={() => setMode("form")}>
             {t("family.changeContact")}
           </button>
@@ -71,7 +80,12 @@ function ContactForm({ initial, onSave }: { initial: FamilyContact | null; onSav
 
   return (
     <form className="flex flex-col gap-4" onSubmit={submit}>
-      <h2 className="text-2xl font-bold">{t("family.who")}</h2>
+      <h2 className="text-2xl font-bold">
+        <span aria-hidden="true" className="mr-2">
+          📞
+        </span>
+        {t("family.who")}
+      </h2>
       <label htmlFor={`${id}-name`} className="text-xl">
         {t("family.name")}
       </label>
@@ -80,7 +94,7 @@ function ContactForm({ initial, onSave }: { initial: FamilyContact | null; onSav
         required
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="rounded-2xl border-2 border-muted bg-background p-4 text-xl"
+        className="field"
       />
       <label htmlFor={`${id}-phone`} className="text-xl">
         {t("family.phone")}
@@ -91,7 +105,7 @@ function ContactForm({ initial, onSave }: { initial: FamilyContact | null; onSav
         required
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
-        className="rounded-2xl border-2 border-muted bg-background p-4 text-xl"
+        className="field"
       />
       <button type="submit" className="btn-primary">
         {t("family.save")}

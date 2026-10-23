@@ -6,7 +6,9 @@ import {
   STORAGE_KEY,
   getCurrentGuide,
   markLessonComplete,
+  saveGuide,
   setDevices,
+  setGuideStep,
   setLevel,
   setUiLanguage,
 } from "@/lib/store/localStore";
@@ -46,7 +48,8 @@ describe("Teach me page", () => {
     for (const group of ["Using your phone", "Staying safe", "AI helpers", "Email", "Online payments"]) {
       expect(screen.getByRole("heading", { level: 2, name: group })).toBeInTheDocument();
     }
-    expect(screen.getAllByRole("button", { name: /./ })).toHaveLength(ALL_LESSONS.length);
+    // One button per lesson, plus "Next up".
+    expect(screen.getAllByRole("button", { name: /./ })).toHaveLength(ALL_LESSONS.length + 1);
     expect(screen.getByText(`You've finished 0 of ${ALL_LESSONS.length} lessons`)).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
     expect(screen.queryByText("Done")).not.toBeInTheDocument();
@@ -69,7 +72,7 @@ describe("Teach me page", () => {
     setLevel("very_simple");
     const fetchMock = mockFetch(stepsAnswer);
     render(<LearnPage />);
-    await userEvent.click(screen.getByRole("button", { name: /Make a video call on WhatsApp/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Make a video call on WhatsApp" }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith(expect.stringMatching(/^\/guide\//)));
     const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
@@ -90,5 +93,56 @@ describe("Teach me page", () => {
     expect(screen.getByRole("heading", { level: 1, name: "मुझे सिखाइए" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "अपना फ़ोन चलाना" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "होम पर वापस जाएँ" })).toBeInTheDocument();
+  });
+
+  describe("Tech Confidence", () => {
+    it("starts at Level 1 and offers the first lesson as Next up", async () => {
+      const fetchMock = mockFetch(stepsAnswer);
+      render(<LearnPage />);
+      const card = screen.getByRole("region", { name: "Your Tech Confidence" });
+      expect(card).toHaveTextContent("Level 1");
+      expect(card).toHaveTextContent("Just starting");
+      expect(within(card).queryByText("You've learned:")).not.toBeInTheDocument();
+      const next = within(card).getByRole("button", { name: "Next up: Make a video call on WhatsApp" });
+      await userEvent.click(next);
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+      expect(body).toMatchObject({ question: "Teach me how to make a video call on WhatsApp", mode: "showMeHow" });
+    });
+
+    it("lists what was learned and grows the level with finished lessons and guides", () => {
+      markLessonComplete("whatsapp-video-call");
+      markLessonComplete("screenshot");
+      saveGuide({
+        id: "done",
+        question: "q",
+        title: "t",
+        answer: { kind: "steps", steps: [{ instruction: "a" }] },
+      });
+      setGuideStep("done", 2);
+      render(<LearnPage />);
+      const card = screen.getByRole("region", { name: "Your Tech Confidence" });
+      expect(card).toHaveTextContent("Level 3");
+      expect(card).toHaveTextContent("Getting comfortable");
+      const learned = within(card).getByRole("list", { name: "You've learned:" });
+      expect(within(learned).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+        "✓ Make a video call on WhatsApp",
+        "✓ Take a screenshot",
+      ]);
+      expect(within(card).getByRole("button", { name: /^Next up: / })).toHaveAccessibleName(
+        "Next up: Send a photo on WhatsApp",
+      );
+    });
+
+    it("says every lesson is finished when none is left", () => {
+      for (const lesson of ALL_LESSONS) markLessonComplete(lesson.id);
+      render(<LearnPage />);
+      const card = screen.getByRole("region", { name: "Your Tech Confidence" });
+      expect(card).toHaveTextContent("Level 5");
+      expect(card).toHaveTextContent("Tech expert");
+      expect(card).toHaveTextContent("You've finished every lesson!");
+      expect(within(card).getAllByRole("listitem")).toHaveLength(5);
+      expect(within(card).queryByRole("button")).not.toBeInTheDocument();
+    });
   });
 });

@@ -30,9 +30,17 @@ const sentBody = (n = 0) => JSON.parse(fetchMock.mock.calls[n][1].body as string
 const user = () => userEvent.setup({ applyAccept: false });
 const png = () => new File([new Uint8Array(10)], "shot.png", { type: "image/png" });
 
+/** "Paste message" shows the text box; it stays open once shown. */
+async function openPaste(u = user()) {
+  if (!screen.queryByLabelText("Paste a message, email or link")) {
+    await u.click(screen.getByRole("button", { name: "Paste message" }));
+  }
+  return screen.getByLabelText("Paste a message, email or link");
+}
+
 async function pasteAndCheck(text: string) {
   const u = user();
-  await u.type(screen.getByLabelText("Paste a message, email or link"), text);
+  await u.type(await openPaste(u), text);
   await u.click(screen.getByRole("button", { name: "Check it" }));
 }
 
@@ -45,14 +53,33 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Is this a scam? page", () => {
-  it("has a heading, a way home, both inputs and the never-share line, and asks for nothing sensitive", () => {
+  it("has a heading, a way home, the two big choices and the never-share line, and asks for nothing sensitive", () => {
     render(<ScamPage />);
     expect(screen.getByRole("heading", { level: 1, name: "Is this a scam?" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back to home" })).toHaveAttribute("href", "/app");
-    expect(screen.getByLabelText("Paste a message, email or link")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add a screenshot" })).toBeInTheDocument();
+    expect(screen.getByText("Not sure about a message? Send it to me. I'll help you check.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Upload screenshot" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Paste message" })).toBeInTheDocument();
     expect(screen.getByText(NEVER_SHARE)).toBeInTheDocument();
     expect(screen.queryByLabelText(/OTP|password|PIN|card/i)).not.toBeInTheDocument();
+  });
+
+  it("Paste message reveals the text box and puts the cursor in it", async () => {
+    render(<ScamPage />);
+    expect(screen.queryByLabelText("Paste a message, email or link")).not.toBeInTheDocument();
+    const paste = screen.getByRole("button", { name: "Paste message" });
+    expect(paste).toHaveAttribute("aria-expanded", "false");
+    await user().click(paste);
+    expect(screen.getByLabelText("Paste a message, email or link")).toHaveFocus();
+    expect(paste).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("Upload screenshot shows the privacy reminder before the picture can be chosen", async () => {
+    render(<ScamPage />);
+    expect(screen.queryByText(/This app doesn't save your screenshot/)).not.toBeInTheDocument();
+    await user().click(screen.getByRole("button", { name: "Upload screenshot" }));
+    expect(screen.getByText(/This app doesn't save your screenshot/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add a screenshot" })).toBeDisabled();
   });
 
   it("sends the pasted text and shows a scam result with icon and word, reasons, advice and Call family", async () => {
@@ -61,9 +88,11 @@ describe("Is this a scam? page", () => {
     render(<ScamPage />);
     await pasteAndCheck("You won a lottery, share OTP");
 
-    const verdict = await screen.findByRole("heading", { name: "Possible scam" });
-    expect(verdict).toHaveTextContent("🛑");
-    expect(screen.getByText("🛑")).toHaveAttribute("aria-hidden", "true");
+    const verdict = await screen.findByRole("heading", { name: "Potential scam" });
+    expect(verdict).toHaveTextContent("🔴");
+    expect(screen.getByText("🔴")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByTestId("mascot")).toHaveAttribute("data-mood", "warning");
+    expect(screen.getByRole("heading", { name: "Why?" })).toBeInTheDocument();
     expect(screen.getByText("Reason for scam.")).toBeInTheDocument();
     expect(screen.getByText("Second reason.")).toBeInTheDocument();
     expect(screen.getByText("Advice for scam.")).toBeInTheDocument();
@@ -78,16 +107,18 @@ describe("Is this a scam? page", () => {
     render(<ScamPage />);
     await pasteAndCheck("http://bit.ly/x");
     const verdict = await screen.findByRole("heading", { name: "Be careful" });
-    expect(verdict).toHaveTextContent("⚠️");
+    expect(verdict).toHaveTextContent("🟡");
+    expect(screen.getByTestId("mascot")).toHaveAttribute("data-mood", "thinking");
     expect(screen.getByRole("heading", { name: "Who should we call for help?" })).toBeInTheDocument();
     expect(screen.getByText(NEVER_SHARE)).toBeInTheDocument();
   });
 
-  it("shows Looks safe with a tick, the never-share line, and no Call family", async () => {
+  it("shows Probably safe with a green sign, the never-share line, and no Call family", async () => {
     render(<ScamPage />);
     await pasteAndCheck("See you at dinner tonight");
-    const verdict = await screen.findByRole("heading", { name: "Looks safe" });
-    expect(verdict).toHaveTextContent("✅");
+    const verdict = await screen.findByRole("heading", { name: "Probably safe" });
+    expect(verdict).toHaveTextContent("🟢");
+    expect(screen.getByTestId("mascot")).toHaveAttribute("data-mood", "success");
     expect(screen.getByText("Advice for safe.")).toBeInTheDocument();
     expect(screen.getByText(NEVER_SHARE)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Who should we call for help?" })).not.toBeInTheDocument();
@@ -96,23 +127,25 @@ describe("Is this a scam? page", () => {
   it("sends a screenshot after the privacy reminder, with or without text", async () => {
     render(<ScamPage />);
     const u = user();
+    await u.click(screen.getByRole("button", { name: "Upload screenshot" }));
     expect(screen.getByText(/This app doesn't save your screenshot/)).toBeInTheDocument();
     await u.click(screen.getByRole("button", { name: "I understand" }));
     await u.upload(screen.getByTestId("scam-screenshot-input"), png());
     expect(await screen.findByText("Screenshot added.")).toBeInTheDocument();
     await u.click(screen.getByRole("button", { name: "Check it" }));
-    await screen.findByRole("heading", { name: "Looks safe" });
+    await screen.findByRole("heading", { name: "Probably safe" });
     expect(sentBody()).toEqual({ image: "BBBB", mediaType: "image/jpeg", width: 800, height: 1600, language: "en-IN" });
   });
 
   it("sends text and screenshot together", async () => {
     render(<ScamPage />);
     const u = user();
+    await u.click(screen.getByRole("button", { name: "Upload screenshot" }));
     await u.click(screen.getByRole("button", { name: "I understand" }));
     await u.upload(screen.getByTestId("scam-screenshot-input"), png());
     await screen.findByText("Screenshot added.");
     await pasteAndCheck("Is this real?");
-    await screen.findByRole("heading", { name: "Looks safe" });
+    await screen.findByRole("heading", { name: "Probably safe" });
     expect(sentBody()).toMatchObject({ text: "Is this real?", image: "BBBB" });
   });
 
@@ -138,7 +171,7 @@ describe("Is this a scam? page", () => {
     expect(await screen.findByText("Sorry, something went wrong. Please try again.")).toBeInTheDocument();
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(answer("safe"))));
     await user().click(screen.getByRole("button", { name: "Try again" }));
-    await screen.findByRole("heading", { name: "Looks safe" });
+    await screen.findByRole("heading", { name: "Probably safe" });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(sentBody(1)).toEqual({ text: "Hello", language: "en-IN" });
   });
@@ -147,6 +180,6 @@ describe("Is this a scam? page", () => {
     render(<ScamPage />);
     await pasteAndCheck("Hello");
     await user().click(await screen.findByRole("button", { name: "Check something else" }));
-    expect(screen.getByLabelText("Paste a message, email or link")).toHaveValue("");
+    expect(await openPaste()).toHaveValue("");
   });
 });

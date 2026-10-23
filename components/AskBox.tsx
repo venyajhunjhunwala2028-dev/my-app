@@ -55,8 +55,14 @@ export default function AskBox({
   showSpeakButton = true,
   onListeningChange,
   showForm = true,
+  examples = [],
+  big = false,
 }: {
   ref?: Ref<AskBoxHandle>;
+  /** "Try asking:" chips under the box; tapping one asks it straight away. */
+  examples?: readonly string[];
+  /** The home screen's big card: the label reads as the card's title. */
+  big?: boolean;
   /** False on pages whose own buttons ask the questions (see `ref`): only the answer flow shows. */
   showForm?: boolean;
   /** False when the page shows its own Speak button (see `ref`). */
@@ -275,14 +281,7 @@ export default function AskBox({
 
   const waiting = status.kind === "waiting";
 
-  return (
-    <div className="flex flex-col gap-4">
-      {!showForm && status.kind !== "idle" && question.trim() && (
-        <p className="text-xl text-muted">
-          {t("ask.youAsked")} <span className="font-semibold text-foreground">{question.trim()}</span>
-        </p>
-      )}
-      {showForm && speech && (
+  const speechBlock = showForm && speech && (
         <div className="flex flex-col gap-3">
           {showSpeakButton && (
             <button
@@ -305,19 +304,35 @@ export default function AskBox({
               )}
             </div>
           )}
-          <p className="text-xl">
+          <p className={big ? "text-lg text-muted" : "text-xl"}>
             {t("ask.speakingLanguage")} <span lang={speakingLanguage}>{languageName(speakingLanguage)}</span>
           </p>
-          <button type="button" className="btn-text" onClick={() => setChoosingLanguage(true)}>
+          <button type="button" className={big ? "btn-text self-start px-0" : "btn-text"} onClick={() => setChoosingLanguage(true)}>
             {t("ask.changeLanguage")}
           </button>
         </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      {!showForm && status.kind !== "idle" && question.trim() && (
+        <p className="text-xl text-muted">
+          {t("ask.youAsked")} <span className="font-semibold text-foreground">{question.trim()}</span>
+        </p>
       )}
+      {!big && speechBlock}
       {showForm && (
         <form className="flex flex-col gap-4" onSubmit={submit}>
-          <label htmlFor="question" className="text-xl">
-            {t("ask.label")}
-          </label>
+          {big ? (
+            <p className="flex items-start gap-3 text-2xl leading-snug font-extrabold">
+              <span aria-hidden="true">💬</span>
+              <label htmlFor="question">{t("ask.label")}</label>
+            </p>
+          ) : (
+            <label htmlFor="question" className="text-xl">
+              {t("ask.label")}
+            </label>
+          )}
           <textarea
             ref={textBox}
             id="question"
@@ -325,15 +340,35 @@ export default function AskBox({
             rows={3}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            className="rounded-2xl border-2 border-muted p-4 text-xl"
+            className="field"
           />
           <button type="submit" className="btn-primary" disabled={waiting}>
             {t("common.ask")}
           </button>
+          {examples.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <p className="text-lg font-semibold text-muted">{t("home.tryAsking")}</p>
+              <ul className="flex flex-wrap gap-2">
+                {examples.map((example) => (
+                  <li key={example} className="max-w-full">
+                    <button
+                      type="button"
+                      className="chip max-w-full text-left"
+                      disabled={waiting}
+                      onClick={() => askExample(example)}
+                    >
+                      {example}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </form>
       )}
+      {big && speechBlock}
       {status.kind === "message" && (
-        <div className="flex flex-col gap-2 rounded-2xl bg-surface p-4 text-xl">
+        <div className="card-lavender flex flex-col gap-3 text-xl">
           <p>{status.message}</p>
           {status.examples && status.examples.length > 0 && (
             <>

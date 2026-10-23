@@ -28,7 +28,7 @@ describe("WaitingAndErrors", () => {
     const fetchMock = vi.fn(() => new Promise<Response>((resolve) => (finish = resolve)));
     vi.stubGlobal("fetch", fetchMock);
     render(<AskBox />);
-    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I send a photo?");
+    await userEvent.type(screen.getByLabelText("What would you like help with?"), "How do I send a photo?");
     await userEvent.dblClick(screen.getByRole("button", { name: "Ask" }));
 
     expect(screen.getByText("Thinking, one moment…")).toBeInTheDocument();
@@ -46,11 +46,11 @@ describe("WaitingAndErrors", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<AskBox />);
-    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I send a photo?");
+    await userEvent.type(screen.getByLabelText("What would you like help with?"), "How do I send a photo?");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
 
     expect(await screen.findByRole("button", { name: "Try again" })).toBeInTheDocument();
-    expect(screen.getByLabelText("What do you need help with?")).toHaveValue("How do I send a photo?");
+    expect(screen.getByLabelText("What would you like help with?")).toHaveValue("How do I send a photo?");
     expect(screen.getByRole("link", { name: "Call" })).toBeInTheDocument();
 
     fetchMock.mockImplementation(async () => new Response(JSON.stringify(stepsAnswer)));

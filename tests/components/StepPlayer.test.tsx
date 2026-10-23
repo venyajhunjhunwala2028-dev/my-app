@@ -38,7 +38,7 @@ function seed(): SavedGuide<StepsAnswer> {
 }
 
 const stored = () => getGuide("story") as SavedGuide<StepsAnswer>;
-const done = () => userEvent.click(screen.getByRole("button", { name: "Done, next step" }));
+const done = () => userEvent.click(screen.getByRole("button", { name: "I did it" }));
 
 const explain = (text: string, alternative: string | null = null) => ({
   kind: "explanation",
@@ -333,7 +333,7 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
       trouble: "My screen looks different",
       guideContext: { stepIndex: 1 },
     });
-    expect(screen.getAllByRole("button", { name: "Show me on my screen" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Show me where" }).length).toBeGreaterThan(0);
 
     await userEvent.click(screen.getByRole("button", { name: "Back to the step" }));
     expect(screen.queryByText("Use the search bar instead.")).not.toBeInTheDocument();
@@ -363,7 +363,7 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
     await userEvent.click(screen.getByRole("button", { name: "I can't find it" }));
     await screen.findByText("Another route.");
     const panel = screen.getByRole("region", { name: "Help with this step" });
-    await userEvent.click(within(panel).getByRole("button", { name: "Show me on my screen" }));
+    await userEvent.click(within(panel).getByRole("button", { name: "Show me where" }));
     expect(screen.getByRole("heading", { name: "Show me on my screen" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Back to my step" }));
     expect(screen.getByText("Step 2 of 4")).toBeInTheDocument();
@@ -443,9 +443,9 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
     expect(screen.getByText("Well done!")).toBeInTheDocument();
     await done();
     expect(screen.queryByText("Well done!")).not.toBeInTheDocument();
-    expect(screen.getByText("Great, you're doing it.")).toBeInTheDocument();
+    expect(screen.getByText("Great! You're doing it.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Previous step" }));
-    expect(screen.queryByText("Great, you're doing it.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Great! You're doing it.")).not.toBeInTheDocument();
   });
 
   it("shows a safety banner from the guide's safety line", () => {
@@ -507,7 +507,7 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
     expect(screen.getByText("Step 1 of 2")).toBeInTheDocument();
     expect(screen.queryByRole("note", { name: "Safety warning" })).not.toBeInTheDocument();
     await done();
-    expect(screen.getByText("Great, you're doing it.")).toBeInTheDocument();
+    expect(screen.getByText("Great! You're doing it.")).toBeInTheDocument();
     await done();
     expect(screen.getByRole("heading", { name: "You did it!" })).toBeInTheDocument();
   });
@@ -522,5 +522,58 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByText("Step 2 of 4")).toBeInTheDocument();
+  });
+
+  describe("instruction card", () => {
+    it("shows the goal on top and one dot per step, filled up to the current step, under the same progress bar", async () => {
+      render(<StepPlayer guide={seed()} />);
+      expect(screen.getByText("Post a story")).toBeInTheDocument();
+      const bar = screen.getByRole("progressbar");
+      const dots = within(bar).getAllByTestId("progress-dot");
+      expect(dots).toHaveLength(4);
+      expect(dots.map((d) => d.dataset.state)).toEqual(["current", "todo", "todo", "todo"]);
+      await done();
+      await done();
+      const later = within(screen.getByRole("progressbar")).getAllByTestId("progress-dot");
+      expect(later.map((d) => d.dataset.state)).toEqual(["done", "done", "current", "todo"]);
+      expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuetext", "Step 3 of 4");
+      expect(screen.getByText("Step 3 of 4")).toBeInTheDocument();
+    });
+
+    it("has the three big step buttons, with their emoji hidden from screen readers", () => {
+      render(<StepPlayer guide={seed()} />);
+      for (const [name, emoji] of [
+        ["I did it", "✓"],
+        ["Show me where", "📱"],
+        ["I'm stuck", "❓"],
+      ]) {
+        const button = screen.getByRole("button", { name });
+        expect(within(button).getByText(emoji)).toHaveAttribute("aria-hidden", "true");
+      }
+    });
+
+    it("the mascot is ready on a step, thinking while help loads, and worried on a safety banner", async () => {
+      let resolve: (r: Response) => void = () => {};
+      vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((r) => (resolve = r))));
+      const guide = saveGuide({ id: "m", question: "q", title: "t", answer: { ...answer, safety: "⚠️ Never share your OTP." } });
+      render(<StepPlayer guide={guide} />);
+      const banner = screen.getByRole("note", { name: "Safety warning" });
+      expect(within(banner).getByTestId("mascot")).toHaveAttribute("data-mood", "warning");
+      expect(screen.getByTestId("step-mascot")).toHaveAttribute("data-mood", "ready");
+
+      await userEvent.click(screen.getByRole("button", { name: "Show me again" }));
+      expect(screen.getByTestId("step-mascot")).toHaveAttribute("data-mood", "thinking");
+      await act(async () => resolve(new Response(JSON.stringify(explain("It is the blue button.")), { status: 200 })));
+      expect(await screen.findByText("It is the blue button.")).toBeInTheDocument();
+      expect(screen.getByTestId("step-mascot")).toHaveAttribute("data-mood", "ready");
+    });
+
+    it("the success screen celebrates with the mascot, a big tick and a short burst", async () => {
+      render(<StepPlayer guide={seed()} />);
+      for (let i = 0; i < 4; i++) await done();
+      expect(screen.getByTestId("mascot")).toHaveAttribute("data-mood", "celebrate");
+      expect(screen.getByTestId("success-tick")).toHaveAttribute("aria-hidden", "true");
+      expect(screen.getByTestId("confetti")).toHaveAttribute("aria-hidden", "true");
+    });
   });
 });

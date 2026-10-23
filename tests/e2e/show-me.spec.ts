@@ -7,11 +7,11 @@ const SCREENSHOT = path.join(__dirname, "fixtures", "sample-screenshot.png");
 
 test("F2: show me on my screen circles the place to tap", async ({ page }) => {
   await page.goto("/app");
-  await page.getByLabel("What do you need help with?").fill("how do I post a story on Instagram");
+  await page.getByLabel("What would you like help with?").fill("how do I post a story on Instagram");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   await expect(page.getByText("Step 1 of 3")).toBeVisible();
 
-  await page.getByRole("button", { name: "Show me on my screen" }).click();
+  await page.getByRole("button", { name: "Show me where" }).click();
   await expect(page.getByRole("heading", { name: "Show me on my screen" })).toBeVisible();
 
   // No device was saved, so the helper asks first.

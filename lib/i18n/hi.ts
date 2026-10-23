@@ -31,11 +31,38 @@ export const hi: Messages = {
   "home.callFamily": "परिवार को फ़ोन करें",
   "home.learn": "मुझे सिखाइए",
   "home.library": "मदद की लाइब्रेरी",
+  "home.greeting": "नमस्ते! मैं आपका Tech Helper हूँ",
+  "home.hero": "बताइए आप क्या करना चाहते हैं, मैं एक-एक कदम करके आपको बताऊँगा।",
+  "home.tryAsking": "ऐसे पूछकर देखें:",
+  "home.example.1": "WhatsApp पर वीडियो कॉल कैसे करें?",
+  "home.example.2": "फ़ोन पर अक्षर बड़े कैसे करें?",
+  "home.example.3": "Instagram पर फ़ोटो कैसे डालें?",
+  "home.tag.ask": "पूछें",
+  "home.tag.speak": "बोलें",
+  "home.tag.show": "दिखाएँ",
+  "home.askDesc": "अपने शब्दों में सवाल लिखें।",
+  "home.speakDesc": "बस बोलकर बताइए।",
+  "home.pressDesc": "स्क्रीनशॉट भेजें, मैं बताऊँगा कि कहाँ दबाना है।",
+  "home.more": "मैं और कैसे मदद कर सकता हूँ",
 
   // Teach me
   "learn.title": "मुझे सिखाइए",
   "learn.intro": "एक पाठ चुनें। मैं आपको एक-एक कदम करके दिखाऊँगा।",
   "learn.progress": "आपने {total} में से {done} पाठ पूरे कर लिए हैं",
+  "confidence.title": "आपका टेक भरोसा",
+  "confidence.level": "लेवल {level}",
+  "confidence.level.1": "अभी शुरुआत है",
+  "confidence.level.2": "रास्ता मिल रहा है",
+  "confidence.level.3": "आराम से चला रहे हैं",
+  "confidence.level.4": "पूरे भरोसे के साथ",
+  "confidence.level.5": "टेक के जानकार",
+  "confidence.toNext": "अगले लेवल के लिए {count} और पूरे करें।",
+  "confidence.top": "आप सबसे ऊँचे लेवल पर हैं। शाबाश!",
+  "confidence.learned": "आपने सीखा:",
+  "confidence.nextUp": "अगला पाठ:",
+  "confidence.allLessons": "आपने सारे पाठ पूरे कर लिए!",
+  "confidence.private": "यह जानकारी सिर्फ़ आपके फ़ोन में रहती है।",
+  "confidence.keepLearning": "और सीखें",
 
   // Help library
   "library.title": "मदद की लाइब्रेरी",
@@ -44,7 +71,7 @@ export const hi: Messages = {
   "library.pickQuestion": "कोई सवाल दबाएँ:",
 
   // Ask box
-  "ask.label": "आपको किस चीज़ में मदद चाहिए?",
+  "ask.label": "आप किस चीज़ में मदद चाहते हैं?",
   "ask.youAsked": "आपने पूछा:",
   "ask.different": "कोई दूसरा सवाल पूछें",
   "ask.couldAsk": "आप ऐसे पूछ सकते हैं:",
@@ -68,7 +95,7 @@ export const hi: Messages = {
 
   // Step player
   "steps.progress": "कुल {total} में से चरण {step}",
-  "steps.cheer": "बहुत बढ़िया, आप कर रहे हैं।",
+  "steps.cheer": "बहुत बढ़िया! आप कर रहे हैं।",
   "steps.safetyLabel": "सावधानी",
   "steps.previous": "पिछला चरण",
   "steps.lookFor": "यह ढूँढें: {text}",
@@ -79,6 +106,8 @@ export const hi: Messages = {
   "steps.showAgain": "फिर से दिखाइए",
   "steps.stuck": "मुझे दिक्कत आ रही है",
   "steps.showOnScreen": "मेरी स्क्रीन पर दिखाइए",
+  "steps.showWhere": "कहाँ है, दिखाइए",
+  "steps.moreHelp": "और मदद",
   "steps.backToMyStep": "मेरे चरण पर वापस जाएँ",
   "steps.helpLabel": "इस चरण में मदद",
   "steps.troubleHeading": "क्या परेशानी है?",
@@ -92,7 +121,7 @@ export const hi: Messages = {
   "steps.replayHelp": "यह मदद फिर से सुनें",
   "steps.simpler": "और आसान करके समझाइए",
   "steps.askSpecific": "कुछ खास पूछें",
-  "steps.next": "हो गया, अगला चरण",
+  "steps.next": "मैंने कर लिया",
 
   // Finished
   "success.title": "आपने कर दिखाया!",
@@ -105,6 +134,7 @@ export const hi: Messages = {
 
   // Show me on my screen / What do I press?
   "press.title": "क्या दबाऊँ?",
+  "press.lead": "पता नहीं क्या दबाना है? स्क्रीनशॉट लीजिए, मैं दिखा दूँगा।",
   "show.bigger": "तस्वीर बड़ी करें",
   "show.smaller": "तस्वीर छोटी करें",
   "show.tapBigger": "तस्वीर बड़ी करने के लिए उस पर दबाएँ।",
@@ -113,6 +143,9 @@ export const hi: Messages = {
   "show.chosenScreenshot": "आपका चुना हुआ स्क्रीनशॉट",
   "show.anotherScreen": "किसी दूसरी स्क्रीन के बारे में पूछें",
   "show.notFound": "यह आपकी स्क्रीन पर नहीं मिला",
+  "show.looking": "आपका स्क्रीनशॉट देख रहा हूँ…",
+  "show.found": "Tech Helper ने ढूँढ लिया",
+  "show.tapHere": "यहाँ दबाएँ।",
   "show.whichDevice": "आप कौन-सा फ़ोन या कंप्यूटर इस्तेमाल कर रहे हैं?",
   "show.whatToDo": "आप क्या करना चाहते हैं?",
   "show.example": "जैसे: यह फ़ोटो भेजनी है, या वाई-फ़ाई चालू करना है।",
@@ -146,14 +179,19 @@ export const hi: Messages = {
 
   // Is this a scam?
   "scam.title": "क्या यह धोखा है?",
-  "scam.intro": "कोई मैसेज, ईमेल या लिंक आया है और आपको भरोसा नहीं है? मैं उसे जाँच दूँगा।",
+  "scam.lead": "किसी मैसेज पर शक है? मुझे भेजिए। मैं जाँचने में मदद करूँगा।",
+  "scam.upload": "स्क्रीनशॉट भेजें",
+  "scam.paste": "मैसेज चिपकाएँ",
+  "scam.pasteClipboard": "कॉपी किया हुआ चिपकाएँ",
+  "scam.why": "क्यों?",
+  "scam.whatToDo": "क्या करें",
   "scam.neverShare": "OTP, पासवर्ड, PIN या कार्ड नंबर कभी किसी को न बताएँ।",
   "scam.nothing": "कृपया पहले कोई मैसेज चिपकाएँ या स्क्रीनशॉट जोड़ें।",
   "scam.privacy":
     "स्क्रीनशॉट जोड़ने से पहले देख लें कि उसमें कोई पासवर्ड, कोड या बैंक की जानकारी न हो। यह ऐप आपका स्क्रीनशॉट नहीं रखता; उसे जाँचने के लिए एक AI सेवा को भेजा जाता है।",
-  "scam.verdict.safe": "सुरक्षित लगता है",
+  "scam.verdict.safe": "शायद सुरक्षित है",
   "scam.verdict.careful": "सावधान रहें",
-  "scam.verdict.scam": "शायद धोखा है",
+  "scam.verdict.scam": "धोखा हो सकता है",
   "scam.pasteLabel": "मैसेज, ईमेल या लिंक यहाँ चिपकाएँ",
   "scam.pasteHint": "बॉक्स में उँगली दबाकर रखें, फिर “Paste” या “चिपकाएँ” दबाएँ।",
   "scam.orScreenshot": "या स्क्रीनशॉट जोड़ें",

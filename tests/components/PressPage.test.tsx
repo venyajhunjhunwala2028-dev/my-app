@@ -48,7 +48,7 @@ beforeEach(() => {
   setDevices(["iPhone"]);
   setSpeakingLanguage("en-IN");
   FakeRecognition.instances = [];
-  answerWith({ kind: "found", box: { x: 400, y: 1800, width: 200, height: 100 }, instruction: "Tap here." });
+  answerWith({ kind: "found", box: { x: 400, y: 1800, width: 200, height: 100 }, instruction: "Tap the blue Send button." });
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -74,7 +74,7 @@ describe("What do I press? page", () => {
     render(<PressPage />);
     await chooseAndAsk();
 
-    expect(await screen.findByText("Tap here.")).toBeInTheDocument();
+    expect(await screen.findByText("Tap the blue Send button.")).toBeInTheDocument();
     expect(screen.getByTestId("tap-marker")).toBeInTheDocument();
     expect(screen.getByTestId("tap-circle")).toBeInTheDocument();
     expect(screen.getByTestId("tap-arrow")).toBeInTheDocument();
@@ -148,5 +148,35 @@ describe("What do I press? page", () => {
     await chooseAndAsk();
     await user().click(await screen.findByRole("button", { name: "Ask about another screen" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Choose your screenshot" })).toBeInTheDocument());
+  });
+
+  it("leads with the screenshot promise", () => {
+    render(<PressPage />);
+    expect(screen.getByText("Not sure what to press? Take a screenshot and I'll point it out.")).toBeInTheDocument();
+  });
+
+  it("while looking, shows the screenshot with a scanning line and says so", async () => {
+    let resolve: (r: Response) => void = () => {};
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((r) => (resolve = r))));
+    render(<PressPage />);
+    await chooseAndAsk();
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("Looking at your screenshot…");
+    expect(screen.getByTestId("scanning")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Your screenshot" })).toBeInTheDocument();
+    await act(async () =>
+      resolve(new Response(JSON.stringify({ kind: "found", box: { x: 0, y: 0, width: 10, height: 10 }, instruction: "Tap it." }))),
+    );
+    expect(await screen.findByText("Tap it.")).toBeInTheDocument();
+    expect(screen.queryByTestId("scanning")).not.toBeInTheDocument();
+  });
+
+  it("labels the found spot: Tech Helper found it, Tap here", async () => {
+    render(<PressPage />);
+    await chooseAndAsk();
+    const found = await screen.findByRole("status");
+    expect(found).toHaveTextContent("Tech Helper found it");
+    expect(screen.getByTestId("tap-arrow")).toHaveTextContent("Tap here.");
+    expect(screen.getByTestId("tap-spotlight")).toBeInTheDocument();
   });
 });

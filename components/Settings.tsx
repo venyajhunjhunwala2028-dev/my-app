@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { DEVICE_CHOICES, deviceLabel } from "@/lib/device";
 import { EXPLANATION_LEVELS, type ExplanationLevel } from "@/lib/ai/schemas";
 import { LOCALES, changeUiLanguage, useT, useUiLanguage, type MessageKey, type UiLanguage } from "@/lib/i18n";
@@ -66,7 +66,7 @@ function Choice({
 
 function Group({ id, heading, children }: { id: string; heading: string; children: ReactNode }) {
   return (
-    <div role="group" aria-labelledby={id} className="flex flex-col gap-3">
+    <div role="group" aria-labelledby={id} className="card flex flex-col gap-3">
       <h3 id={id} className="text-xl font-bold">
         {heading}
       </h3>
@@ -75,18 +75,39 @@ function Group({ id, heading, children }: { id: string; heading: string; childre
   );
 }
 
-/** The "Aa Settings" button and its sheet: language, text size, device, explanation level and voice. Saved once, on this phone. */
-export default function Settings() {
+/**
+ * The "Aa Settings" button and its sheet: language, text size, device, explanation level and voice. Saved once, on this phone.
+ * Pass `open` and `onOpenChange` when the page shows its own Settings button (the home screen's card); then only the sheet shows here.
+ */
+export default function Settings({
+  open: controlledOpen,
+  onOpenChange,
+}: { open?: boolean; onOpenChange?: (open: boolean) => void } = {}) {
   const isClient = useIsClient();
   const t = useT();
   const uiLanguage = useUiLanguage();
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : ownOpen;
+  const setOpen = (next: boolean) => (controlled ? onOpenChange?.(next) : setOwnOpen(next));
+  const heading = useRef<HTMLHeadingElement>(null);
+  const wasOpen = useRef(open);
   // Bumped after a choice so the pressed buttons re-read the store.
   const [, setVersion] = useState(0);
+
+  // On opening, bring the sheet into view with focus on its heading, so the change is clear.
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      heading.current?.focus();
+      heading.current?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+    }
+    wasOpen.current = open;
+  }, [open]);
 
   if (!isClient) return null;
 
   if (!open) {
+    if (controlled) return null;
     return (
       <button type="button" className="btn-secondary" onClick={() => setOpen(true)}>
         <span aria-hidden="true" className="mr-2">
@@ -115,9 +136,12 @@ export default function Settings() {
   return (
     <section
       aria-labelledby="settings-heading"
-      className="flex flex-col gap-6 rounded-2xl border-2 border-primary bg-surface p-4"
+      className="flex animate-fade-in flex-col gap-4 rounded-[2rem] bg-lavender p-4 sm:p-6"
     >
-      <h2 id="settings-heading" className="text-2xl font-bold">
+      <h2 id="settings-heading" ref={heading} tabIndex={-1} className="scroll-mt-4 text-3xl font-extrabold outline-none">
+        <span aria-hidden="true" className="mr-2">
+          ⚙️
+        </span>
         {t("settings.heading")}
       </h2>
       <Group id="language-heading" heading={t("settings.language")}>
@@ -179,7 +203,10 @@ export default function Settings() {
           {t("settings.slower")}
         </Choice>
       </Group>
-      <p className="text-xl text-muted">{t("settings.privacy")}</p>
+      <p className="flex gap-3 text-xl text-muted">
+        <span aria-hidden="true">🔒</span>
+        <span>{t("settings.privacy")}</span>
+      </p>
       <button type="button" className="btn-primary" onClick={() => setOpen(false)}>
         {t("common.done")}
       </button>

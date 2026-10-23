@@ -183,6 +183,65 @@ h3 {
   @apply inline-flex min-h-14 items-center justify-center rounded-xl px-4 text-lg font-semibold text-primary underline underline-offset-4;
 }
 
+/* A quieter, still large button for secondary actions (lavender, no border). */
+@utility btn-soft {
+  @apply btn bg-lavender text-primary;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 1rem;
+  min-height: 3.5rem;
+  &:hover:not(:disabled) {
+    background-color: var(--lavender-strong);
+  }
+}
+
+/* A big tappable card (home actions, topics, lessons). */
+@utility card-action {
+  display: flex;
+  width: 100%;
+  min-height: 4.5rem;
+  border-radius: 1.5rem;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+  padding: 1rem 1.25rem;
+  color: var(--foreground);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    border-color 120ms ease;
+  &:hover {
+    border-color: var(--lavender-strong);
+    box-shadow: var(--shadow-raised);
+  }
+  &:active {
+    transform: translateY(2px);
+  }
+  &:focus-visible {
+    outline: 4px solid var(--primary);
+    outline-offset: 3px;
+  }
+}
+
+/* Text inputs: big, rounded, clear border. */
+@utility field {
+  width: 100%;
+  border-radius: 1.25rem;
+  border: 2px solid var(--muted);
+  background: var(--card);
+  padding: 1rem;
+  font-size: 1.25rem;
+  &:focus-visible {
+    outline: 4px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+
 /* A rounded "Try asking" chip; still at least 3rem tall for easy tapping. */
 @utility chip {
   display: inline-flex;
@@ -289,6 +348,120 @@ h3 {
   animation: th-scan 1.6s ease-in-out infinite alternate;
 }
 
+/* Waiting: three dots taking turns. */
+@keyframes th-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-0.2rem);
+  }
+}
+
+@utility waiting-dot {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  animation: th-dot 1.2s ease-in-out infinite;
+}
+
+/* Magic lens: 📷 → 🔎 → ✨ → ✓ light up in turn (4 × 0.6s). */
+@keyframes th-lens-step {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  12%,
+  30% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@utility lens-step {
+  animation: th-lens-step 2.4s ease-in-out infinite;
+}
+
+/* The found spot. `spotlight` dims the rest of the picture (its parent clips the shadow);
+   `lens-ring` is a soft glowing ring that breathes gently. */
+@utility spotlight {
+  border-radius: 9999px;
+  box-shadow: 0 0 0 9999px rgb(28 27 46 / 0.42);
+}
+
+@keyframes th-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0.3rem rgb(124 116 255 / 0.5),
+      0 0 1.4rem 0.5rem rgb(124 116 255 / 0.7);
+  }
+  50% {
+    box-shadow:
+      0 0 0 0.55rem rgb(124 116 255 / 0.3),
+      0 0 2rem 0.8rem rgb(124 116 255 / 0.55);
+  }
+}
+
+@utility lens-ring {
+  border-radius: 9999px;
+  border: 0.25rem solid #fff;
+  outline: 0.2rem solid #6d64f0;
+  box-shadow:
+    0 0 0 0.3rem rgb(124 116 255 / 0.5),
+    0 0 1.4rem 0.5rem rgb(124 116 255 / 0.7);
+  animation: th-glow 2s ease-in-out infinite;
+}
+
+/* "You did it!": a short, one-off burst of confetti from the middle. Hidden under reduced motion. */
+@keyframes th-confetti {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(1);
+  }
+}
+
+@utility confetti-piece {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.6rem;
+  height: 0.9rem;
+  border-radius: 0.15rem;
+  opacity: 0;
+  animation: th-confetti 1.4s cubic-bezier(0.15, 0.7, 0.3, 1) both;
+}
+
+@keyframes th-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility animate-pop {
+  animation: th-pop 500ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
 /* ---------- Landing page "magic lens" demo (a gentle 9s loop) ---------- */
 
 @keyframes lens-shot {
@@ -377,7 +550,8 @@ h3 {
     animation: none !important;
     transition: none !important;
   }
-  .scan-line {
+  .scan-line,
+  .confetti-piece {
     display: none;
   }
 }

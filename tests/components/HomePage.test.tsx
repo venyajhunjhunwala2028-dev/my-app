@@ -82,9 +82,60 @@ describe("Home page", () => {
     expect(screen.getByRole("link", { name: "Help library" })).toHaveAttribute("href", "/app/library");
     expect(screen.getByText("🧑‍🏫")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByText("📚")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("link", { name: "My previous help" })).toHaveAttribute("href", "#my-guides");
+    expect(document.getElementById("my-guides")).toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "What would you like to do?" });
-    // Ask, What do I press?, Is this a scam?, Teach me, Help library, Ask my family, Call my family (Speak is hidden here).
-    expect(within(nav).getAllByRole("listitem")).toHaveLength(7);
+    // The big cards: Ask and What do I press? (Speak is hidden here); then Is this a scam?, Teach me,
+    // Help library, Ask my family, Call my family, My previous help and Settings.
+    expect(within(nav).getAllByRole("listitem")).toHaveLength(9);
+  });
+
+  it("greets with the mascot and the one-step-at-a-time promise", () => {
+    render(<Home />);
+    expect(screen.getByText("Hi! I'm your Tech Helper")).toBeInTheDocument();
+    expect(screen.getByText("Tell me what you're trying to do, and I'll guide you one step at a time.")).toBeInTheDocument();
+    expect(screen.getAllByTestId("mascot")[0]).toHaveAttribute("data-mood", "ready");
+  });
+
+  it("the big cards keep short names and describe themselves", () => {
+    render(<Home />);
+    expect(screen.getByRole("link", { name: "What do I press?" })).toHaveAccessibleDescription(
+      "Send a screenshot and I'll point to what to tap.",
+    );
+    expect(screen.getByRole("button", { name: "Ask a question" })).toHaveAccessibleDescription(
+      "Type your question in your own words.",
+    );
+  });
+
+  it("a Try asking chip asks that question straight away", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ error: "retry", message: "Sorry." }), { status: 502 }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Home />);
+    expect(screen.getByText("Try asking:")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "How do I make the text bigger?" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+    expect(body.question).toBe("How do I make the text bigger?");
+    expect(screen.getByLabelText("What would you like help with?")).toHaveValue("How do I make the text bigger?");
+  });
+
+  it("the Settings card opens the settings sheet", async () => {
+    render(<Home />);
+    const settings = screen.getByRole("button", { name: "Settings" });
+    expect(settings).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(settings);
+    expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    expect(settings).toHaveAttribute("aria-expanded", "true");
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("heading", { name: "Settings" })).not.toBeInTheDocument();
+  });
+
+  it("shows a small Tech Confidence card from what is finished on this phone", () => {
+    render(<Home />);
+    const card = screen.getByRole("region", { name: "Your Tech Confidence" });
+    expect(card).toHaveTextContent("Level 1");
+    expect(card).toHaveTextContent("Just starting");
+    expect(within(card).getByRole("link", { name: "Keep learning" })).toHaveAttribute("href", "/app/learn");
   });
 
   it("Ask my family opens the sheet with only the generic message, and Close goes back", async () => {
@@ -100,7 +151,7 @@ describe("Home page", () => {
   it("Ask a question puts the cursor in the question box", async () => {
     render(<Home />);
     await userEvent.click(screen.getByRole("button", { name: "Ask a question" }));
-    expect(screen.getByLabelText("What do you need help with?")).toHaveFocus();
+    expect(screen.getByLabelText("What would you like help with?")).toHaveFocus();
   });
 
   it("hides Speak when the browser cannot listen", () => {
@@ -120,7 +171,7 @@ describe("Home page", () => {
       FakeRecognition.instances[0].onresult?.({ results: [[{ transcript: "how do I send a photo" }]] });
       FakeRecognition.instances[0].onend?.();
     });
-    expect(screen.getByLabelText("What do you need help with?")).toHaveValue("how do I send a photo");
+    expect(screen.getByLabelText("What would you like help with?")).toHaveValue("how do I send a photo");
     expect(screen.getByRole("button", { name: "Speak" })).toBeInTheDocument();
   });
 
@@ -178,7 +229,7 @@ describe("Home page", () => {
     it("?start=speak puts the cursor in the question box when the browser cannot listen", async () => {
       nav.search = new URLSearchParams("start=speak");
       render(<Home />);
-      await waitFor(() => expect(screen.getByLabelText("What do you need help with?")).toHaveFocus());
+      await waitFor(() => expect(screen.getByLabelText("What would you like help with?")).toHaveFocus());
     });
   });
 });

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import AskFamilySheet from "@/components/AskFamilySheet";
 import { AnswerBody, ExplainOtherLanguage } from "@/components/ExplanationView";
+import Mascot, { type MascotMood } from "@/components/Mascot";
 import SafetyNotice from "@/components/SafetyNotice";
 import ShowMeOnScreen from "@/components/ShowMeOnScreen";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
@@ -63,6 +64,42 @@ type HelpRequest = Pick<AskRequest, "question" | "mode" | "trouble" | "previousE
 type Voice = "off" | "playing" | "paused";
 
 const withWarningSign = (text: string) => (text.trimStart().startsWith("⚠️") ? text : `⚠️ ${text}`);
+
+const CONFETTI_COLOURS = ["#f5c54a", "#e7798f", "#7c74ff", "#2e8a50", "#5a50d8", "#f8a5b5"];
+
+/** A short, one-off burst around the big tick. Decorative, and hidden under prefers-reduced-motion. */
+function Confetti() {
+  const pieces = Array.from({ length: 16 }, (_, i) => {
+    const angle = (i / 16) * Math.PI * 2;
+    const distance = 5 + (i % 3) * 1.5;
+    return {
+      "--dx": `${(Math.cos(angle) * distance).toFixed(2)}rem`,
+      "--dy": `${(Math.sin(angle) * distance * 0.7).toFixed(2)}rem`,
+      "--rot": `${(i % 2 ? 1 : -1) * (180 + i * 25)}deg`,
+      background: CONFETTI_COLOURS[i % CONFETTI_COLOURS.length],
+      animationDelay: `${(i % 4) * 40}ms`,
+    } as CSSProperties;
+  });
+  return (
+    <span data-testid="confetti" aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      {pieces.map((style, i) => (
+        <span key={i} className="confetti-piece" style={style} />
+      ))}
+    </span>
+  );
+}
+
+/** A big step button: the emoji is decoration, so screen readers hear only the words. */
+function Label({ emoji, children }: { emoji: string; children: ReactNode }) {
+  return (
+    <>
+      <span aria-hidden="true" className="mr-3">
+        {emoji}
+      </span>
+      {children}
+    </>
+  );
+}
 
 export default function StepPlayer({
   guide,
@@ -314,16 +351,29 @@ export default function StepPlayer({
 
   if (finished) {
     return (
-      <div className="flex flex-col gap-6">
-        <h1 className="text-4xl font-bold">
+      <div className="flex flex-col items-center gap-6 text-center">
+        <div className="relative flex w-full justify-center py-8">
+          <Confetti />
+          <span
+            data-testid="success-tick"
+            aria-hidden="true"
+            className="relative flex h-24 w-24 animate-pop items-center justify-center rounded-full bg-safe text-5xl font-black text-white shadow-raised"
+          >
+            ✓
+          </span>
+        </div>
+        <h1 className="animate-fade-in text-4xl font-extrabold">
           <span aria-hidden="true">🎉 </span>
           {t("success.title")}
         </h1>
-        <p lang={answer.language} className="text-2xl">
-          {answer.title}
-        </p>
+        <div className="flex items-end gap-3 text-left">
+          <Mascot mood="celebrate" size={5} />
+          <p lang={answer.language} className="mb-6 rounded-3xl rounded-bl-md bg-card px-5 py-3 text-xl font-semibold shadow-card">
+            {answer.title}
+          </p>
+        </div>
         <p className="text-xl text-muted">{t("success.saved")}</p>
-        <div className="flex flex-col gap-3">
+        <div className="flex w-full flex-col gap-3">
           <Link href="/app" className="btn-primary min-h-20 text-2xl">
             {t("success.goHome")}
           </Link>
@@ -334,7 +384,7 @@ export default function StepPlayer({
             {t("success.learn")}
           </Link>
         </div>
-        <section aria-labelledby="helpful-heading" className="flex flex-col gap-4 rounded-2xl bg-surface p-4">
+        <section aria-labelledby="helpful-heading" className="card flex w-full flex-col gap-4">
           <h2 id="helpful-heading" className="text-2xl font-bold">
             {t("success.helpful")}
           </h2>
@@ -374,6 +424,9 @@ export default function StepPlayer({
           />
         </section>
         <button type="button" className="btn-secondary" onClick={() => setShowMe(false)}>
+          <span aria-hidden="true" className="mr-2">
+            ←
+          </span>
           {t("steps.backToMyStep")}
         </button>
       </div>
@@ -403,100 +456,107 @@ export default function StepPlayer({
       </button>
     );
 
+  const mood: MascotMood = help.kind === "waiting" ? "thinking" : "ready";
+  const dot = (i: number) => (i + 1 < step ? "done" : i + 1 === step ? "current" : "todo");
+
   return (
-    <div className="flex flex-1 flex-col gap-6">
-      <Link href="/app" className="btn-text self-start">
-        {t("common.home")}
-      </Link>
-      <div className="flex flex-col gap-2">
-        <p id="step-progress" className="text-xl font-semibold text-muted">
-          {t("steps.progress", { step, total })}
-        </p>
-        <div
-          role="progressbar"
-          aria-labelledby="step-progress"
-          aria-valuemin={0}
-          aria-valuemax={total}
-          aria-valuenow={step}
-          aria-valuetext={t("steps.progress", { step, total })}
-          className="h-4 w-full overflow-hidden rounded-full border-2 border-muted bg-surface"
-        >
-          <div className="h-full bg-primary" style={{ width: `${(step / total) * 100}%` }} />
-        </div>
+    <div className="flex flex-1 flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Link href="/app" className="btn-text">
+          {t("common.home")}
+        </Link>
+        {step > 1 && (
+          <button type="button" className="btn-text" onClick={() => goTo(step - 1)}>
+            {t("steps.previous")}
+          </button>
+        )}
       </div>
-      {cheer && (
-        <p role="status" lang={answer.language} className="text-2xl font-semibold">
-          {cheer}
-        </p>
-      )}
+
+      <div data-testid="step-mascot" data-mood={mood} className="flex min-h-16 items-end gap-3">
+        <Mascot mood={mood} size={3.5} />
+        {cheer && (
+          <p
+            role="status"
+            lang={answer.language}
+            className="mb-4 animate-fade-in rounded-3xl rounded-bl-md bg-card px-5 py-3 text-xl font-semibold shadow-card"
+          >
+            {cheer}
+          </p>
+        )}
+      </div>
+
       {warnings.length > 0 && (
         <section
           role="note"
           aria-label={t("steps.safetyLabel")}
-          className="flex flex-col gap-2 rounded-2xl border-2 border-warning bg-warning-surface p-4"
+          className="flex items-start gap-3 rounded-3xl border-2 border-warning bg-warning-surface p-4"
         >
-          {warnings.map((w) => (
-            <p key={w} className="text-xl font-semibold">
-              {w}
-            </p>
-          ))}
+          <Mascot mood="warning" size={3} animate={false} />
+          <div className="flex flex-col gap-2">
+            {warnings.map((w) => (
+              <p key={w} className="text-xl font-semibold">
+                {w}
+              </p>
+            ))}
+          </div>
         </section>
       )}
-      {step > 1 && (
-        <button type="button" className="btn-text self-start" onClick={() => goTo(step - 1)}>
-          {t("steps.previous")}
-        </button>
-      )}
-      <h1 lang={answer.language} className="text-3xl font-bold leading-snug">
-        {current.instruction}
-      </h1>
-      <p lang={answer.language} className="text-2xl text-muted">
-        {t("steps.lookFor", { text: current.lookFor })}
-      </p>
-      {canSpeak && (
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            {voice === "playing" ? (
-              <button type="button" className="btn-secondary" onClick={pause}>
-                {t("steps.pause")}
-              </button>
-            ) : (
-              <button type="button" className="btn-secondary" onClick={play}>
-                {t("steps.play")}
-              </button>
-            )}
-            <button type="button" className="btn-secondary" onClick={replay}>
-              {t("steps.replay")}
-            </button>
+
+      <section aria-labelledby="step-instruction" className="card flex flex-col gap-5 p-5 shadow-raised">
+        <p lang={answer.language} className="text-lg leading-snug font-bold text-primary">
+          {answer.title}
+        </p>
+        <div className="flex flex-col gap-2">
+          {/* The dots are the progress bar's picture; screen readers hear "Step 3 of 5" from its value. */}
+          <div
+            role="progressbar"
+            aria-labelledby="step-progress"
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={step}
+            aria-valuetext={t("steps.progress", { step, total })}
+            className="flex flex-wrap items-center gap-3"
+          >
+            {answer.steps.map((_, i) => (
+              <span
+                key={i}
+                data-testid="progress-dot"
+                data-state={dot(i)}
+                className={`block rounded-full ${
+                  dot(i) === "current"
+                    ? "h-7 w-7 bg-primary ring-4 ring-lavender-strong"
+                    : dot(i) === "done"
+                      ? "h-6 w-6 bg-primary"
+                      : "h-6 w-6 border-[3px] border-primary bg-transparent"
+                }`}
+              />
+            ))}
           </div>
-          <button type="button" className="btn-secondary" aria-pressed={slow} onClick={toggleSlow}>
-            {/* The tick shows the setting is on without relying on colour; aria-pressed tells screen readers. */}
-            <span aria-hidden="true">{slow ? "✓\u00a0" : ""}</span>
-            {t("steps.slower")}
+          <p id="step-progress" className="text-xl font-semibold text-muted">
+            {t("steps.progress", { step, total })}
+          </p>
+        </div>
+        <h1 id="step-instruction" lang={answer.language} className="text-3xl leading-snug font-extrabold">
+          {current.instruction}
+        </h1>
+        <p lang={answer.language} className="rounded-2xl bg-lavender p-4 text-xl">
+          {t("steps.lookFor", { text: current.lookFor })}
+        </p>
+        <div className="flex flex-col gap-3">
+          <button type="button" className="btn-primary min-h-20 text-2xl" onClick={() => goTo(step + 1)}>
+            <Label emoji="✓">{t("steps.next")}</Label>
+          </button>
+          <button type="button" className="btn-secondary min-h-16 text-xl" onClick={() => setShowMe(true)}>
+            <Label emoji="📱">{t("steps.showWhere")}</Label>
+          </button>
+          <button type="button" className="btn-secondary min-h-16 text-xl" onClick={openTrouble}>
+            <Label emoji="❓">{t("steps.stuck")}</Label>
           </button>
         </div>
-      )}
-      <div className="flex flex-col gap-3">
-        <button type="button" className="btn-secondary" onClick={showAgain} disabled={help.kind === "waiting"}>
-          {t("steps.showAgain")}
-        </button>
-        <button type="button" className="btn-secondary" onClick={openTrouble}>
-          {t("steps.stuck")}
-        </button>
-        <button type="button" className="btn-secondary" onClick={() => setAskFamily(true)}>
-          <span aria-hidden="true" className="mr-2">
-            👨‍👩‍👧
-          </span>
-          {t("askFamily.open")}
-        </button>
-        <button type="button" className="btn-secondary" onClick={() => setShowMe(true)}>
-          {t("steps.showOnScreen")}
-        </button>
-        {onReplace && <ExplainOtherLanguage guide={guide} mode="showMeHow" step={step} onReplace={onReplace} />}
-      </div>
+      </section>
 
       {(panel === "trouble" || panel === "troubleText") && (
-        <section aria-label={t("steps.helpLabel")} className="flex flex-col gap-4 rounded-2xl bg-surface p-4">
+        <section aria-label={t("steps.helpLabel")} className="card-lavender flex animate-fade-in flex-col gap-4">
           <h2 className="text-2xl font-bold">{t("steps.troubleHeading")}</h2>
           {panel === "trouble" ? (
             <>
@@ -519,7 +579,7 @@ export default function StepPlayer({
                 rows={2}
                 value={troubleText}
                 onChange={(e) => setTroubleText(e.target.value)}
-                className="rounded-2xl border-2 border-muted bg-background p-4 text-xl"
+                className="field"
               />
               {speakButton(setTroubleText)}
               <button type="submit" className="btn-primary">
@@ -532,7 +592,7 @@ export default function StepPlayer({
       )}
 
       {panel === "help" && help.kind !== "idle" && (
-        <section aria-label={t("steps.helpLabel")} className="flex flex-col gap-4 rounded-2xl bg-surface p-4">
+        <section aria-label={t("steps.helpLabel")} className="card-lavender flex animate-fade-in flex-col gap-4">
           {help.kind === "limit" ? (
             <SafetyNotice kind="daily_limit" />
           ) : (
@@ -554,7 +614,7 @@ export default function StepPlayer({
                     {t("steps.simpler")}
                   </button>
                   <button type="button" className="btn-secondary" onClick={() => setShowMe(true)}>
-                    {t("steps.showOnScreen")}
+                    <Label emoji="📱">{t("steps.showWhere")}</Label>
                   </button>
                   <form className="flex flex-col gap-3" onSubmit={submitSpecific}>
                     <label htmlFor="ask-specific" className="text-xl">
@@ -565,7 +625,7 @@ export default function StepPlayer({
                       rows={2}
                       value={specific}
                       onChange={(e) => setSpecific(e.target.value)}
-                      className="rounded-2xl border-2 border-muted bg-background p-4 text-xl"
+                      className="field"
                     />
                     {speakButton(setSpecific)}
                     <button type="submit" className="btn-primary">
@@ -580,18 +640,51 @@ export default function StepPlayer({
         </section>
       )}
 
+      <section aria-labelledby="more-help-heading" className="flex flex-col gap-3">
+        <h2 id="more-help-heading" className="text-lg font-bold text-muted">
+          {t("steps.moreHelp")}
+        </h2>
+        {/* Two columns only when there is room at the chosen text size. */}
+        <div className="@container">
+          <div className="grid grid-cols-1 gap-3 @[17rem]:grid-cols-2">
+            <button type="button" className="btn-soft" onClick={showAgain} disabled={help.kind === "waiting"}>
+              <Label emoji="🔁">{t("steps.showAgain")}</Label>
+            </button>
+            <button type="button" className="btn-soft" onClick={() => setAskFamily(true)}>
+              <Label emoji="👨‍👩‍👧">{t("askFamily.open")}</Label>
+            </button>
+            {canSpeak && (
+              <>
+                {voice === "playing" ? (
+                  <button type="button" className="btn-soft" onClick={pause}>
+                    <Label emoji="⏸">{t("steps.pause")}</Label>
+                  </button>
+                ) : (
+                  <button type="button" className="btn-soft" onClick={play}>
+                    <Label emoji="🔊">{t("steps.play")}</Label>
+                  </button>
+                )}
+                <button type="button" className="btn-soft" onClick={replay}>
+                  <Label emoji="↺">{t("steps.replay")}</Label>
+                </button>
+                <button type="button" className="btn-soft col-span-full" aria-pressed={slow} onClick={toggleSlow}>
+                  {/* The tick shows the setting is on without relying on colour; aria-pressed tells screen readers. */}
+                  <span aria-hidden="true">{slow ? "✓\u00a0" : "🐢\u00a0"}</span>
+                  {t("steps.slower")}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+        {onReplace && <ExplainOtherLanguage guide={guide} mode="showMeHow" step={step} onReplace={onReplace} />}
+      </section>
+
       {askFamily && (
         <AskFamilySheet
           context={{ goal: guideGoal(guide), step: { number: step, total, instruction: current.instruction } }}
           onClose={() => setAskFamily(false)}
         />
       )}
-
-      <div className="sticky bottom-0 mt-auto bg-background py-4">
-        <button type="button" className="btn-primary min-h-20 text-2xl" onClick={() => goTo(step + 1)}>
-          {t("steps.next")}
-        </button>
-      </div>
     </div>
   );
 }

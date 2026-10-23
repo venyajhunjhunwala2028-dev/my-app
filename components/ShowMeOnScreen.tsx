@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import DevicePicker from "@/components/DevicePicker";
+import Mascot from "@/components/Mascot";
 import PrivacyReminder from "@/components/PrivacyReminder";
 import SafetyNotice from "@/components/SafetyNotice";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
@@ -27,7 +28,12 @@ type State =
 
 const pct = (n: number) => `${(n * 100).toFixed(2)}%`;
 
-/** The screenshot with a thick circle and arrow on the place to tap, positioned in percentages of the image. */
+const screenshotSrc = (image: PreparedImage) => `data:${image.mediaType};base64,${image.base64}`;
+
+/**
+ * The magic lens: a glowing ring on the place to tap, the rest of the screenshot gently dimmed,
+ * and a "Tap here" tag beside the ring. Positioned in percentages of the image, so it matches at any size.
+ */
 function MarkedScreenshot({ image, box }: { image: PreparedImage; box: Box }) {
   const t = useT();
   const [zoomed, setZoomed] = useState(false);
@@ -36,8 +42,11 @@ function MarkedScreenshot({ image, box }: { image: PreparedImage; box: Box }) {
   // A little larger than the control, and never smaller than a fingertip.
   const diameter = (Math.max(box.width, box.height) * 1.4) / image.width;
   const arrowBelow = centreY < 0.25;
+  // Keep the tag inside the picture when the spot is near a side.
+  const align = centreX < 0.3 ? "left-0" : centreX > 0.7 ? "right-0" : "left-1/2 -translate-x-1/2";
+  const place = { left: pct(centreX), top: pct(centreY), width: pct(diameter), minWidth: "4.5rem", aspectRatio: "1" };
   return (
-    <div className={zoomed ? "overflow-auto" : undefined}>
+    <div className={zoomed ? "overflow-auto rounded-2xl" : undefined}>
       <button
         type="button"
         onClick={() => setZoomed((z) => !z)}
@@ -45,34 +54,65 @@ function MarkedScreenshot({ image, box }: { image: PreparedImage; box: Box }) {
         className="relative block"
         style={{ width: zoomed ? "200%" : "100%" }}
       >
-        {/* A data URL of the learner's own screenshot; next/image adds nothing here. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`data:${image.mediaType};base64,${image.base64}`}
-          alt={t("show.yourScreenshot")}
-          className="block w-full rounded-2xl border-2 border-muted"
-        />
-        <span
-          data-testid="tap-marker"
-          className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
-          style={{ left: pct(centreX), top: pct(centreY), width: pct(diameter), minWidth: "4.5rem", aspectRatio: "1" }}
-        >
+        {/* Clips the dimming shadow to the picture. */}
+        <span className="relative block overflow-hidden rounded-2xl border-2 border-lavender-strong">
+          {/* A data URL of the learner's own screenshot; next/image adds nothing here. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={screenshotSrc(image)} alt={t("show.yourScreenshot")} className="block w-full" />
+          <span data-testid="tap-marker" className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2" style={place}>
+            <span data-testid="tap-spotlight" className="spotlight absolute inset-0 animate-fade-in" />
+            <span data-testid="tap-circle" className="lens-ring absolute inset-0 animate-scale-in" />
+          </span>
+        </span>
+        {/* The tag sits outside the clipped picture, so it can overlap the edge of the ring. */}
+        <span aria-hidden="true" className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2" style={place}>
           <span
-            data-testid="tap-circle"
-            className="absolute inset-0 rounded-full border-[6px] border-warning shadow-[0_0_0_3px_white]"
-          />
-          <span
-            aria-hidden="true"
             data-testid="tap-arrow"
-            className={`absolute left-1/2 -translate-x-1/2 text-6xl font-black leading-none text-warning [text-shadow:0_0_4px_white] ${
-              arrowBelow ? "top-full" : "bottom-full"
-            }`}
+            className={`absolute ${align} ${arrowBelow ? "top-full mt-2" : "bottom-full mb-2"} animate-fade-in rounded-full bg-card px-3 py-1 text-base font-extrabold whitespace-nowrap text-primary shadow-raised`}
           >
-            {arrowBelow ? "↑" : "↓"}
+            {arrowBelow ? "↑ " : "↓ "}
+            {t("show.tapHere")}
           </span>
         </span>
       </button>
       <p className="mt-2 text-lg text-muted">{zoomed ? t("show.tapSmaller") : t("show.tapBigger")}</p>
+    </div>
+  );
+}
+
+const LENS_STEPS = ["📷", "🔎", "✨", "✓"];
+
+/** While the screenshot is read: the picture with a scanning line, and 📷 → 🔎 → ✨ → ✓ lighting up in turn. */
+function Scanning({ image }: { image: PreparedImage }) {
+  const t = useT();
+  return (
+    <div className="flex flex-col gap-4">
+      <div role="status" className="card-lavender flex items-center gap-3">
+        <Mascot mood="thinking" size={3} />
+        <div className="flex min-w-0 flex-col gap-2">
+          <p className="text-xl font-bold">{t("show.looking")}</p>
+          <p aria-hidden="true" className="flex flex-wrap items-center gap-1 text-lg">
+            {LENS_STEPS.map((icon, i) => (
+              <span key={icon} className="flex items-center gap-1">
+                <span className="lens-step inline-block" style={{ animationDelay: `${i * 0.6}s` }}>
+                  {icon}
+                </span>
+                {i < LENS_STEPS.length - 1 && <span className="text-sm text-muted">→</span>}
+              </span>
+            ))}
+          </p>
+        </div>
+      </div>
+      <div
+        data-testid="scanning"
+        className="relative mx-auto w-full max-w-xs overflow-hidden rounded-2xl border-2 border-lavender-strong shadow-card"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={screenshotSrc(image)} alt={t("show.yourScreenshot")} className="block w-full" />
+        <div className="pointer-events-none absolute inset-0 bg-[#7c74ff]/10">
+          <div className="scan-line" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -187,8 +227,11 @@ export default function ShowMeOnScreen({
     if (answer.kind === "not_found") {
       return (
         <div className="flex flex-col gap-6">
-          <section className="flex flex-col gap-3 rounded-2xl bg-surface p-4">
-            <h2 className="text-2xl font-bold">{t("show.notFound")}</h2>
+          <section className="card flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <Mascot mood="thinking" size={3.5} animate={false} />
+              <h2 className="text-2xl font-bold">{t("show.notFound")}</h2>
+            </div>
             <p lang={language} className="text-xl">
               {answer.description}
             </p>
@@ -199,6 +242,13 @@ export default function ShowMeOnScreen({
     }
     return (
       <div className="flex flex-col gap-4">
+        <p
+          role="status"
+          className="flex animate-scale-in items-center gap-2 self-start rounded-full bg-primary px-5 py-2 text-lg font-bold text-primary-foreground shadow-raised"
+        >
+          <span aria-hidden="true">🔎</span>
+          {t("show.found")}
+        </p>
         <p lang={language} className={asking ? "text-3xl font-bold" : "text-2xl font-semibold"}>
           {answer.instruction}
         </p>
@@ -207,6 +257,8 @@ export default function ShowMeOnScreen({
       </div>
     );
   }
+
+  if (state.kind === "waiting" && image) return <Scanning image={image} />;
 
   if (chosenDevice === null) {
     return (
@@ -226,9 +278,9 @@ export default function ShowMeOnScreen({
         {/* A small preview, so the learner can see it is the right screen. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`data:${image.mediaType};base64,${image.base64}`}
+          src={screenshotSrc(image)}
           alt={t("show.chosenScreenshot")}
-          className="mx-auto block max-h-64 w-auto rounded-2xl border-2 border-muted"
+          className="mx-auto block max-h-64 w-auto rounded-2xl border-2 border-lavender-strong shadow-card"
         />
         <label htmlFor="press-question" className="text-2xl font-bold">
           {t("show.whatToDo")}
@@ -239,7 +291,7 @@ export default function ShowMeOnScreen({
           rows={3}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          className="rounded-2xl border-2 border-muted p-4 text-xl"
+          className="field"
         />
         {dictation.supported && (
           <button
@@ -275,8 +327,13 @@ export default function ShowMeOnScreen({
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-3">
-        <h2 className="text-2xl font-bold">{t("show.takeFirst")}</h2>
+      <section className="card flex flex-col gap-3">
+        <h2 className="text-2xl font-bold">
+          <span aria-hidden="true" className="mr-2">
+            📸
+          </span>
+          {t("show.takeFirst")}
+        </h2>
         <p className="text-xl text-muted">{t("show.whatIsScreenshot")}</p>
         <ol lang={screenshotHowTo ? language : uiLanguage} className="flex list-decimal flex-col gap-2 pl-8 text-xl">
           {howTo.map((line) => (

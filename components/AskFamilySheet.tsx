@@ -111,7 +111,7 @@ export default function AskFamilySheet({ context, onClose }: { context: FamilyHe
         <button type="button" className="btn-text self-start" onClick={onClose}>
           {t("askFamily.close")}
         </button>
-        <h2 id="ask-family-heading" ref={heading} tabIndex={-1} className="text-3xl font-bold outline-none">
+        <h2 id="ask-family-heading" ref={heading} tabIndex={-1} className="text-3xl font-extrabold outline-none">
           <span aria-hidden="true">👨‍👩‍👧 </span>
           {t("askFamily.title")}
         </h2>
@@ -120,7 +120,7 @@ export default function AskFamilySheet({ context, onClose }: { context: FamilyHe
           <p className="text-2xl font-semibold">
             {contact ? t("askFamily.willSend", { name: contact.name }) : t("askFamily.chooseWho")}
           </p>
-          <div data-testid="family-message" className="flex flex-col gap-3 rounded-2xl border-2 border-muted bg-surface p-4">
+          <div data-testid="family-message" className="flex flex-col gap-3 rounded-3xl rounded-bl-md bg-card p-5 shadow-card">
             {message.lines.map((line, i) => (
               <p key={i} className={i === message.lines.length - 1 ? "text-xl text-muted" : "text-2xl"}>
                 {line}

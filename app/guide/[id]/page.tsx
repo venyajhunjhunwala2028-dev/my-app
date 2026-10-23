@@ -3,6 +3,7 @@
 import { Suspense, use, useState } from "react";
 import Link from "next/link";
 import ExplanationView, { type ExplanationAnswer } from "@/components/ExplanationView";
+import Mascot from "@/components/Mascot";
 import StepPlayer, { type StepsAnswer } from "@/components/StepPlayer";
 import { useT } from "@/lib/i18n";
 import { getGuide, type SavedGuide } from "@/lib/store/localStore";
@@ -57,7 +58,10 @@ function Guide({ params }: { params: Promise<{ id: string }> }) {
   }
   return (
     <>
-      <h1 className="text-3xl font-bold">{t("guide.notFound")}</h1>
+      <div className="card flex items-center gap-4">
+        <Mascot mood="thinking" size={4} />
+        <h1 className="text-3xl font-bold">{t("guide.notFound")}</h1>
+      </div>
       <Link href="/app" className="btn-primary">
         {t("common.goHome")}
       </Link>

@@ -1,6 +1,7 @@
 "use client";
 
 import CallFamily from "@/components/CallFamily";
+import Mascot from "@/components/Mascot";
 import { useT, useUiLanguage, type MessageKey, type T } from "@/lib/i18n";
 import type { RequestError } from "@/lib/http/postJson";
 
@@ -33,16 +34,27 @@ export default function WaitingAndErrors({
   const english = useUiLanguage() === "en";
   if (waiting) {
     return (
-      <p role="status" className="rounded-2xl bg-surface p-4 text-2xl font-semibold">
-        {t("common.thinking")}
-      </p>
+      <div role="status" className="card-lavender flex animate-fade-in items-center gap-4">
+        <Mascot mood="thinking" size={3.5} />
+        <p className="flex flex-col gap-2 text-2xl font-semibold">
+          {t("common.thinking")}
+          <span aria-hidden="true" className="flex gap-2">
+            <span className="waiting-dot" />
+            <span className="waiting-dot [animation-delay:150ms]" />
+            <span className="waiting-dot [animation-delay:300ms]" />
+          </span>
+        </p>
+      </div>
     );
   }
   if (!error) return null;
   return (
     <div className="flex flex-col gap-4">
-      <section role="alert" className="flex flex-col gap-4 rounded-2xl border-2 border-warning bg-warning-surface p-4">
-        <p className="text-xl">{learnerMessage(error, english, t)}</p>
+      <section role="alert" className="card flex flex-col gap-4 border-2 border-warning/40">
+        <div className="flex items-center gap-4">
+          <Mascot mood="warning" size={3.5} animate={false} />
+          <p className="text-xl">{learnerMessage(error, english, t)}</p>
+        </div>
         <button type="button" className="btn-primary" onClick={onRetry}>
           {t("common.tryAgain")}
         </button>

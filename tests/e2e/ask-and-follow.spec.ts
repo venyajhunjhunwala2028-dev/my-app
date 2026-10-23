@@ -9,7 +9,7 @@ async function askForGuide(page: Page) {
   await expect(page.getByRole("heading", { name: "Tech Helper" })).toBeVisible();
   // Pixel 7 is Android Chrome, so the iPhone install walkthrough must not appear.
   await expect(page.getByRole("heading", { name: /put Tech Helper on the home screen/ })).toHaveCount(0);
-  await page.getByLabel("What do you need help with?").fill(QUESTION);
+  await page.getByLabel("What would you like help with?").fill(QUESTION);
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   await expect(page).toHaveURL(/\/guide\/[^/]+$/);
   await expect(page.getByText("Step 1 of 3")).toBeVisible();
@@ -22,7 +22,7 @@ test("F1: ask, follow all 3 steps, and find the question in My previous help", a
   for (const [i, instruction] of steps.entries()) {
     await expect(page.getByText(`Step ${i + 1} of 3`)).toBeVisible();
     await expect(page.getByRole("heading", { level: 1, name: instruction })).toBeVisible();
-    await page.getByRole("button", { name: "Done, next step" }).click();
+    await page.getByRole("button", { name: "I did it" }).click();
   }
 
   await expect(page.getByRole("heading", { name: "You did it!" })).toBeVisible();
@@ -37,7 +37,7 @@ test("F1: ask, follow all 3 steps, and find the question in My previous help", a
 test("F3: reopen a saved guide from the home page and start at step 1", async ({ page }) => {
   await askForGuide(page);
   // Move on so the saved position is not step 1.
-  await page.getByRole("button", { name: "Done, next step" }).click();
+  await page.getByRole("button", { name: "I did it" }).click();
   await expect(page.getByText("Step 2 of 3")).toBeVisible();
 
   await page.getByRole("link", { name: "Home" }).click();

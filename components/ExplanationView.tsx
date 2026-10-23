@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import AskFamilySheet from "@/components/AskFamilySheet";
+import Mascot from "@/components/Mascot";
 import SafetyNotice from "@/components/SafetyNotice";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import { askHelper } from "@/lib/ai/askClient";
@@ -185,12 +186,17 @@ export default function ExplanationView({
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 lang={answer.language} className="text-3xl font-bold">
-        {answer.title}
-      </h1>
-      <p lang={answer.language} className="text-2xl">
-        {answer.text}
-      </p>
+      <section className="card flex flex-col gap-4 p-5 shadow-raised">
+        <div className="flex items-center gap-3">
+          <Mascot mood="ready" size={3.5} />
+          <h1 lang={answer.language} className="text-3xl leading-snug font-extrabold">
+            {answer.title}
+          </h1>
+        </div>
+        <p lang={answer.language} className="text-2xl">
+          {answer.text}
+        </p>
+      </section>
       {status.kind === "limit" ? (
         <SafetyNotice kind="daily_limit" />
       ) : (

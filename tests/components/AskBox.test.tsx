@@ -65,7 +65,7 @@ describe("AskBox", () => {
   it("sends a typed question and goes to the new guide", async () => {
     const fetchMock = mockFetch(stepsAnswer);
     render(<AskBox />);
-    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I send a photo?");
+    await userEvent.type(screen.getByLabelText("What would you like help with?"), "How do I send a photo?");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
 
     await waitFor(() => expect(push).toHaveBeenCalled());
@@ -92,7 +92,7 @@ describe("AskBox", () => {
     mockFetch(stepsAnswer);
     render(<AskBox />);
     expect(screen.queryByRole("button", { name: "Speak" })).not.toBeInTheDocument();
-    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I send a photo?");
+    await userEvent.type(screen.getByLabelText("What would you like help with?"), "How do I send a photo?");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
     await waitFor(() => expect(push).toHaveBeenCalled());
   });
@@ -107,7 +107,7 @@ describe("AskBox", () => {
       lastRecognition().onend?.();
     });
     expect(screen.getByText(/microphone is not allowed/i)).toBeInTheDocument();
-    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I send a photo?");
+    await userEvent.type(screen.getByLabelText("What would you like help with?"), "How do I send a photo?");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
     await waitFor(() => expect(push).toHaveBeenCalled());
   });
@@ -121,7 +121,7 @@ describe("AskBox", () => {
       lastRecognition().onresult?.({ results: [[{ transcript: "how do I send a photo" }]] });
       lastRecognition().onend?.();
     });
-    expect(screen.getByLabelText("What do you need help with?")).toHaveValue("how do I send a photo");
+    expect(screen.getByLabelText("What would you like help with?")).toHaveValue("how do I send a photo");
     expect(fetchMock).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -132,7 +132,7 @@ describe("AskBox", () => {
     setFamilyContact({ name: "Priya", phone: "+44 7700 900123" });
     for (let i = 0; i < 30; i++) requestAllowance();
     render(<AskBox />);
-    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I send a photo?");
+    await userEvent.type(screen.getByLabelText("What would you like help with?"), "How do I send a photo?");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
 
     expect(await screen.findByText(/ready again tomorrow/)).toBeInTheDocument();
@@ -145,7 +145,7 @@ describe("AskBox", () => {
     mockFetch({ kind: "scam_warning", language: "en", message: "Do not share the code. Call your family." });
     setFamilyContact({ name: "Priya", phone: "+44 7700 900123" });
     render(<AskBox />);
-    await userEvent.type(screen.getByLabelText("What do you need help with?"), "My bank called and asked for a code");
+    await userEvent.type(screen.getByLabelText("What would you like help with?"), "My bank called and asked for a code");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
 
     expect(await screen.findByText("Do not share the code. Call your family.")).toBeInTheDocument();
@@ -172,7 +172,7 @@ describe("AskBox", () => {
       rec.onresult?.({ results: [[{ transcript: "something else entirely" }]] });
       rec.onend?.();
     });
-    expect(screen.getByLabelText("What do you need help with?")).toHaveValue("how do I send a photo");
+    expect(screen.getByLabelText("What would you like help with?")).toHaveValue("how do I send a photo");
     const body = JSON.parse(String(((fetchMock.mock.calls[0] as unknown[])[1] as RequestInit).body));
     expect(body).toMatchObject({ question: "how do I send a photo" });
   });
@@ -188,7 +188,7 @@ describe("AskBox", () => {
   it("shows the ready-tomorrow message when the server rate-limits the request (HTTP 429)", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("Too Many Requests", { status: 429 })));
     render(<AskBox />);
-    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I send a photo?");
+    await userEvent.type(screen.getByLabelText("What would you like help with?"), "How do I send a photo?");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
     expect(await screen.findByText(/ready again tomorrow/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
@@ -210,7 +210,7 @@ describe("AskBox", () => {
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(stepsAnswer)));
     vi.stubGlobal("fetch", fetchMock);
     render(<AskBox />);
-    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I post a picture?");
+    await userEvent.type(screen.getByLabelText("What would you like help with?"), "How do I post a picture?");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
     await userEvent.click(await screen.findByRole("button", { name: "WhatsApp" }));
 
@@ -227,7 +227,7 @@ describe("AskBox", () => {
       examples: ["How do I make a video call?", "How do I send a photo?", "How do I make the text bigger?"],
     });
     render(<AskBox />);
-    await userEvent.type(screen.getByLabelText("What do you need help with?"), "help");
+    await userEvent.type(screen.getByLabelText("What would you like help with?"), "help");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
 
     expect(await screen.findByText(/not completely sure what you mean/)).toBeInTheDocument();
@@ -251,7 +251,7 @@ describe("AskBox", () => {
       stepsAnswer,
     );
     render(<AskBox />);
-    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I take a screenshot?");
+    await userEvent.type(screen.getByLabelText("What would you like help with?"), "How do I take a screenshot?");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
 
     expect(await screen.findByRole("heading", { name: "Which device are you using?" })).toBeInTheDocument();
@@ -268,7 +268,7 @@ describe("AskBox", () => {
       stepsAnswer,
     );
     render(<AskBox />);
-    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I send it?");
+    await userEvent.type(screen.getByLabelText("What would you like help with?"), "How do I send it?");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
     await userEvent.click(await screen.findByRole("button", { name: "Video" }));
     await waitFor(() => expect(push).toHaveBeenCalled());
@@ -286,7 +286,7 @@ describe("AskBox", () => {
       stepsAnswer,
     );
     render(<AskBox />);
-    await userEvent.type(screen.getByLabelText("What do you need help with?"), "help");
+    await userEvent.type(screen.getByLabelText("What would you like help with?"), "help");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
     await userEvent.click(await screen.findByRole("button", { name: "How do I send a photo?" }));
 

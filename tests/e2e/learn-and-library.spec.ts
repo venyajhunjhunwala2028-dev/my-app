@@ -28,7 +28,7 @@ test("Teach me: finish a lesson and see it marked Done", async ({ page }) => {
   await expect(page).toHaveURL(/\/guide\/[^/]+$/);
   for (let i = 1; i <= 3; i++) {
     await expect(page.getByText(`Step ${i} of 3`)).toBeVisible();
-    await page.getByRole("button", { name: "Done, next step" }).click();
+    await page.getByRole("button", { name: "I did it" }).click();
   }
   await expect(page.getByRole("heading", { name: "You did it!" })).toBeVisible();
 

@@ -81,7 +81,7 @@ describe("Hindi interface", () => {
     saveGuide({ id: "story", question: "How do I post a story?", title: "Post a story", answer: stepsAnswer("en") });
     await openGuide("story");
     expect(screen.getByText("कुल 3 में से चरण 1")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "हो गया, अगला चरण" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "मैंने कर लिया" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "मुझे दिक्कत आ रही है" })).toBeInTheDocument();
     // The AI's own text stays as it came.
     expect(screen.getByRole("heading", { level: 1, name: "Do thing 1" })).toBeInTheDocument();

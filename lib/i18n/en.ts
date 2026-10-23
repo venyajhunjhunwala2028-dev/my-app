@@ -29,11 +29,38 @@ export const en = {
   "home.callFamily": "Call my family",
   "home.learn": "Teach me",
   "home.library": "Help library",
+  "home.greeting": "Hi! I'm your Tech Helper",
+  "home.hero": "Tell me what you're trying to do, and I'll guide you one step at a time.",
+  "home.tryAsking": "Try asking:",
+  "home.example.1": "How do I make a video call on WhatsApp?",
+  "home.example.2": "How do I make the text bigger?",
+  "home.example.3": "How do I post a photo on Instagram?",
+  "home.tag.ask": "Ask",
+  "home.tag.speak": "Speak",
+  "home.tag.show": "Show",
+  "home.askDesc": "Type your question in your own words.",
+  "home.speakDesc": "Just say it out loud.",
+  "home.pressDesc": "Send a screenshot and I'll point to what to tap.",
+  "home.more": "More ways I can help",
 
   // Teach me
   "learn.title": "Teach me",
   "learn.intro": "Pick a lesson. I'll show you how, one step at a time.",
   "learn.progress": "You've finished {done} of {total} lessons",
+  "confidence.title": "Your Tech Confidence",
+  "confidence.level": "Level {level}",
+  "confidence.level.1": "Just starting",
+  "confidence.level.2": "Finding my way",
+  "confidence.level.3": "Getting comfortable",
+  "confidence.level.4": "Confident",
+  "confidence.level.5": "Tech expert",
+  "confidence.toNext": "Finish {count} more to reach the next level.",
+  "confidence.top": "You've reached the top level. Wonderful!",
+  "confidence.learned": "You've learned:",
+  "confidence.nextUp": "Next up:",
+  "confidence.allLessons": "You've finished every lesson!",
+  "confidence.private": "This stays on your phone.",
+  "confidence.keepLearning": "Keep learning",
 
   // Help library
   "library.title": "Help library",
@@ -42,7 +69,7 @@ export const en = {
   "library.pickQuestion": "Tap a question:",
 
   // Ask box
-  "ask.label": "What do you need help with?",
+  "ask.label": "What would you like help with?",
   "ask.youAsked": "You asked:",
   "ask.different": "Ask a different question",
   "ask.couldAsk": "You could ask:",
@@ -67,7 +94,7 @@ export const en = {
 
   // Step player
   "steps.progress": "Step {step} of {total}",
-  "steps.cheer": "Great, you're doing it.",
+  "steps.cheer": "Great! You're doing it.",
   "steps.safetyLabel": "Safety warning",
   "steps.previous": "Previous step",
   "steps.lookFor": "Look for: {text}",
@@ -78,6 +105,8 @@ export const en = {
   "steps.showAgain": "Show me again",
   "steps.stuck": "I'm stuck",
   "steps.showOnScreen": "Show me on my screen",
+  "steps.showWhere": "Show me where",
+  "steps.moreHelp": "More help",
   "steps.backToMyStep": "Back to my step",
   "steps.helpLabel": "Help with this step",
   "steps.troubleHeading": "What's the trouble?",
@@ -91,7 +120,7 @@ export const en = {
   "steps.replayHelp": "Replay this help",
   "steps.simpler": "Explain more simply",
   "steps.askSpecific": "Ask something specific",
-  "steps.next": "Done, next step",
+  "steps.next": "I did it",
 
   // Finished
   "success.title": "You did it!",
@@ -104,6 +133,7 @@ export const en = {
 
   // Show me on my screen / What do I press?
   "press.title": "What do I press?",
+  "press.lead": "Not sure what to press? Take a screenshot and I'll point it out.",
   "show.bigger": "Make the picture bigger",
   "show.smaller": "Make the picture smaller",
   "show.tapBigger": "Tap the picture to make it bigger.",
@@ -112,6 +142,9 @@ export const en = {
   "show.chosenScreenshot": "The screenshot you chose",
   "show.anotherScreen": "Ask about another screen",
   "show.notFound": "I couldn't find it on your screen",
+  "show.looking": "Looking at your screenshot…",
+  "show.found": "Tech Helper found it",
+  "show.tapHere": "Tap here.",
   "show.whichDevice": "Which device are you using?",
   "show.whatToDo": "What do you want to do?",
   "show.example": "For example: send this photo, or turn on wifi.",
@@ -145,14 +178,19 @@ export const en = {
 
   // Is this a scam?
   "scam.title": "Is this a scam?",
-  "scam.intro": "Got a message, email or link you are not sure about? I will check it for you.",
+  "scam.lead": "Not sure about a message? Send it to me. I'll help you check.",
+  "scam.upload": "Upload screenshot",
+  "scam.paste": "Paste message",
+  "scam.pasteClipboard": "Paste from clipboard",
+  "scam.why": "Why?",
+  "scam.whatToDo": "What to do",
   "scam.neverShare": "Never share OTPs, passwords, PINs or card numbers with anyone.",
   "scam.nothing": "Please paste a message or add a screenshot first.",
   "scam.privacy":
     "Before you add a screenshot, make sure it shows no passwords, codes or bank details. This app doesn't save your screenshot; it's sent to an AI service to be checked.",
-  "scam.verdict.safe": "Looks safe",
+  "scam.verdict.safe": "Probably safe",
   "scam.verdict.careful": "Be careful",
-  "scam.verdict.scam": "Possible scam",
+  "scam.verdict.scam": "Potential scam",
   "scam.pasteLabel": "Paste a message, email or link",
   "scam.pasteHint": "Press and hold in the box, then tap Paste.",
   "scam.orScreenshot": "Or add a screenshot",
