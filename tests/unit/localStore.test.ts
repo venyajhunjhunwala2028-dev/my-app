@@ -175,4 +175,83 @@ describe("localStore", () => {
     expect(stored.guides).toHaveLength(6);
     expect(stored.guides.map((g: { id: string }) => g.id)).not.toContain("g1");
   });
+  it("defaults the interface language to English, or Hindi when the device language is Hindi", async () => {
+    let store = await loadStore();
+    expect(store.getUiLanguage()).toBe("en");
+    vi.spyOn(navigator, "language", "get").mockReturnValue("hi-IN");
+    store = await loadStore();
+    expect(store.getUiLanguage()).toBe("hi");
+  });
+
+  it("remembers the interface language after reload and ignores an unknown one", async () => {
+    let store = await loadStore();
+    store.setUiLanguage("hi");
+    store = await loadStore();
+    expect(store.getUiLanguage()).toBe("hi");
+    localStorage.setItem(KEY, JSON.stringify({ uiLanguage: "xx" }));
+    store = await loadStore();
+    expect(store.getUiLanguage()).toBe("en");
+  });
+
+  it("answers in the interface language unless a separate speaking language was chosen", async () => {
+    let store = await loadStore();
+    store.setUiLanguage("hi");
+    expect(store.getSpeakingLanguage()).toBe("hi-IN");
+    store.setSpeakingLanguage("ta-IN");
+    store = await loadStore();
+    expect(store.getSpeakingLanguage()).toBe("ta-IN");
+    store.setSpeakingLanguage(null);
+    expect(store.getSpeakingLanguage()).toBe("hi-IN");
+  });
+
+  it("keeps the device's own English variant when the interface is English by default", async () => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-GB");
+    const store = await loadStore();
+    expect(store.getSpeakingLanguage()).toBe("en-GB");
+  });
+
+  it("treats a saved speaking language equal to the device language as not chosen (older saves)", async () => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
+    localStorage.setItem(KEY, JSON.stringify({ speakingLanguage: "en-US", uiLanguage: "hi" }));
+    const store = await loadStore();
+    expect(store.getSpeakingLanguage()).toBe("hi-IN");
+  });
+
+  it("remembers the explanation level, simple by default", async () => {
+    let store = await loadStore();
+    expect(store.getLevel()).toBe("simple");
+    store.setLevel("detailed");
+    store = await loadStore();
+    expect(store.getLevel()).toBe("detailed");
+    localStorage.setItem(KEY, JSON.stringify({ level: "expert" }));
+    store = await loadStore();
+    expect(store.getLevel()).toBe("simple");
+  });
+
+  it("deletes one guide and clears it as the current guide", async () => {
+    let store = await loadStore();
+    store.saveGuide({ id: "a", question: "qa", title: "t", answer: {} });
+    store.saveGuide({ id: "b", question: "qb", title: "t", answer: {} });
+    store.setCurrentGuide("a");
+    store.deleteGuide("b");
+    expect(store.getCurrentGuide()?.id).toBe("a");
+    store.deleteGuide("a");
+    store = await loadStore();
+    expect(store.getSavedGuides()).toEqual([]);
+    expect(store.getCurrentGuide()).toBeNull();
+    expect(JSON.parse(localStorage.getItem(KEY) ?? "{}").currentGuideId).toBeNull();
+  });
+
+  it("deletes all guides and the current guide, keeping settings", async () => {
+    let store = await loadStore();
+    store.saveGuide({ id: "a", question: "qa", title: "t", answer: {} });
+    store.saveGuide({ id: "b", question: "qb", title: "t", answer: {} });
+    store.setCurrentGuide("b");
+    store.setTextSize("xl");
+    store.deleteAllGuides();
+    store = await loadStore();
+    expect(store.getSavedGuides()).toEqual([]);
+    expect(store.getCurrentGuide()).toBeNull();
+    expect(store.getTextSize()).toBe("xl");
+  });
 });

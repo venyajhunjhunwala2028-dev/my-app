@@ -33,6 +33,8 @@ export interface AskRequest {
   trouble?: string;
   /** mode "showAgain": the explanation shown last time, so the new one is different. */
   previousExplanation?: string;
+  /** Set by "Explain this in Hindi/English": answer in exactly this language, whatever the question is written in. */
+  answerLanguage?: string;
 }
 export interface Step {
   instruction: string;

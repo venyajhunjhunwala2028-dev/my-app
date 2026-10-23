@@ -91,6 +91,10 @@ function parseRequest(raw: unknown): AskRequest | Invalid {
     if (typeof raw.language !== "string" || raw.language.length > MAX_LANGUAGE_CHARS) return "bad_request";
     req.language = raw.language;
   }
+  if (raw.answerLanguage !== undefined) {
+    if (typeof raw.answerLanguage !== "string" || raw.answerLanguage.length > MAX_LANGUAGE_CHARS) return "bad_request";
+    if (raw.answerLanguage.trim()) req.answerLanguage = raw.answerLanguage.trim();
+  }
   if (raw.devices !== undefined) {
     const d = raw.devices;
     if (!Array.isArray(d) || d.length > MAX_DEVICES) return "bad_request";

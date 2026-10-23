@@ -8,6 +8,7 @@ import SafetyNotice from "@/components/SafetyNotice";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import { askHelper } from "@/lib/ai/askClient";
 import type { AskAnswer, ClarifyAbout } from "@/lib/ai/schemas";
+import { useT, type MessageKey } from "@/lib/i18n";
 import { isSpeechSupported, startListening, type ListenError } from "@/lib/speech/speech";
 import {
   getDevices,
@@ -30,10 +31,10 @@ type Status =
 
 type Mic = "idle" | "listening" | ListenError;
 
-const MIC_HELP: Record<ListenError, string> = {
-  denied: "The microphone is not allowed. You can type your question in the box instead.",
-  "no-speech": "I didn't hear anything.",
-  failed: "The microphone didn't work. You can type your question in the box instead.",
+const MIC_HELP: Record<ListenError, MessageKey> = {
+  denied: "ask.mic.denied",
+  "no-speech": "ask.mic.noSpeech",
+  failed: "ask.mic.failed",
 };
 
 /** Lets the home screen's big buttons put the cursor in the box or start the microphone. */
@@ -50,6 +51,7 @@ export default function AskBox({
   onListeningChange?: (listening: boolean) => void;
 } = {}) {
   const router = useRouter();
+  const t = useT();
   // The store and speech support exist only in the browser.
   const isClient = useIsClient();
   const speech = useSyncExternalStore(noSubscribe, isSpeechSupported, () => false);
@@ -212,7 +214,7 @@ export default function AskBox({
 
   const askAgain = (
     <button type="button" className="btn-text" onClick={() => setStatus({ kind: "idle" })}>
-      Ask a different question
+      {t("ask.different")}
     </button>
   );
 
@@ -230,7 +232,7 @@ export default function AskBox({
     return (
       <div lang={status.language} className="flex flex-col gap-4">
         <p className="text-xl text-muted">
-          You asked: <span className="font-semibold text-foreground">{question.trim()}</span>
+          {t("ask.youAsked")} <span className="font-semibold text-foreground">{question.trim()}</span>
         </p>
         <DevicePicker prompt={status.prompt} options={status.options} onChoose={(c) => choose(status.about, c)} />
         {askAgain}
@@ -253,30 +255,30 @@ export default function AskBox({
               onClick={toggleMic}
               disabled={waiting}
             >
-              {listening ? "Listening… tap to stop" : "Speak"}
+              {listening ? t("common.listeningTapStop") : t("common.speak")}
             </button>
           )}
           {mic !== "idle" && !listening && (
             <div role="status" className="flex flex-col gap-3">
-              <p className="text-xl">{MIC_HELP[mic]}</p>
+              <p className="text-xl">{t(MIC_HELP[mic])}</p>
               {mic === "no-speech" && (
                 <button type="button" className="btn-secondary" onClick={toggleMic}>
-                  Try again
+                  {t("common.tryAgain")}
                 </button>
               )}
             </div>
           )}
           <p className="text-xl">
-            Speaking language: <span lang={speakingLanguage}>{languageName(speakingLanguage)}</span>
+            {t("ask.speakingLanguage")} <span lang={speakingLanguage}>{languageName(speakingLanguage)}</span>
           </p>
           <button type="button" className="btn-text" onClick={() => setChoosingLanguage(true)}>
-            Change language
+            {t("ask.changeLanguage")}
           </button>
         </div>
       )}
       <form className="flex flex-col gap-4" onSubmit={submit}>
         <label htmlFor="question" className="text-xl">
-          What do you need help with?
+          {t("ask.label")}
         </label>
         <textarea
           ref={textBox}
@@ -288,7 +290,7 @@ export default function AskBox({
           className="rounded-2xl border-2 border-muted p-4 text-xl"
         />
         <button type="submit" className="btn-primary" disabled={waiting}>
-          Ask
+          {t("common.ask")}
         </button>
       </form>
       {status.kind === "message" && (
@@ -296,7 +298,7 @@ export default function AskBox({
           <p>{status.message}</p>
           {status.examples && status.examples.length > 0 && (
             <>
-              <p className="font-semibold">You could ask:</p>
+              <p className="font-semibold">{t("ask.couldAsk")}</p>
               <ul className="flex flex-col gap-3">
                 {status.examples.map((example) => (
                   <li key={example}>

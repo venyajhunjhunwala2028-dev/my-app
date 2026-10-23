@@ -6,7 +6,8 @@ import PrivacyReminder from "@/components/PrivacyReminder";
 import SafetyNotice from "@/components/SafetyNotice";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import type { Box, LocateAnswer } from "@/lib/ai/locate";
-import { screenshotHowTo as howToFor } from "@/lib/device";
+import { deviceLabel, screenshotHowTo as howToFor } from "@/lib/device";
+import { useT, useUiLanguage, type MessageKey } from "@/lib/i18n";
 import { postJson } from "@/lib/http/postJson";
 import { prepareScreenshot } from "@/lib/image/prepare";
 import type { PreparedImage } from "@/lib/image/resize";
@@ -14,12 +15,11 @@ import { MIC_HELP, useDictation } from "@/lib/speech/useDictation";
 import { requestAllowance, setPreferredDevice } from "@/lib/store/localStore";
 
 const DEVICE_OPTIONS = ["iPhone", "Android phone", "iPad or tablet", "Windows computer", "Mac"];
-const NO_QUESTION = "Please say or type what you want to do.";
 
 type State =
-  | { kind: "idle"; problem?: string }
+  | { kind: "idle"; problem?: MessageKey }
   /** "What do I press?" only: the picture is ready and the learner says what they want to do. */
-  | { kind: "question"; problem?: string }
+  | { kind: "question"; problem?: MessageKey }
   | { kind: "limit" }
   | { kind: "waiting" }
   | { kind: "error"; error: RequestError }
@@ -29,6 +29,7 @@ const pct = (n: number) => `${(n * 100).toFixed(2)}%`;
 
 /** The screenshot with a thick circle and arrow on the place to tap, positioned in percentages of the image. */
 function MarkedScreenshot({ image, box }: { image: PreparedImage; box: Box }) {
+  const t = useT();
   const [zoomed, setZoomed] = useState(false);
   const centreX = (box.x + box.width / 2) / image.width;
   const centreY = (box.y + box.height / 2) / image.height;
@@ -40,7 +41,7 @@ function MarkedScreenshot({ image, box }: { image: PreparedImage; box: Box }) {
       <button
         type="button"
         onClick={() => setZoomed((z) => !z)}
-        aria-label={zoomed ? "Make the picture smaller" : "Make the picture bigger"}
+        aria-label={zoomed ? t("show.smaller") : t("show.bigger")}
         className="relative block"
         style={{ width: zoomed ? "200%" : "100%" }}
       >
@@ -48,7 +49,7 @@ function MarkedScreenshot({ image, box }: { image: PreparedImage; box: Box }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`data:${image.mediaType};base64,${image.base64}`}
-          alt="Your screenshot"
+          alt={t("show.yourScreenshot")}
           className="block w-full rounded-2xl border-2 border-muted"
         />
         <span
@@ -71,7 +72,7 @@ function MarkedScreenshot({ image, box }: { image: PreparedImage; box: Box }) {
           </span>
         </span>
       </button>
-      <p className="mt-2 text-lg text-muted">{zoomed ? "Tap the picture to make it smaller." : "Tap the picture to make it bigger."}</p>
+      <p className="mt-2 text-lg text-muted">{zoomed ? t("show.tapSmaller") : t("show.tapBigger")}</p>
     </div>
   );
 }
@@ -96,6 +97,8 @@ export default function ShowMeOnScreen({
   language: string;
 }) {
   const asking = instruction === undefined;
+  const t = useT();
+  const uiLanguage = useUiLanguage();
   const [chosenDevice, setChosenDevice] = useState(device);
   const [understood, setUnderstood] = useState(false);
   const [state, setState] = useState<State>({ kind: "idle" });
@@ -145,7 +148,7 @@ export default function ShowMeOnScreen({
   function ask(e: FormEvent) {
     e.preventDefault();
     if (!image) return;
-    if (!question.trim()) return setState({ kind: "question", problem: NO_QUESTION });
+    if (!question.trim()) return setState({ kind: "question", problem: "show.noQuestion" });
     dictation.stop();
     if (!requestAllowance().allowed) return setState({ kind: "limit" });
     void send(image);
@@ -165,7 +168,7 @@ export default function ShowMeOnScreen({
 
   const anotherScreen = asking && (
     <button type="button" className="btn-secondary" onClick={startAgain}>
-      Ask about another screen
+      {t("show.anotherScreen")}
     </button>
   );
 
@@ -185,7 +188,7 @@ export default function ShowMeOnScreen({
       return (
         <div className="flex flex-col gap-6">
           <section className="flex flex-col gap-3 rounded-2xl bg-surface p-4">
-            <h2 className="text-2xl font-bold">I couldn&apos;t find it on your screen</h2>
+            <h2 className="text-2xl font-bold">{t("show.notFound")}</h2>
             <p lang={language} className="text-xl">
               {answer.description}
             </p>
@@ -206,7 +209,14 @@ export default function ShowMeOnScreen({
   }
 
   if (chosenDevice === null) {
-    return <DevicePicker prompt="Which device are you using?" options={DEVICE_OPTIONS} onChoose={chooseDevice} />;
+    return (
+      <DevicePicker
+        prompt={t("show.whichDevice")}
+        options={DEVICE_OPTIONS}
+        label={(d) => deviceLabel(d, t)}
+        onChoose={chooseDevice}
+      />
+    );
   }
 
   if (state.kind === "question" && image) {
@@ -217,13 +227,13 @@ export default function ShowMeOnScreen({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`data:${image.mediaType};base64,${image.base64}`}
-          alt="The screenshot you chose"
+          alt={t("show.chosenScreenshot")}
           className="mx-auto block max-h-64 w-auto rounded-2xl border-2 border-muted"
         />
         <label htmlFor="press-question" className="text-2xl font-bold">
-          What do you want to do?
+          {t("show.whatToDo")}
         </label>
-        <p className="text-xl text-muted">For example: send this photo, or turn on wifi.</p>
+        <p className="text-xl text-muted">{t("show.example")}</p>
         <textarea
           id="press-question"
           rows={3}
@@ -238,42 +248,42 @@ export default function ShowMeOnScreen({
             className={listening ? "btn border-4 border-warning bg-warning-surface text-warning" : "btn-secondary"}
             onClick={() => dictation.toggle(language)}
           >
-            {listening ? "Listening… tap to stop" : "Speak"}
+            {listening ? t("common.listeningTapStop") : t("common.speak")}
           </button>
         )}
         {dictation.mic !== "idle" && dictation.mic !== "listening" && (
           <p role="status" className="text-xl">
-            {MIC_HELP[dictation.mic]}
+            {t(MIC_HELP[dictation.mic])}
           </p>
         )}
         {state.problem && (
           <p role="alert" className="rounded-2xl border-2 border-warning bg-warning-surface p-4 text-xl">
-            {state.problem}
+            {t(state.problem)}
           </p>
         )}
         <button type="submit" className="btn-primary min-h-20 text-2xl">
-          Show me
+          {t("show.showMe")}
         </button>
         <button type="button" className="btn-text" onClick={startAgain}>
-          Choose a different screenshot
+          {t("show.differentScreenshot")}
         </button>
       </form>
     );
   }
 
-  const howTo = screenshotHowTo ?? howToFor(chosenDevice);
+  const howTo = screenshotHowTo ?? howToFor(chosenDevice, t);
 
   return (
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-3">
-        <h2 className="text-2xl font-bold">First, take a screenshot</h2>
-        <p className="text-xl text-muted">A screenshot is a picture of your screen. Go to the screen you need help with, then:</p>
-        <ol lang={screenshotHowTo ? language : "en"} className="flex list-decimal flex-col gap-2 pl-8 text-xl">
+        <h2 className="text-2xl font-bold">{t("show.takeFirst")}</h2>
+        <p className="text-xl text-muted">{t("show.whatIsScreenshot")}</p>
+        <ol lang={screenshotHowTo ? language : uiLanguage} className="flex list-decimal flex-col gap-2 pl-8 text-xl">
           {howTo.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ol>
-        <p className="text-xl text-muted">Then come back to this app.</p>
+        <p className="text-xl text-muted">{t("show.comeBack")}</p>
       </section>
 
       <PrivacyReminder understood={understood} onUnderstand={() => setUnderstood(true)} />
@@ -285,7 +295,7 @@ export default function ShowMeOnScreen({
           disabled={!understood || state.kind === "waiting"}
           onClick={() => input.current?.click()}
         >
-          Choose your screenshot
+          {t("show.choose")}
         </button>
         <input
           ref={input}
@@ -298,10 +308,10 @@ export default function ShowMeOnScreen({
           disabled={!understood}
           onChange={(e) => void choose(e)}
         />
-        <p className="text-xl text-muted">Pick the newest picture, the one you just took.</p>
+        <p className="text-xl text-muted">{t("show.pickNewest")}</p>
         {state.kind === "idle" && state.problem && (
           <p role="alert" className="rounded-2xl border-2 border-warning bg-warning-surface p-4 text-xl">
-            {state.problem}
+            {t(state.problem)}
           </p>
         )}
       </section>

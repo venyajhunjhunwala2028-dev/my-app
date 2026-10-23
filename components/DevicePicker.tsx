@@ -4,10 +4,13 @@
 export default function DevicePicker({
   prompt,
   options,
+  label = (option) => option,
   onChoose,
 }: {
   prompt: string;
   options: string[];
+  /** The words to show for an option; the option itself is what is chosen. */
+  label?: (option: string) => string;
   onChoose: (device: string) => void;
 }) {
   return (
@@ -15,7 +18,7 @@ export default function DevicePicker({
       <h2 className="text-2xl font-bold">{prompt}</h2>
       {options.map((option) => (
         <button key={option} type="button" className="btn-secondary" onClick={() => onChoose(option)}>
-          {option}
+          {label(option)}
         </button>
       ))}
     </section>

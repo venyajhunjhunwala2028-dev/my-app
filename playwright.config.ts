@@ -6,6 +6,8 @@ export default defineConfig({
   testDir: "tests/e2e",
   use: {
     ...devices["Pixel 7"],
+    // The interface follows the device language (Hindi on a Hindi phone); keep these runs in English.
+    locale: "en-US",
     baseURL: `http://localhost:${port}`,
     launchOptions: process.env.PLAYWRIGHT_CHROMIUM_PATH
       ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH }

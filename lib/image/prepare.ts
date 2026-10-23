@@ -3,13 +3,16 @@
 import { MAX_IMAGE_BYTES, MAX_SCREENSHOT_FILE_BYTES, base64DecodedBytes } from "@/lib/http/limits";
 import { resizeScreenshot, type PreparedImage } from "@/lib/image/resize";
 
-const NOT_A_PICTURE = "That is not a picture. Please choose the screenshot you just took.";
-const TOO_BIG = "That picture is too big. Please choose the screenshot you just took.";
-const CANT_OPEN = "Sorry, that picture could not be opened. Please choose your screenshot again.";
+import type { MessageKey } from "@/lib/i18n/en";
 
-export type PrepareResult = { image: PreparedImage } | { problem: string };
+const NOT_A_PICTURE: MessageKey = "image.notPicture";
+const TOO_BIG: MessageKey = "image.tooBig";
+const CANT_OPEN: MessageKey = "image.cantOpen";
 
-/** The resized picture, or a friendly message saying why it cannot be used. Spends no daily use. */
+/** `problem` is the message key of a friendly reason; show it with `t(problem)`. */
+export type PrepareResult = { image: PreparedImage } | { problem: MessageKey };
+
+/** The resized picture, or why it cannot be used. Spends no daily use. */
 export async function prepareScreenshot(file: File): Promise<PrepareResult> {
   if (!file.type.startsWith("image/")) return { problem: NOT_A_PICTURE };
   // Phone photos are often bigger than the upload limit; the resize shrinks them, so only refuse what is too big to open.

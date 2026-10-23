@@ -7,53 +7,53 @@ import SafetyNotice from "@/components/SafetyNotice";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import type { ScamAnswer, ScamRequest, ScamVerdict } from "@/lib/ai/scam";
 import { checkScam } from "@/lib/ai/scamClient";
+import { useT, type MessageKey } from "@/lib/i18n";
 import { MAX_SCAM_TEXT_CHARS } from "@/lib/http/limits";
 import { prepareScreenshot } from "@/lib/image/prepare";
 import type { PreparedImage } from "@/lib/image/resize";
 import { getSpeakingLanguage } from "@/lib/store/localStore";
 import { useIsClient } from "@/lib/useIsClient";
 
-const NEVER_SHARE = "Never share OTPs, passwords, PINs or card numbers with anyone.";
-const NOTHING_TO_CHECK = "Please paste a message or add a screenshot first.";
-const PRIVACY =
-  "Before you add a screenshot, make sure it shows no passwords, codes or bank details. This app doesn't save your screenshot; it's sent to an AI service to be checked.";
-
 // Each verdict has an icon and a word as well as a colour, so it never relies on colour alone.
-const VERDICTS: Record<ScamVerdict, { icon: string; word: string; className: string }> = {
-  safe: { icon: "✅", word: "Looks safe", className: "border-safe bg-safe-surface text-safe" },
-  careful: { icon: "⚠️", word: "Be careful", className: "border-caution bg-caution-surface text-caution" },
-  scam: { icon: "🛑", word: "Possible scam", className: "border-warning bg-warning-surface text-warning" },
+const VERDICTS: Record<ScamVerdict, { icon: string; word: MessageKey; className: string }> = {
+  safe: { icon: "✅", word: "scam.verdict.safe", className: "border-safe bg-safe-surface text-safe" },
+  careful: { icon: "⚠️", word: "scam.verdict.careful", className: "border-caution bg-caution-surface text-caution" },
+  scam: { icon: "🛑", word: "scam.verdict.scam", className: "border-warning bg-warning-surface text-warning" },
 };
 
 type State =
-  | { kind: "idle"; problem?: string }
+  | { kind: "idle"; problem?: MessageKey }
   | { kind: "waiting" }
   | { kind: "limit" }
   | { kind: "error"; error: RequestError }
   | { kind: "answer"; answer: ScamAnswer };
 
 function NeverShare() {
-  return <p className="rounded-2xl bg-surface p-4 text-xl font-semibold">{NEVER_SHARE}</p>;
+  const t = useT();
+  return <p className="rounded-2xl bg-surface p-4 text-xl font-semibold">{t("scam.neverShare")}</p>;
 }
 
 function Result({ answer }: { answer: ScamAnswer }) {
+  const t = useT();
   const verdict = VERDICTS[answer.verdict];
   return (
-    <div lang={answer.language} className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <section role="status" className={`flex flex-col gap-3 rounded-2xl border-4 p-4 ${verdict.className}`}>
         <h2 className="text-3xl font-bold">
           <span aria-hidden="true" className="mr-3">
             {verdict.icon}
           </span>
-          {verdict.word}
+          {t(verdict.word)}
         </h2>
       </section>
-      <ul className="flex list-disc flex-col gap-2 pl-8 text-xl">
+      <ul lang={answer.language} className="flex list-disc flex-col gap-2 pl-8 text-xl">
         {answer.reasons.map((reason) => (
           <li key={reason}>{reason}</li>
         ))}
       </ul>
-      <p className="text-xl font-semibold">{answer.advice}</p>
+      <p lang={answer.language} className="text-xl font-semibold">
+        {answer.advice}
+      </p>
     </div>
   );
 }
@@ -61,10 +61,11 @@ function Result({ answer }: { answer: ScamAnswer }) {
 /** Paste a message or add a screenshot, then "Check it" says whether it looks safe, needs care, or is a scam. */
 export default function ScamChecker() {
   const isClient = useIsClient();
+  const t = useT();
   const [text, setText] = useState("");
   const [image, setImage] = useState<PreparedImage | null>(null);
   const [understood, setUnderstood] = useState(false);
-  const [picture, setPicture] = useState<string | null>(null);
+  const [picture, setPicture] = useState<MessageKey | null>(null);
   const [state, setState] = useState<State>({ kind: "idle" });
   const sent = useRef<ScamRequest | null>(null);
   const busy = useRef(false);
@@ -89,7 +90,7 @@ export default function ScamChecker() {
   function submit(e: FormEvent) {
     e.preventDefault();
     const message = text.trim();
-    if (!message && !image) return setState({ kind: "idle", problem: NOTHING_TO_CHECK });
+    if (!message && !image) return setState({ kind: "idle", problem: "scam.nothing" });
     void send({
       ...(message ? { text: message } : {}),
       ...(image ? { image: image.base64, mediaType: image.mediaType, width: image.width, height: image.height } : {}),
@@ -127,7 +128,7 @@ export default function ScamChecker() {
         <NeverShare />
         {verdict !== "safe" && <CallFamily />}
         <button type="button" className="btn-secondary" onClick={startAgain}>
-          Check something else
+          {t("scam.checkElse")}
         </button>
       </div>
     );
@@ -139,15 +140,15 @@ export default function ScamChecker() {
     <div className="flex flex-col gap-6">
       <form className="flex flex-col gap-6" onSubmit={submit}>
         <p className="text-xl text-muted">
-          Got a message, email or link you are not sure about? I will check it for you.
+          {t("scam.intro")}
         </p>
         <NeverShare />
 
         <section className="flex flex-col gap-3">
           <label htmlFor="scam-text" className="text-2xl font-bold">
-            Paste a message, email or link
+            {t("scam.pasteLabel")}
           </label>
-          <p className="text-xl text-muted">Press and hold in the box, then tap Paste.</p>
+          <p className="text-xl text-muted">{t("scam.pasteHint")}</p>
           <textarea
             id="scam-text"
             rows={6}
@@ -159,20 +160,20 @@ export default function ScamChecker() {
         </section>
 
         <section className="flex flex-col gap-3">
-          <h2 className="text-2xl font-bold">Or add a screenshot</h2>
-          <PrivacyReminder understood={understood} onUnderstand={() => setUnderstood(true)} message={PRIVACY} />
+          <h2 className="text-2xl font-bold">{t("scam.orScreenshot")}</h2>
+          <PrivacyReminder understood={understood} onUnderstand={() => setUnderstood(true)} message={t("scam.privacy")} />
           {image ? (
             <div className="flex flex-col gap-3">
               {/* A data URL of the learner's own screenshot; next/image adds nothing here. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`data:${image.mediaType};base64,${image.base64}`}
-                alt="Your screenshot"
+                alt={t("show.yourScreenshot")}
                 className="mx-auto block max-h-64 w-auto rounded-2xl border-2 border-muted"
               />
-              <p className="text-xl font-semibold">Screenshot added.</p>
+              <p className="text-xl font-semibold">{t("scam.added")}</p>
               <button type="button" className="btn-text" onClick={() => setImage(null)}>
-                Remove screenshot
+                {t("scam.remove")}
               </button>
             </div>
           ) : (
@@ -182,7 +183,7 @@ export default function ScamChecker() {
               disabled={!understood || waiting}
               onClick={() => input.current?.click()}
             >
-              Add a screenshot
+              {t("scam.add")}
             </button>
           )}
           <input
@@ -198,18 +199,18 @@ export default function ScamChecker() {
           />
           {picture && (
             <p role="alert" className="rounded-2xl border-2 border-warning bg-warning-surface p-4 text-xl">
-              {picture}
+              {t(picture)}
             </p>
           )}
         </section>
 
         {state.kind === "idle" && state.problem && (
           <p role="alert" className="rounded-2xl border-2 border-warning bg-warning-surface p-4 text-xl">
-            {state.problem}
+            {t(state.problem)}
           </p>
         )}
         <button type="submit" className="btn-primary min-h-20 text-2xl" disabled={waiting}>
-          Check it
+          {t("scam.check")}
         </button>
       </form>
       {/* Outside the form: the error view has its own Call family form. */}

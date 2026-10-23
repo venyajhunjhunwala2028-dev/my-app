@@ -37,6 +37,12 @@ describe("ask prompt", () => {
     expect(text).toContain("The learner is on step 2.");
   });
 
+  it("adds the answer language only when the learner asked for one", () => {
+    expect(buildAskUserMessage({ question: "hi" })).not.toContain("Answer language:");
+    expect(buildAskUserMessage({ question: "hi", answerLanguage: "hi-IN" })).toContain("Answer language: hi-IN");
+    expect(ASK_SYSTEM_PROMPT).toContain('"Answer language"');
+  });
+
   it("defaults the level to simple and the app to not given", () => {
     const text = buildAskUserMessage({ question: "hi" });
     expect(text).toContain("Explanation level: simple");

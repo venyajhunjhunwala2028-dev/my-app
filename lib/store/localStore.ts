@@ -1,5 +1,8 @@
 // Everything the app remembers lives on the phone, under one versioned key.
 
+import { EXPLANATION_LEVELS, type ExplanationLevel } from "@/lib/ai/schemas";
+import { DEFAULT_UI_LANGUAGE, getLocale, isUiLanguage, uiLanguageFor, type UiLanguage } from "@/lib/i18n/locales";
+
 export const STORAGE_KEY = "tech-helper:v1";
 export const DAILY_LIMIT = 30;
 
@@ -30,7 +33,11 @@ type State = {
   guides: SavedGuide[];
   currentGuideId: string | null;
   devices: string[];
-  speakingLanguage: string;
+  /** A speaking language the learner chose themselves; null means it follows the interface language. */
+  speakingLanguage: string | null;
+  /** Interface language; null until chosen, when it follows the device language. */
+  uiLanguage: UiLanguage | null;
+  level: ExplanationLevel;
   readAloud: boolean;
   slowSpeech: boolean;
   familyContact: FamilyContact | null;
@@ -54,7 +61,9 @@ function defaults(): State {
     guides: [],
     currentGuideId: null,
     devices: [],
-    speakingLanguage: deviceLanguage(),
+    speakingLanguage: null,
+    uiLanguage: null,
+    level: "simple",
     readAloud: false,
     slowSpeech: false,
     familyContact: null,
@@ -88,7 +97,13 @@ function sanitize(raw: unknown): State {
     guides: Array.isArray(raw.guides) ? raw.guides.filter(isGuide) : base.guides,
     currentGuideId: isString(raw.currentGuideId) ? raw.currentGuideId : null,
     devices: Array.isArray(raw.devices) ? raw.devices.filter(isString) : base.devices,
-    speakingLanguage: isString(raw.speakingLanguage) && raw.speakingLanguage ? raw.speakingLanguage : base.speakingLanguage,
+    // Older saves always held the device language here, so that value means "not chosen".
+    speakingLanguage:
+      isString(raw.speakingLanguage) && raw.speakingLanguage && raw.speakingLanguage !== deviceLanguage()
+        ? raw.speakingLanguage
+        : base.speakingLanguage,
+    uiLanguage: isUiLanguage(raw.uiLanguage) ? raw.uiLanguage : base.uiLanguage,
+    level: EXPLANATION_LEVELS.includes(raw.level as ExplanationLevel) ? (raw.level as ExplanationLevel) : base.level,
     readAloud: typeof raw.readAloud === "boolean" ? raw.readAloud : base.readAloud,
     slowSpeech: typeof raw.slowSpeech === "boolean" ? raw.slowSpeech : base.slowSpeech,
     familyContact: isRecord(contact) && isString(contact.name) && isString(contact.phone) ? { name: contact.name, phone: contact.phone } : null,
@@ -172,6 +187,22 @@ export function saveGuide<A>(guide: NewGuide<A>): SavedGuide<A> {
   return saved;
 }
 
+/** Removes one guide; if it was the current guide, there is no current guide any more. */
+export function deleteGuide(id: string): void {
+  update((s) => {
+    s.guides = s.guides.filter((g) => g.id !== id);
+    if (s.currentGuideId === id) s.currentGuideId = null;
+  });
+}
+
+/** Removes every saved guide and the current guide; settings stay. */
+export function deleteAllGuides(): void {
+  update((s) => {
+    s.guides = [];
+    s.currentGuideId = null;
+  });
+}
+
 export function getGuideStep(id: string): number {
   return getGuide(id)?.step ?? 1;
 }
@@ -229,11 +260,45 @@ export function setTextSize(size: TextSize): void {
   });
 }
 
-export function getSpeakingLanguage(): string {
-  return load().speakingLanguage;
+/** The interface language: the saved choice, else Hindi on a Hindi device, else English. */
+export function getUiLanguage(): UiLanguage {
+  return load().uiLanguage ?? uiLanguageFor(deviceLanguage()) ?? DEFAULT_UI_LANGUAGE;
 }
 
-export function setSpeakingLanguage(language: string): void {
+export function setUiLanguage(language: UiLanguage): void {
+  if (!isUiLanguage(language)) return;
+  update((s) => {
+    s.uiLanguage = language;
+  });
+}
+
+/** How simply answers are explained; sent as `level` with every question. */
+export function getLevel(): ExplanationLevel {
+  return load().level;
+}
+
+export function setLevel(level: ExplanationLevel): void {
+  if (!EXPLANATION_LEVELS.includes(level)) return;
+  update((s) => {
+    s.level = level;
+  });
+}
+
+/**
+ * The language answers come in and the microphone listens for: the learner's own choice, else the chosen
+ * interface language. Until one is chosen it is the device language (which may be one with no interface yet,
+ * like Tamil), and a device variant of the same language (en-GB) is kept.
+ */
+export function getSpeakingLanguage(): string {
+  const { speakingLanguage, uiLanguage } = load();
+  if (speakingLanguage) return speakingLanguage;
+  const device = deviceLanguage();
+  if (!uiLanguage || uiLanguageFor(device) === uiLanguage) return device;
+  return getLocale(uiLanguage).speechCode;
+}
+
+/** null: follow the interface language again. */
+export function setSpeakingLanguage(language: string | null): void {
   update((s) => {
     s.speakingLanguage = language;
   });

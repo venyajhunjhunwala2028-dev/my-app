@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
-import { AnswerBody } from "@/components/ExplanationView";
+import { AnswerBody, ExplainOtherLanguage } from "@/components/ExplanationView";
 import SafetyNotice from "@/components/SafetyNotice";
 import ShowMeOnScreen from "@/components/ShowMeOnScreen";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import { askHelper } from "@/lib/ai/askClient";
 import type { AskAnswer, AskRequest, Step } from "@/lib/ai/schemas";
+import { useT, type MessageKey } from "@/lib/i18n";
 import { warningFor, warningLanguage } from "@/lib/safety/stepWarnings";
 import {
   NORMAL_RATE,
@@ -39,10 +40,8 @@ export type StepsAnswer = Extract<AskAnswer, { kind: "steps" }>;
 /** Steps run from 1 to total; one past the last step means the guide is finished. */
 const isFinished = (step: number, total: number) => step > total;
 
-const DEFAULT_ENCOURAGEMENT = "Great, you're doing it.";
-
-/** The big choices after "I'm stuck"; the label is sent as the trouble. */
-const TROUBLES = ["I can't find it", "My screen looks different", "Nothing happens"] as const;
+/** The big choices after "I'm stuck"; the label, in the interface language, is sent as the trouble. */
+const TROUBLES: readonly MessageKey[] = ["steps.trouble.cantFind", "steps.trouble.different", "steps.trouble.nothing"];
 
 type Help =
   | { kind: "idle" }
@@ -62,8 +61,16 @@ type Voice = "off" | "playing" | "paused";
 
 const withWarningSign = (text: string) => (text.trimStart().startsWith("⚠️") ? text : `⚠️ ${text}`);
 
-export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }) {
+export default function StepPlayer({
+  guide,
+  onReplace,
+}: {
+  guide: SavedGuide<StepsAnswer>;
+  /** Called with the saved guide after "Explain this in …"; omit to hide that button. */
+  onReplace?: (guide: SavedGuide) => void;
+}) {
   const { id, answer } = guide;
+  const t = useT();
   const total = answer.steps.length;
   const canSpeak = useSyncExternalStore(noSubscribe, canSpeakAloud, () => false);
   const canListen = useSyncExternalStore(noSubscribe, isSpeechSupported, () => false);
@@ -149,7 +156,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
 
   function goTo(next: number) {
     // Praise for the step just done, shown above the next one; none when going back.
-    setCheer(next === step + 1 ? current.encouragement?.trim() || DEFAULT_ENCOURAGEMENT : null);
+    setCheer(next === step + 1 ? current.encouragement?.trim() || t("steps.cheer") : null);
     setStep(next);
     setGuideStep(id, next);
     closeHelp();
@@ -223,7 +230,6 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
       const result = await askHelper({
         ...request,
         question: q,
-        language: getSpeakingLanguage(),
         devices: getDevices(),
         guideContext: { title: guide.title, steps: answer.steps.map((s) => s.instruction), stepIndex: step - 1 },
       });
@@ -251,9 +257,9 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
   }
 
   function stuck(trouble: string) {
-    const t = trouble.trim();
-    if (!t) return;
-    void ask({ question: current.instruction, mode: "stuck", trouble: t });
+    const text = trouble.trim();
+    if (!text) return;
+    void ask({ question: current.instruction, mode: "stuck", trouble: text });
   }
 
   function openTrouble() {
@@ -300,38 +306,41 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
     return (
       <div className="flex flex-col gap-6">
         <h1 className="text-4xl font-bold">
-          <span aria-hidden="true">🎉 </span>You did it!
+          <span aria-hidden="true">🎉 </span>
+          {t("success.title")}
         </h1>
         <p lang={answer.language} className="text-2xl">
           {answer.title}
         </p>
-        <p className="text-xl text-muted">This guide is saved in My guides if you want to do it again.</p>
+        <p className="text-xl text-muted">{t("success.saved")}</p>
         <div className="flex flex-col gap-3">
           <Link href="/app" className="btn-primary min-h-20 text-2xl">
-            Go home
+            {t("success.goHome")}
           </Link>
           <Link href="/app#question" className="btn-secondary">
-            Ask another question
+            {t("success.another")}
           </Link>
           <Link href="/app" className="btn-secondary">
-            Learn something else
+            {t("success.learn")}
           </Link>
         </div>
         <section aria-labelledby="helpful-heading" className="flex flex-col gap-4 rounded-2xl bg-surface p-4">
           <h2 id="helpful-heading" className="text-2xl font-bold">
-            Was this helpful?
+            {t("success.helpful")}
           </h2>
           <div className="grid grid-cols-2 gap-3">
             <button type="button" className="btn-secondary" aria-pressed={helpful === true} onClick={() => answerHelpful(true)}>
-              <span aria-hidden="true">👍&nbsp;</span>Yes
+              <span aria-hidden="true">👍&nbsp;</span>
+              {t("common.yes")}
             </button>
             <button type="button" className="btn-secondary" aria-pressed={helpful === false} onClick={() => answerHelpful(false)}>
-              <span aria-hidden="true">👎&nbsp;</span>No
+              <span aria-hidden="true">👎&nbsp;</span>
+              {t("common.no")}
             </button>
           </div>
           {helpful !== null && (
             <p role="status" className="text-xl font-semibold">
-              Thank you for telling us.
+              {t("success.thanks")}
             </p>
           )}
         </section>
@@ -344,7 +353,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
       <div className="flex flex-col gap-6">
         <section aria-labelledby="show-me-heading" className="flex flex-col gap-4">
           <h1 id="show-me-heading" className="text-3xl font-bold">
-            Show me on my screen
+            {t("steps.showOnScreen")}
           </h1>
           <ShowMeOnScreen
             instruction={current.instruction}
@@ -355,7 +364,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
           />
         </section>
         <button type="button" className="btn-secondary" onClick={() => setShowMe(false)}>
-          Back to my step
+          {t("steps.backToMyStep")}
         </button>
       </div>
     );
@@ -373,25 +382,25 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
 
   const backToStep = (
     <button type="button" className="btn-secondary" onClick={closeHelp}>
-      Back to the step
+      {t("steps.backToStep")}
     </button>
   );
 
   const speakButton = (onText: (text: string) => void) =>
     canListen && (
       <button type="button" className="btn-secondary" onClick={() => listen(onText)} disabled={listening}>
-        {listening ? "Listening…" : "Speak"}
+        {listening ? t("common.listening") : t("common.speak")}
       </button>
     );
 
   return (
     <div className="flex flex-1 flex-col gap-6">
       <Link href="/app" className="btn-text self-start">
-        Home
+        {t("common.home")}
       </Link>
       <div className="flex flex-col gap-2">
         <p id="step-progress" className="text-xl font-semibold text-muted">
-          Step {step} of {total}
+          {t("steps.progress", { step, total })}
         </p>
         <div
           role="progressbar"
@@ -399,7 +408,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
           aria-valuemin={0}
           aria-valuemax={total}
           aria-valuenow={step}
-          aria-valuetext={`Step ${step} of ${total}`}
+          aria-valuetext={t("steps.progress", { step, total })}
           className="h-4 w-full overflow-hidden rounded-full border-2 border-muted bg-surface"
         >
           <div className="h-full bg-primary" style={{ width: `${(step / total) * 100}%` }} />
@@ -413,7 +422,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
       {warnings.length > 0 && (
         <section
           role="note"
-          aria-label="Safety warning"
+          aria-label={t("steps.safetyLabel")}
           className="flex flex-col gap-2 rounded-2xl border-2 border-warning bg-warning-surface p-4"
         >
           {warnings.map((w) => (
@@ -425,68 +434,69 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
       )}
       {step > 1 && (
         <button type="button" className="btn-text self-start" onClick={() => goTo(step - 1)}>
-          Previous step
+          {t("steps.previous")}
         </button>
       )}
       <h1 lang={answer.language} className="text-3xl font-bold leading-snug">
         {current.instruction}
       </h1>
       <p lang={answer.language} className="text-2xl text-muted">
-        Look for: {current.lookFor}
+        {t("steps.lookFor", { text: current.lookFor })}
       </p>
       {canSpeak && (
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
             {voice === "playing" ? (
               <button type="button" className="btn-secondary" onClick={pause}>
-                Pause
+                {t("steps.pause")}
               </button>
             ) : (
               <button type="button" className="btn-secondary" onClick={play}>
-                Play
+                {t("steps.play")}
               </button>
             )}
             <button type="button" className="btn-secondary" onClick={replay}>
-              Replay
+              {t("steps.replay")}
             </button>
           </div>
           <button type="button" className="btn-secondary" aria-pressed={slow} onClick={toggleSlow}>
             {/* The tick shows the setting is on without relying on colour; aria-pressed tells screen readers. */}
             <span aria-hidden="true">{slow ? "✓\u00a0" : ""}</span>
-            Slower voice
+            {t("steps.slower")}
           </button>
         </div>
       )}
       <div className="flex flex-col gap-3">
         <button type="button" className="btn-secondary" onClick={showAgain} disabled={help.kind === "waiting"}>
-          Show me again
+          {t("steps.showAgain")}
         </button>
         <button type="button" className="btn-secondary" onClick={openTrouble}>
-          I&apos;m stuck
+          {t("steps.stuck")}
         </button>
         <button type="button" className="btn-secondary" onClick={() => setShowMe(true)}>
-          Show me on my screen
+          {t("steps.showOnScreen")}
         </button>
+        {onReplace && <ExplainOtherLanguage guide={guide} mode="showMeHow" step={step} onReplace={onReplace} />}
       </div>
 
       {(panel === "trouble" || panel === "troubleText") && (
-        <section aria-label="Help with this step" className="flex flex-col gap-4 rounded-2xl bg-surface p-4">
-          <h2 className="text-2xl font-bold">What&apos;s the trouble?</h2>
+        <section aria-label={t("steps.helpLabel")} className="flex flex-col gap-4 rounded-2xl bg-surface p-4">
+          <h2 className="text-2xl font-bold">{t("steps.troubleHeading")}</h2>
           {panel === "trouble" ? (
             <>
-              {TROUBLES.map((t) => (
-                <button key={t} type="button" className="btn-secondary" onClick={() => stuck(t)}>
-                  {t}
+              {TROUBLES.map((key) => (
+                <button key={key} type="button" className="btn-secondary" onClick={() => stuck(t(key))}>
+                  {t(key)}
                 </button>
               ))}
               <button type="button" className="btn-secondary" onClick={() => setPanel("troubleText")}>
-                Something else
+                {t("steps.somethingElse")}
               </button>
             </>
           ) : (
             <form className="flex flex-col gap-3" onSubmit={submitTrouble}>
               <label htmlFor="trouble-text" className="text-xl">
-                Tell me what is wrong
+                {t("steps.tellWrong")}
               </label>
               <textarea
                 id="trouble-text"
@@ -497,7 +507,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
               />
               {speakButton(setTroubleText)}
               <button type="submit" className="btn-primary">
-                Send
+                {t("common.send")}
               </button>
             </form>
           )}
@@ -506,7 +516,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
       )}
 
       {panel === "help" && help.kind !== "idle" && (
-        <section aria-label="Help with this step" className="flex flex-col gap-4 rounded-2xl bg-surface p-4">
+        <section aria-label={t("steps.helpLabel")} className="flex flex-col gap-4 rounded-2xl bg-surface p-4">
           {help.kind === "limit" ? (
             <SafetyNotice kind="daily_limit" />
           ) : (
@@ -514,7 +524,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
               {helpAnswer && <AnswerBody answer={helpAnswer} />}
               {canSpeak && helpAnswer && helpSpeech && (
                 <button type="button" className="btn-secondary" onClick={() => playHelp(helpSpeech, helpAnswer.language)}>
-                  {helpPlayed ? "Replay this help" : "Play this help"}
+                  {helpPlayed ? t("steps.replayHelp") : t("steps.playHelp")}
                 </button>
               )}
               <WaitingAndErrors
@@ -525,14 +535,14 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
               {helpAnswer && (
                 <>
                   <button type="button" className="btn-secondary" onClick={explainSimpler}>
-                    Explain more simply
+                    {t("steps.simpler")}
                   </button>
                   <button type="button" className="btn-secondary" onClick={() => setShowMe(true)}>
-                    Show me on my screen
+                    {t("steps.showOnScreen")}
                   </button>
                   <form className="flex flex-col gap-3" onSubmit={submitSpecific}>
                     <label htmlFor="ask-specific" className="text-xl">
-                      Ask something specific
+                      {t("steps.askSpecific")}
                     </label>
                     <textarea
                       id="ask-specific"
@@ -543,7 +553,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
                     />
                     {speakButton(setSpecific)}
                     <button type="submit" className="btn-primary">
-                      Ask
+                      {t("common.ask")}
                     </button>
                   </form>
                 </>
@@ -556,7 +566,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
 
       <div className="sticky bottom-0 mt-auto bg-background py-4">
         <button type="button" className="btn-primary min-h-20 text-2xl" onClick={() => goTo(step + 1)}>
-          Done, next step
+          {t("steps.next")}
         </button>
       </div>
     </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
+
 const LANGUAGES: { code: string; name: string }[] = [
   { code: "en-IN", name: "English" },
   { code: "hi-IN", name: "हिन्दी" },
@@ -33,9 +35,10 @@ export default function LanguagePicker({
   current: string;
   onChoose: (code: string) => void;
 }) {
+  const t = useT();
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-2xl font-bold">Which language will you speak?</h2>
+      <h2 className="text-2xl font-bold">{t("ask.whichLanguage")}</h2>
       {LANGUAGES.map((l) => (
         <button
           key={l.code}

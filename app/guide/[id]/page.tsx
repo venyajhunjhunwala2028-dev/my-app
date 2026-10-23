@@ -4,6 +4,7 @@ import { Suspense, use, useState } from "react";
 import Link from "next/link";
 import ExplanationView, { type ExplanationAnswer } from "@/components/ExplanationView";
 import StepPlayer, { type StepsAnswer } from "@/components/StepPlayer";
+import { useT } from "@/lib/i18n";
 import { getGuide, type SavedGuide } from "@/lib/store/localStore";
 import { useIsClient } from "@/lib/useIsClient";
 
@@ -20,33 +21,45 @@ export default function GuidePage({ params }: { params: Promise<{ id: string }> 
 
 function Guide({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const t = useT();
   // Guides live in localStorage, so read them only once running in the browser.
   const isClient = useIsClient();
-  // Set when "Show me how" turns an explanation into steps.
-  const [stepsGuide, setStepsGuide] = useState<SavedGuide<StepsAnswer> | null>(null);
+  // Set when "Show me how" or "Explain this in …" replaces the answer on screen.
+  const [replaced, setReplaced] = useState<SavedGuide | null>(null);
   if (!isClient) return null;
 
-  const guide = stepsGuide ?? getGuide(id);
+  const guide = replaced ?? getGuide(id);
   const kind = (guide?.answer as { kind?: string } | undefined)?.kind;
 
   if (guide && kind === "steps") {
-    return <StepPlayer key={`${guide.savedAt}:${guide.step}`} guide={guide as SavedGuide<StepsAnswer>} />;
+    return (
+      <StepPlayer
+        key={`${guide.savedAt}:${guide.step}`}
+        guide={guide as SavedGuide<StepsAnswer>}
+        onReplace={setReplaced}
+      />
+    );
   }
   if (guide && kind === "explanation") {
     return (
       <>
         <Link href="/app" className="btn-text self-start">
-          Home
+          {t("common.home")}
         </Link>
-        <ExplanationView guide={guide as SavedGuide<ExplanationAnswer>} onSteps={setStepsGuide} />
+        <ExplanationView
+          key={guide.savedAt}
+          guide={guide as SavedGuide<ExplanationAnswer>}
+          onSteps={setReplaced}
+          onReplace={setReplaced}
+        />
       </>
     );
   }
   return (
     <>
-      <h1 className="text-3xl font-bold">I couldn&apos;t find that guide</h1>
+      <h1 className="text-3xl font-bold">{t("guide.notFound")}</h1>
       <Link href="/app" className="btn-primary">
-        Go to Home
+        {t("common.goHome")}
       </Link>
     </>
   );

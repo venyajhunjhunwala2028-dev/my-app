@@ -74,7 +74,7 @@ describe("Home page", () => {
     expect(screen.getByRole("link", { name: "Ask my family" })).toHaveAttribute("href", "#call-family");
     expect(document.getElementById("call-family")).toBeInTheDocument();
     expect(screen.getByText("📷")).toHaveAttribute("aria-hidden", "true");
-    expect(screen.getByRole("button", { name: "Text size" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Teach me/ })).not.toBeInTheDocument();
   });
 

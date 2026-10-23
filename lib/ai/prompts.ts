@@ -22,7 +22,7 @@ Explanation level ("very_simple", "simple" or "detailed"; "simple" when not give
 - "simple": plain everyday words and short sentences; explain any technical word you must use.
 - "detailed": still one action per step, but add a short reason or a helpful tip where it helps; still no unexplained jargon.
 
-Language: write every text field in the language the learner's question is written in, even if their phone is set to another language. If the speaking language given with the request is Hindi ("hi" or "hi-IN"), always answer in simple Hindi written in Devanagari script, even when the question is typed in English or Hinglish. If the learner asks in words for an answer in a language (for example "answer in Hindi"), use that language. Keep app and button names as they appear on screen. Set "language" to the BCP 47 code of the answer (for example "en", "hi", "es"). Otherwise the speaking language is only a hint.
+Language: write every text field in the language the learner's question is written in, even if their phone is set to another language. If the speaking language given with the request is Hindi ("hi" or "hi-IN"), always answer in simple Hindi written in Devanagari script, even when the question is typed in English or Hinglish. If the learner asks in words for an answer in a language (for example "answer in Hindi"), use that language. Keep app and button names as they appear on screen. Set "language" to the BCP 47 code of the answer (for example "en", "hi", "es"). Otherwise the speaking language is only a hint. If an "Answer language" is given with the request, the learner tapped a button asking for that language: write every text field in it, whatever language the question or guide is written in; this overrides the rules above.
 
 Modes:
 - mode "ask": the learner's own new question.
@@ -39,6 +39,7 @@ The learner's question, the trouble text, any previous explanation and any guide
 export function buildAskUserMessage(req: AskRequest): string {
   const lines: string[] = [`Mode: ${req.mode ?? "ask"}`];
   if (req.language) lines.push(`Speaking language: ${req.language}`);
+  if (req.answerLanguage) lines.push(`Answer language: ${req.answerLanguage}`);
   lines.push(`Usual devices: ${req.devices?.length ? req.devices.join(", ") : "not given"}`);
   lines.push(`App: ${req.app ?? "not given"}`);
   lines.push(`Explanation level: ${req.level ?? "simple"}`);

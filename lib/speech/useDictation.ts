@@ -1,13 +1,15 @@
+import type { MessageKey } from "@/lib/i18n/en";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { isSpeechSupported, startListening, type ListenError } from "@/lib/speech/speech";
 import { noSubscribe } from "@/lib/useIsClient";
 
 export type MicState = "idle" | "listening" | ListenError;
 
-export const MIC_HELP: Record<ListenError, string> = {
-  denied: "The microphone is not allowed. You can type in the box instead.",
-  "no-speech": "I didn't hear anything. Tap Speak to try again.",
-  failed: "The microphone didn't work. You can type in the box instead.",
+/** Message keys for what went wrong with the microphone; show with `t(MIC_HELP[error])`. */
+export const MIC_HELP: Record<ListenError, MessageKey> = {
+  denied: "mic.denied",
+  "no-speech": "mic.noSpeech",
+  failed: "mic.failed",
 };
 
 /** Voice typing into one text box: tap to listen, tap again to stop. */

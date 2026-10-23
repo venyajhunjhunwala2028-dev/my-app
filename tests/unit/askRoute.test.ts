@@ -178,6 +178,13 @@ describe("POST /api/ask", () => {
       expect(user).toContain("Usual devices: iPhone");
     });
 
+    it("passes a requested answer language to the model as a firm rule", async () => {
+      realMode();
+      mockedCall.mockResolvedValue({ stopReason: "end_turn", text: JSON.stringify({ answer: explanation }) });
+      await ask({ question: "ChatGPT क्या है?", language: "en-IN", answerLanguage: "en-IN" });
+      expect(mockedCall.mock.calls[0][0].user as string).toContain("Answer language: en-IN");
+    });
+
     it("returns clarify and unclear in fake mode", async () => {
       expect(await (await ask({ question: "How do I post a picture?" })).json()).toMatchObject({ kind: "clarify", about: "app" });
       expect(await (await ask({ question: "How do I post a picture?", app: "Facebook" })).json()).toMatchObject({ kind: "steps", app: "Facebook" });
@@ -200,6 +207,8 @@ describe("POST /api/ask", () => {
       await bad({ question: "x", mode: "explode" });
       await bad({ question: "x", level: "expert" });
       await bad({ question: "x", app: 5 });
+      await bad({ question: "x", answerLanguage: 5 });
+      await bad({ question: "x", answerLanguage: "a".repeat(100) });
       await bad({ question: "x", app: "a".repeat(61) });
       await bad({ question: "x", mode: "stuck" });
       await bad({ question: "x", mode: "showAgain" });

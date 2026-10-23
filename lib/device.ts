@@ -1,5 +1,6 @@
 // Which device the learner uses, so answers and screenshot help are written for it.
 
+import { en, type MessageKey } from "@/lib/i18n/en";
 import { getDevices, setDevices } from "@/lib/store/localStore";
 
 /** The choices in Settings, in the words the helper uses in its answers. */
@@ -31,25 +32,31 @@ export function ensureDefaultDevice(): void {
   if (device) setDevices([device]);
 }
 
-const SCREENSHOT_HOW_TO: Record<string, string[]> = {
-  iPhone: [
-    "Press the side button and the volume up button at the same time, then let go.",
-    "If your iPhone has a round Home button, press the side button and the Home button together.",
-  ],
-  "Android phone": ["Press the power button and the volume down button at the same time, then let go."],
-  iPad: [
-    "Press the top button and a volume button at the same time, then let go.",
-    "If your iPad has a round Home button, press the top button and the Home button together.",
-  ],
-  "Windows computer": [
-    "Press the Windows key and the Print Screen key (PrtSc) at the same time.",
-    "The picture is saved in Pictures, in the Screenshots folder.",
-  ],
-  Mac: ["Press Shift, Command and 3 at the same time.", "The picture appears on your desktop."],
+/** The words to show for a device name; the English name is what is saved and sent to the helper. */
+const DEVICE_LABELS: Record<string, MessageKey> = {
+  iPhone: "device.iPhone",
+  "Android phone": "device.android",
+  iPad: "device.iPad",
+  "iPad or tablet": "device.iPadOrTablet",
+  "Windows computer": "device.windows",
+  Mac: "device.mac",
+};
+
+export function deviceLabel(device: string, t: (key: MessageKey) => string): string {
+  const key = DEVICE_LABELS[device];
+  return key ? t(key) : device;
+}
+
+const SCREENSHOT_HOW_TO: Record<string, MessageKey[]> = {
+  iPhone: ["howTo.iPhone.1", "howTo.iPhone.2"],
+  "Android phone": ["howTo.android.1"],
+  iPad: ["howTo.iPad.1", "howTo.iPad.2"],
+  "Windows computer": ["howTo.windows.1", "howTo.windows.2"],
+  Mac: ["howTo.mac.1", "howTo.mac.2"],
 };
 SCREENSHOT_HOW_TO["iPad or tablet"] = SCREENSHOT_HOW_TO.iPad;
 
-/** Plain English steps to take a screenshot on this device. */
-export function screenshotHowTo(device: string | null): string[] {
-  return (device && SCREENSHOT_HOW_TO[device]) || ["Take a picture of your screen the way you usually do."];
+/** Plain steps to take a screenshot on this device, in the interface language (English by default). */
+export function screenshotHowTo(device: string | null, t: (key: MessageKey) => string = (key) => en[key]): string[] {
+  return ((device && SCREENSHOT_HOW_TO[device]) || ["howTo.other"]).map((key) => t(key));
 }
