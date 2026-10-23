@@ -6,7 +6,8 @@ import { STORAGE_KEY, getCurrentGuide, setUiLanguage } from "@/lib/store/localSt
 import LibraryPage from "@/app/app/library/page";
 
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+const nav = vi.hoisted(() => ({ search: new URLSearchParams() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), useSearchParams: () => nav.search }));
 
 const stepsAnswer = {
   kind: "steps",
@@ -31,6 +32,7 @@ const bodyOf = (fetchMock: ReturnType<typeof vi.fn>, call = 0) =>
 describe("Help library page", () => {
   beforeEach(() => {
     push.mockReset();
+    nav.search = new URLSearchParams();
     localStorage.setItem(STORAGE_KEY, "{}");
   });
   afterEach(() => vi.unstubAllGlobals());
@@ -85,5 +87,20 @@ describe("Help library page", () => {
     const whatsapp = LIBRARY.find((c) => c.id === "whatsapp")!;
     await userEvent.click(screen.getByRole("button", { name: whatsapp.title.hi }));
     expect(screen.getByRole("button", { name: whatsapp.questions[0].hi })).toBeInTheDocument();
+  });
+
+  it("opens the category named in ?topic= (from the landing page)", () => {
+    nav.search = new URLSearchParams("topic=instagram");
+    render(<LibraryPage />);
+    expect(screen.getByRole("heading", { level: 2, name: "Instagram" })).toBeInTheDocument();
+    const instagram = LIBRARY.find((c) => c.id === "instagram")!;
+    expect(screen.getByRole("button", { name: instagram.questions[0].en })).toBeInTheDocument();
+  });
+
+  it("shows all topics for an unknown ?topic=", () => {
+    nav.search = new URLSearchParams("topic=nope");
+    render(<LibraryPage />);
+    expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Smart TV" })).toBeInTheDocument();
   });
 });

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import AskBox, { type AskBoxHandle } from "@/components/AskBox";
 import AskFamilySheet from "@/components/AskFamilySheet";
 import CallFamily from "@/components/CallFamily";
@@ -12,7 +12,7 @@ import Settings from "@/components/Settings";
 import { useT } from "@/lib/i18n";
 import { isSpeechSupported } from "@/lib/speech/speech";
 import { getCurrentGuide, type SavedGuide } from "@/lib/store/localStore";
-import { noSubscribe } from "@/lib/useIsClient";
+import { noSubscribe, useIsClient } from "@/lib/useIsClient";
 
 // Resume only on a cold launch, so going back to home from a guide does not bounce straight back.
 let launchChecked = false;
@@ -22,6 +22,37 @@ function isUnfinished(guide: SavedGuide): boolean {
   if (answer?.kind === "steps" && Array.isArray(answer.steps)) return guide.step <= answer.steps.length;
   // Explanations (and anything else) have no unfinished state to resume.
   return false;
+}
+
+/**
+ * Handles links from the landing page: `?q=` asks that question straight away and `?start=speak`
+ * starts the microphone (or puts the cursor in the box when the browser cannot listen).
+ * Runs once, then removes the parameters so going back or reloading does not ask again.
+ */
+function StartFromUrl({ askBox }: { askBox: RefObject<AskBoxHandle | null> }) {
+  const params = useSearchParams();
+  // The ask box only works once running in the browser.
+  const isClient = useIsClient();
+  const done = useRef(false);
+  const question = params.get("q")?.trim() ?? "";
+  const start = params.get("start");
+
+  useEffect(() => {
+    if (!isClient || done.current || !askBox.current) return;
+    if (!question && !start) return;
+    done.current = true;
+    if (question) askBox.current.ask(question.slice(0, 500));
+    else if (start === "speak" && isSpeechSupported()) askBox.current.toggleSpeak();
+    else askBox.current.focusQuestion();
+    window.history.replaceState(null, "", window.location.pathname);
+  }, [isClient, question, start, askBox]);
+
+  return null;
+}
+
+function hasStartParams(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  return params.has("q") || params.has("start");
 }
 
 /** A big action label; the emoji is decoration, so screen readers hear only the words. */
@@ -47,6 +78,8 @@ export default function Home() {
   useEffect(() => {
     if (launchChecked) return;
     launchChecked = true;
+    // Arriving with a question from the landing page: answer it instead of resuming the old guide.
+    if (hasStartParams()) return;
     const guide = getCurrentGuide();
     if (guide && isUnfinished(guide)) router.push(`/guide/${guide.id}`);
   }, [router]);
@@ -56,6 +89,10 @@ export default function Home() {
       <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-8 px-4 py-8">
         <h1 className="text-3xl font-bold">{t("home.title")}</h1>
         <AskBox ref={askBox} showSpeakButton={false} onListeningChange={setListening} />
+        {/* Search params are only known per request, so they are read inside Suspense (Cache Components). */}
+        <Suspense fallback={null}>
+          <StartFromUrl askBox={askBox} />
+        </Suspense>
         <nav aria-label={t("home.navLabel")}>
           <ul className="flex flex-col gap-3">
             <li>

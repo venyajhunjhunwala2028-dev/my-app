@@ -7,7 +7,7 @@ import GuidePage from "@/app/guide/[id]/page";
 import AppPreferences from "@/components/AppPreferences";
 import { STORAGE_KEY, getGuide, saveGuide, setGuideStep, setLevel, setUiLanguage } from "@/lib/store/localStore";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 
 const step = (n: number, lang = "en") => ({
   instruction: lang === "hi" ? `काम ${n} करें` : `Do thing ${n}`,

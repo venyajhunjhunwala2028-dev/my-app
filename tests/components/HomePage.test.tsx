@@ -5,7 +5,8 @@ import { STORAGE_KEY, saveGuide, setCurrentGuide, setGuideStep } from "@/lib/sto
 import Home from "@/app/app/page";
 
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+const nav = vi.hoisted(() => ({ search: new URLSearchParams() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), useSearchParams: () => nav.search }));
 
 const step = (n: number) => ({ instruction: `Step ${n}`, lookFor: "A button", spoken: `Step ${n}` });
 
@@ -28,6 +29,7 @@ class FakeRecognition {
 describe("Home page", () => {
   beforeEach(() => {
     push.mockReset();
+    nav.search = new URLSearchParams();
     FakeRecognition.instances = [];
     localStorage.setItem(STORAGE_KEY, "{}");
   });
@@ -122,4 +124,61 @@ describe("Home page", () => {
     expect(screen.getByRole("button", { name: "Speak" })).toBeInTheDocument();
   });
 
+  describe("arriving from the landing page", () => {
+    const stepsAnswer = {
+      kind: "steps",
+      language: "en",
+      title: "Post on Instagram",
+      device: null,
+      app: "Instagram",
+      safety: null,
+      steps: [{ instruction: "Open Instagram.", lookFor: "A camera icon.", spoken: "Open Instagram.", encouragement: "" }],
+      screenshotHowTo: ["Press power and volume down."],
+    };
+
+    beforeEach(() => window.history.replaceState(null, "", "/app"));
+
+    it("?q= asks that question once, opens the guide, and removes q from the address", async () => {
+      window.history.replaceState(null, "", "/app?q=How%20do%20I%20post%20on%20Instagram%3F");
+      nav.search = new URLSearchParams("q=How do I post on Instagram?");
+      const fetchMock = vi.fn(async () => new Response(JSON.stringify(stepsAnswer), { status: 200 }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { rerender } = render(<Home />);
+      await waitFor(() => expect(push).toHaveBeenCalledWith(expect.stringMatching(/^\/guide\//)));
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+      expect(body.question).toBe("How do I post on Instagram?");
+      expect(window.location.search).toBe("");
+
+      rerender(<Home />);
+      await new Promise((r) => setTimeout(r, 0));
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("ignores an empty ?q=", async () => {
+      nav.search = new URLSearchParams("q=%20");
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      render(<Home />);
+      await new Promise((r) => setTimeout(r, 0));
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("?start=speak starts the microphone when the browser can listen", async () => {
+      vi.stubGlobal("SpeechRecognition", FakeRecognition);
+      window.history.replaceState(null, "", "/app?start=speak");
+      nav.search = new URLSearchParams("start=speak");
+      render(<Home />);
+      await waitFor(() => expect(FakeRecognition.instances[0]?.start).toHaveBeenCalled());
+      expect(screen.getByRole("button", { name: "Listening… tap to stop" })).toBeInTheDocument();
+      expect(window.location.search).toBe("");
+    });
+
+    it("?start=speak puts the cursor in the question box when the browser cannot listen", async () => {
+      nav.search = new URLSearchParams("start=speak");
+      render(<Home />);
+      await waitFor(() => expect(screen.getByLabelText("What do you need help with?")).toHaveFocus());
+    });
+  });
 });

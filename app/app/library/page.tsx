@@ -1,16 +1,31 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import AskBox, { type AskBoxHandle } from "@/components/AskBox";
 import { LIBRARY, type LibraryCategory } from "@/lib/content/library";
 import { useT, useUiLanguage } from "@/lib/i18n";
 
 /** "Help library": common questions by topic; tapping one asks it as if it were typed. */
 export default function LibraryPage() {
+  // `?topic=<id>` (from the landing page) opens that category. Search params are only known per
+  // request, so they are read inside Suspense; the prerendered fallback shows all topics.
+  return (
+    <Suspense fallback={<Library topic={null} />}>
+      <LibraryFromUrl />
+    </Suspense>
+  );
+}
+
+function LibraryFromUrl() {
+  return <Library topic={useSearchParams().get("topic")} />;
+}
+
+function Library({ topic }: { topic: string | null }) {
   const t = useT();
   const language = useUiLanguage();
-  const [category, setCategory] = useState<LibraryCategory | null>(null);
+  const [category, setCategory] = useState<LibraryCategory | null>(() => LIBRARY.find((c) => c.id === topic) ?? null);
   const askBox = useRef<AskBoxHandle>(null);
   const answerArea = useRef<HTMLDivElement>(null);
 

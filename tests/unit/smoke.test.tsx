@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import Home from "@/app/app/page";
 import manifest from "@/app/manifest";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 
 describe("app scaffold", () => {
   it("renders the home page with the app name and an ask control", () => {
