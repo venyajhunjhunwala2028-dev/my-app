@@ -5,7 +5,8 @@ import ScamPage from "@/app/app/scam/page";
 import { resizeScreenshot } from "@/lib/image/resize";
 import { STORAGE_KEY, getUsage, requestAllowance, setFamilyContact, setSpeakingLanguage } from "@/lib/store/localStore";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+const nav = vi.hoisted(() => ({ search: new URLSearchParams() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => nav.search }));
 vi.mock("@/lib/image/resize", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/image/resize")>()),
   resizeScreenshot: vi.fn(async () => ({ base64: "BBBB", mediaType: "image/jpeg", width: 800, height: 1600 })),
@@ -181,5 +182,69 @@ describe("Is this a scam? page", () => {
     await pasteAndCheck("Hello");
     await user().click(await screen.findByRole("button", { name: "Check something else" }));
     expect(await openPaste()).toHaveValue("");
+  });
+
+  describe("Verify before I do it", () => {
+    const findings = [
+      { signal: "sender", ok: true, text: "It is from a number you saved." },
+      { signal: "links", ok: false, text: "It has a link you didn't expect." },
+      { signal: "otp", ok: true, text: "It does not ask for a code." },
+    ];
+
+    it("offers the example questions as chips, and sends the chosen one with the message", async () => {
+      answerWith({ ...answer("careful"), findings, recommendation: "Don't click the link." });
+      render(<ScamPage />);
+      expect(screen.getByRole("heading", { name: "Verify before I do it" })).toBeInTheDocument();
+      for (const q of ["Is this message safe?", "Is this safe to click?", "Should I reply?", "Is this really from my bank?", "Can I trust this email?"]) {
+        expect(screen.getByRole("button", { name: q })).toHaveAttribute("aria-pressed", "false");
+      }
+      const u = user();
+      await u.click(screen.getByRole("button", { name: "Is this safe to click?" }));
+      expect(screen.getByRole("button", { name: /Is this safe to click\?/ })).toHaveAttribute("aria-pressed", "true");
+      await pasteAndCheck("Your parcel is waiting: http://bit.ly/x");
+
+      await screen.findByRole("heading", { name: "Be careful" });
+      expect(sentBody()).toEqual({ text: "Your parcel is waiting: http://bit.ly/x", question: "Is this safe to click?", language: "en-IN" });
+      expect(screen.getByText("Is this safe to click?")).toBeInTheDocument();
+      expect(screen.getByTestId("scam-recommendation")).toHaveTextContent("Don't click the link.");
+    });
+
+    it("shows a ✓ or ⚠ line per sign under the verdict, with words for screen readers", async () => {
+      answerWith({ ...answer("careful"), findings, recommendation: "Don't click the link." });
+      render(<ScamPage />);
+      await pasteAndCheck("Hello http://x.co");
+      expect(await screen.findByRole("heading", { name: "What I checked" })).toBeInTheDocument();
+      const lines = screen.getAllByTestId("scam-finding");
+      expect(lines.map((l) => l.dataset.ok)).toEqual(["true", "false", "true"]);
+      expect(lines[0]).toHaveTextContent("Looks fine: Sender: It is from a number you saved.");
+      expect(lines[1]).toHaveTextContent("Warning: Links: It has a link you didn't expect.");
+      expect(lines[1].querySelector('[aria-hidden="true"]')).toHaveTextContent("⚠");
+      // "Why?" stays, in simple words.
+      expect(screen.getByRole("heading", { name: "Why?" })).toBeInTheDocument();
+    });
+
+    it("tapping a chosen question again removes it", async () => {
+      render(<ScamPage />);
+      const u = user();
+      await u.click(screen.getByRole("button", { name: "Should I reply?" }));
+      await u.click(screen.getByRole("button", { name: /Should I reply\?/ }));
+      await pasteAndCheck("Hi");
+      await screen.findByRole("heading", { name: "Probably safe" });
+      expect(sentBody().question).toBeUndefined();
+    });
+
+    it("picks up a safety question asked on the home screen", async () => {
+      nav.search = new URLSearchParams("q=Is this really from my bank?");
+      render(<ScamPage />);
+      expect(screen.getByRole("button", { name: /Is this really from my bank\?/ })).toHaveAttribute("aria-pressed", "true");
+      await pasteAndCheck("Dear customer, your account is fine.");
+      await screen.findByRole("heading", { name: "Probably safe" });
+      expect(sentBody().question).toBe("Is this really from my bank?");
+
+      nav.search = new URLSearchParams("q=Is it safe to open this pdf?");
+      render(<ScamPage />);
+      expect(screen.getAllByText("Is it safe to open this pdf?").length).toBeGreaterThan(0);
+      nav.search = new URLSearchParams();
+    });
   });
 });

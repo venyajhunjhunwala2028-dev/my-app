@@ -1,4 +1,4 @@
-import type { AskAnswer, AskRequest } from "./schemas";
+import type { AskAnswer, AskRequest, Step } from "./schemas";
 import { warningFor } from "@/lib/safety/stepWarnings";
 
 // Fixed answers for FAKE_AI=1: tests and e2e run without calling Claude.
@@ -12,10 +12,56 @@ const explain = (title: string, text: string, alternative: string | null = null)
   alternative,
 });
 
+const fakeStep = (instruction: string, lookFor: string, encouragement = "Well done."): Step => ({
+  instruction,
+  lookFor,
+  spoken: instruction,
+  encouragement,
+});
+
+/** Near the bottom middle of the screenshot, like a typical back or + button; null without a screenshot. */
+function fakeBox(req: AskRequest) {
+  if (!req.image || !req.width || !req.height) return null;
+  const width = Math.max(1, Math.round(req.width * 0.3));
+  const height = Math.max(1, Math.round(req.height * 0.06));
+  return { x: Math.round((req.width - width) / 2), y: Math.round(req.height * 0.88), width, height };
+}
+
+/** A fix step for the screen the learner is on, then the rest of the guide from the current step. */
+function fakeFixedSteps(req: AskRequest): Step[] {
+  const g = req.guideContext;
+  const rest = g ? g.steps.slice(g.stepIndex) : [];
+  return [
+    fakeStep("Tap the back arrow once.", "A small arrow pointing left, at the top left of the screen.", "That's it."),
+    ...rest.map((instruction, i) => fakeStep(instruction, "The same place as before.", i === rest.length - 1 ? "" : "Well done.")),
+  ];
+}
+
 export function fakeAskAnswer(req: AskRequest): AskAnswer {
   const q = req.question.toLowerCase();
   const device = req.devices?.[0] ?? null;
   const step = req.guideContext?.steps[req.guideContext.stepIndex] ?? "this step";
+
+  if (req.image && (req.mode === "notWhatISee" || req.mode === "stuck")) {
+    return {
+      kind: "screen_help",
+      language: "en",
+      onTrack: false,
+      diagnosis: "That's okay. It looks like a different page opened. Let's go back one step first.",
+      steps: fakeFixedSteps(req),
+      box: fakeBox(req),
+    };
+  }
+  if (req.mode === "checkScreen") {
+    return {
+      kind: "screen_help",
+      language: "en",
+      onTrack: true,
+      diagnosis: "That looks just right. You can go on to the next step.",
+      steps: [],
+      box: null,
+    };
+  }
 
   switch (req.mode) {
     case "followup":
@@ -37,7 +83,7 @@ export function fakeAskAnswer(req: AskRequest): AskAnswer {
         "Or, swipe down from the middle of the screen and type the app's name in the search box.",
       );
   }
-  if (req.mode !== "showMeHow") {
+  if (req.mode !== "showMeHow" && req.mode !== "teach") {
     if (q.includes("bank called")) {
       return {
         kind: "scam_warning",

@@ -136,7 +136,8 @@ export default function Home() {
     if (guide && isUnfinished(guide)) router.push(`/guide/${guide.id}`);
   }, [router]);
 
-  const examples = [t("home.example.1"), t("home.example.2"), t("home.example.3")];
+  // Things people want to get done, in their own words; the last one opens the scam check.
+  const examples = [t("home.example.1"), t("home.example.2"), t("home.example.3"), t("home.example.4"), t("home.example.5")];
 
   return (
     <InstallGuide>
@@ -214,6 +215,20 @@ export default function Home() {
                   />
                 </Link>
               </li>
+              <li className="col-span-full">
+                <Link
+                  href="/app/camera"
+                  aria-labelledby="card-camera-title"
+                  aria-describedby="card-camera-desc"
+                  className="card-action flex-col gap-3"
+                >
+                  <CardBody
+                    id="card-camera"
+                    emoji="📸"
+                    text={{ tag: t("home.tag.camera"), title: t("home.camera"), desc: t("home.cameraDesc") }}
+                  />
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -226,6 +241,11 @@ export default function Home() {
                 <li>
                   <Link href="/app/scam" className={TILE}>
                     <TileBody emoji="🔐">{t("home.scam")}</TileBody>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/app/camera" className={TILE}>
+                    <TileBody emoji="📸">{t("home.camera")}</TileBody>
                   </Link>
                 </li>
                 <li>
@@ -248,7 +268,7 @@ export default function Home() {
                     <TileBody emoji="📞">{t("home.callFamily")}</TileBody>
                   </a>
                 </li>
-                <li>
+                <li className="col-span-full">
                   <a href="#my-guides" className={TILE}>
                     <TileBody emoji="🕘">{t("history.heading")}</TileBody>
                   </a>

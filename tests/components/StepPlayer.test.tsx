@@ -16,7 +16,13 @@ import {
 import StepPlayer, { type StepsAnswer } from "@/components/StepPlayer";
 import GuidePage from "@/app/guide/[id]/page";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+const push = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+// jsdom cannot decode or draw images, so the resize step is replaced.
+vi.mock("@/lib/image/resize", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/image/resize")>()),
+  resizeScreenshot: vi.fn(async () => ({ base64: "AAAA", mediaType: "image/jpeg", width: 1000, height: 2000 })),
+}));
 
 const step = (n: number) => ({ instruction: `Do thing ${n}`, lookFor: `Button ${n}`, spoken: `Say thing ${n}`, encouragement: "" });
 
@@ -540,12 +546,13 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
       expect(screen.getByText("Step 3 of 4")).toBeInTheDocument();
     });
 
-    it("has the three big step buttons, with their emoji hidden from screen readers", () => {
+    it("has the four big step buttons, with their emoji hidden from screen readers", () => {
       render(<StepPlayer guide={seed()} />);
       for (const [name, emoji] of [
         ["I did it", "✓"],
         ["Show me where", "📱"],
         ["I'm stuck", "❓"],
+        ["That's not what I see", "🖼️"],
       ]) {
         const button = screen.getByRole("button", { name });
         expect(within(button).getByText(emoji)).toHaveAttribute("aria-hidden", "true");
@@ -574,6 +581,145 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
       expect(screen.getByTestId("mascot")).toHaveAttribute("data-mood", "celebrate");
       expect(screen.getByTestId("success-tick")).toHaveAttribute("aria-hidden", "true");
       expect(screen.getByTestId("confetti")).toHaveAttribute("aria-hidden", "true");
+    });
+  });
+
+  describe("do it with me", () => {
+    const png = () => new File([new Uint8Array(10)], "shot.png", { type: "image/png" });
+    const screenHelp = (over: Record<string, unknown> = {}) => ({
+      kind: "screen_help",
+      language: "en",
+      onTrack: false,
+      diagnosis: "That's okay. You're on the home screen.",
+      steps: [
+        { instruction: "Tap the back arrow.", lookFor: "Top left.", spoken: "Tap the back arrow.", encouragement: "Good." },
+        { instruction: "Tap Share now.", lookFor: "Bottom.", spoken: "Tap Share now.", encouragement: "" },
+      ],
+      box: { x: 400, y: 1700, width: 200, height: 100 },
+      ...over,
+    });
+
+    async function sendScreenshot(buttonName: string) {
+      const u = userEvent.setup({ applyAccept: false });
+      await u.click(screen.getByRole("button", { name: buttonName }));
+      expect(screen.getByRole("button", { name: "Choose your screenshot" })).toBeDisabled();
+      await u.click(screen.getByRole("button", { name: "I understand" }));
+      await u.upload(screen.getByTestId("step-screenshot-input"), png());
+    }
+
+    it("That's not what I see sends the task, step, previous step and screenshot, then corrects the steps from here", async () => {
+      const fetchMock = mockFetch(screenHelp());
+      render(<StepPlayer guide={seed()} />);
+      await done();
+      await sendScreenshot("That's not what I see");
+
+      expect(await screen.findByText("That's okay. You're on the home screen.")).toBeInTheDocument();
+      expect(bodyOf(fetchMock, 0)).toMatchObject({
+        question: "Do thing 2",
+        mode: "notWhatISee",
+        previousInstruction: "Do thing 1",
+        image: "AAAA",
+        mediaType: "image/jpeg",
+        width: 1000,
+        height: 2000,
+        guideContext: { title: "Post a story", stepIndex: 1 },
+      });
+      // Same step number, the corrected step, and the rest replaced: 1 kept + 2 new.
+      expect(screen.getByText("Step 2 of 3")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Tap the back arrow." })).toBeInTheDocument();
+      expect(screen.queryByText("Do thing 2")).not.toBeInTheDocument();
+      expect(screen.getByText("I've changed the steps to match your screen.")).toBeInTheDocument();
+      expect(screen.getByText("Tech Helper found it")).toBeInTheDocument();
+      expect(screen.getByTestId("tap-circle")).toBeInTheDocument();
+      expect(stored().answer.steps.map((s) => s.instruction)).toEqual(["Do thing 1", "Tap the back arrow.", "Tap Share now."]);
+      expect(stored().step).toBe(2);
+      // The screenshot is never saved.
+      expect(localStorage.getItem(STORAGE_KEY)).not.toContain("AAAA");
+
+      await userEvent.click(screen.getByRole("button", { name: "Try this step" }));
+      expect(screen.queryByText("That's okay. You're on the home screen.")).not.toBeInTheDocument();
+      await done();
+      expect(screen.getByRole("heading", { level: 1, name: "Tap Share now." })).toBeInTheDocument();
+    });
+
+    it("Check my screen says Yes, you're in the right place and moves on", async () => {
+      const fetchMock = mockFetch(screenHelp({ onTrack: true, diagnosis: "The photo is ready.", steps: [], box: null }));
+      render(<StepPlayer guide={seed()} />);
+      await sendScreenshot("Check my screen");
+      expect(await screen.findByText("Yes, you're in the right place.")).toBeInTheDocument();
+      expect(screen.getByText("The photo is ready.")).toBeInTheDocument();
+      expect(bodyOf(fetchMock, 0)).toMatchObject({ mode: "checkScreen", image: "AAAA", guideContext: { stepIndex: 0 } });
+      expect(bodyOf(fetchMock, 0).previousInstruction).toBeUndefined();
+      expect(screen.queryByTestId("tap-circle")).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Go to the next step" }));
+      expect(screen.getByText("Step 2 of 4")).toBeInTheDocument();
+      expect(stored().answer.steps).toHaveLength(4);
+    });
+
+    it("Check my screen off track gives what to do instead", async () => {
+      mockFetch(screenHelp({ diagnosis: "Not quite. Tap the back arrow first." }));
+      render(<StepPlayer guide={seed()} />);
+      await sendScreenshot("Check my screen");
+      expect(await screen.findByText("Not quite. Tap the back arrow first.")).toBeInTheDocument();
+      expect(screen.queryByText("Yes, you're in the right place.")).not.toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Tap the back arrow." })).toBeInTheDocument();
+    });
+
+    it("I'm stuck sends the latest screenshot from this guide with the trouble, and shows the diagnosis and fix", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify(screenHelp({ onTrack: true, steps: [], box: null, diagnosis: "Fine." })), { status: 200 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(screenHelp({ diagnosis: "That's okay. A menu opened by mistake.", box: null })), { status: 200 }),
+        );
+      vi.stubGlobal("fetch", fetchMock);
+      render(<StepPlayer guide={seed()} />);
+      await sendScreenshot("Check my screen");
+      await screen.findByText("Fine.");
+      await userEvent.click(screen.getByRole("button", { name: "Back to the step" }));
+
+      await userEvent.click(screen.getByRole("button", { name: "I'm stuck" }));
+      expect(screen.getByText("That's okay. Take your time.")).toBeInTheDocument();
+      expect(screen.getByText("I'll also look at the last screenshot you sent.")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Nothing happens" }));
+      expect(await screen.findByText("That's okay. A menu opened by mistake.")).toBeInTheDocument();
+      expect(bodyOf(fetchMock, 1)).toMatchObject({ mode: "stuck", trouble: "Nothing happens", image: "AAAA", question: "Do thing 1" });
+      expect(screen.getByRole("heading", { level: 1, name: "Tap the back arrow." })).toBeInTheDocument();
+    });
+
+    it("I'm stuck without any screenshot sends no image", async () => {
+      const fetchMock = mockFetch(explain("No problem."));
+      render(<StepPlayer guide={seed()} />);
+      await userEvent.click(screen.getByRole("button", { name: "I'm stuck" }));
+      expect(screen.queryByText("I'll also look at the last screenshot you sent.")).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "I can't find it" }));
+      await screen.findByText("No problem.");
+      expect(bodyOf(fetchMock, 0).image).toBeUndefined();
+    });
+
+    it("shows a reassuring line on each step when there is no praise", async () => {
+      render(<StepPlayer guide={seed()} />);
+      expect(screen.getByTestId("reassurance")).toHaveTextContent("Let's do it together.");
+      await done();
+      expect(screen.queryByTestId("reassurance")).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Previous step" }));
+      await userEvent.click(screen.getByRole("button", { name: "I did it" }));
+      await userEvent.click(screen.getByRole("button", { name: "Previous step" }));
+      expect(screen.getByTestId("reassurance")).toHaveTextContent("Let's do it together.");
+    });
+
+    it("offers Teach me how to do this myself next time, which asks a teach-style question and opens the new guide", async () => {
+      push.mockReset();
+      const fetchMock = mockFetch({ ...answer, title: "Learn: Post a story" });
+      render(<StepPlayer guide={seed()} />);
+      for (let i = 0; i < 4; i++) await done();
+      await userEvent.click(screen.getByRole("button", { name: "Teach me how to do this myself next time" }));
+      await waitFor(() => expect(push).toHaveBeenCalledWith(expect.stringMatching(/^\/guide\//)));
+      expect(bodyOf(fetchMock, 0)).toMatchObject({
+        question: "Teach me how to do this myself next time: Post a story",
+        mode: "teach",
+      });
+      expect(getSavedGuides().some((g) => g.title === "Learn: Post a story")).toBe(true);
     });
   });
 });

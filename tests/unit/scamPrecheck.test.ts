@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyScamFloor, scamPrecheck } from "@/lib/safety/scamPrecheck";
+import { applyScamChecks, applyScamFloor, scamPrecheck, scamSignals } from "@/lib/safety/scamPrecheck";
 import type { ScamAnswer } from "@/lib/ai/scam";
 
 describe("scamPrecheck", () => {
@@ -39,7 +39,15 @@ describe("scamPrecheck", () => {
 });
 
 describe("applyScamFloor", () => {
-  const safe: ScamAnswer = { kind: "scam_check", verdict: "safe", reasons: ["Looks normal."], advice: "Fine.", language: "en" };
+  const safe: ScamAnswer = {
+    kind: "scam_check",
+    verdict: "safe",
+    reasons: ["Looks normal."],
+    advice: "Fine.",
+    findings: [],
+    recommendation: "It's okay to reply.",
+    language: "en",
+  };
 
   it("raises a safe verdict to the floor and explains why", () => {
     const floored = applyScamFloor(safe, scamPrecheck("share the OTP with us"));
@@ -47,11 +55,52 @@ describe("applyScamFloor", () => {
     expect(floored.reasons[0]).toMatch(/OTP/);
     expect(floored.reasons.length).toBeLessThanOrEqual(3);
     expect(floored.advice).not.toBe("Fine.");
+    expect(floored.recommendation).toBe("Don't reply, and don't tap anything.");
   });
 
   it("never lowers a verdict", () => {
     const scam: ScamAnswer = { ...safe, verdict: "scam", reasons: ["Bad."], advice: "Stop." };
     expect(applyScamFloor(scam, scamPrecheck("bit.ly/x"))).toEqual(scam);
     expect(applyScamFloor(safe, null)).toEqual(safe);
+  });
+});
+
+describe("scamSignals", () => {
+  it("sees links, hurry, codes, secrets, money and scam words, and nothing in a normal message", () => {
+    expect(scamSignals("URGENT: share the OTP now at https://x.co")).toEqual(["urgency", "links", "otp"]);
+    expect(scamSignals("Please send your ATM PIN to verify")).toEqual(["password"]);
+    expect(scamSignals("Dear customer, pay Rs 500 fee to get your prize")).toEqual(["money", "language"]);
+    expect(scamSignals("Hi Ma, I'll come for dinner on Sunday.")).toEqual([]);
+    expect(scamSignals("123456 is your OTP. Do not share it with anyone.")).toEqual([]);
+  });
+});
+
+describe("applyScamChecks", () => {
+  const safe: ScamAnswer = {
+    kind: "scam_check",
+    verdict: "safe",
+    reasons: ["Looks normal."],
+    advice: "Fine.",
+    findings: [
+      { signal: "sender", ok: true, text: "From your bank." },
+      { signal: "links", ok: true, text: "No link." },
+    ],
+    recommendation: "It's okay to reply.",
+    language: "en",
+  };
+
+  it("turns a clearly-seen sign into a warning and adds missing ones, in the fixed order", () => {
+    const checked = applyScamChecks(safe, "Share the OTP here: https://bank-help.xyz");
+    expect(checked.verdict).toBe("scam");
+    expect(checked.findings.map((f) => [f.signal, f.ok])).toEqual([
+      ["sender", true],
+      ["links", false],
+      ["otp", false],
+    ]);
+  });
+
+  it("leaves the answer alone with no text or no signs", () => {
+    expect(applyScamChecks(safe, undefined)).toEqual(safe);
+    expect(applyScamChecks(safe, "See you at lunch")).toEqual(safe);
   });
 });

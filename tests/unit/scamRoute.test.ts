@@ -29,7 +29,9 @@ function realMode() {
   vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
 }
 
-const modelSays = (answer: Omit<ScamAnswer, "kind">) =>
+// Older model replies had no findings or recommendation; the route still accepts them.
+type ModelReply = Omit<ScamAnswer, "kind" | "findings" | "recommendation"> & Partial<Pick<ScamAnswer, "findings" | "recommendation">>;
+const modelSays = (answer: ModelReply) =>
   mockedCall.mockResolvedValue({ stopReason: "end_turn", text: JSON.stringify({ answer: { kind: "scam_check", ...answer } }) });
 
 afterEach(() => {
@@ -52,6 +54,51 @@ describe("POST /api/scam", () => {
     expect(body.reasons.length).toBeGreaterThanOrEqual(1);
     expect(body.advice.length).toBeGreaterThan(0);
     expect(mockedCall).not.toHaveBeenCalled();
+  });
+
+  it("gives a finding for every sign and a clear recommendation in fake mode", async () => {
+    const body = (await (await check({ text: "Visit http://example.com" })).json()) as ScamAnswer;
+    expect(body.findings.map((f) => f.signal)).toEqual(["sender", "urgency", "links", "otp", "password", "money", "language"]);
+    expect(body.findings.find((f) => f.signal === "links")?.ok).toBe(false);
+    expect(body.recommendation).toBe("Don't click the link.");
+    const safe = (await (await check({ text: "Dinner at 8?" })).json()) as ScamAnswer;
+    expect(safe.findings.every((f) => f.ok)).toBe(true);
+    expect(safe.recommendation).toBe("It's okay to reply.");
+  });
+
+  it("sends the learner's question fenced as data, and checks it for red flags too", async () => {
+    realMode();
+    modelSays({ verdict: "safe", reasons: ["Ok."], advice: "It looks fine. Never share a code.", language: "en" });
+    const res = await check({ text: "Hello from your bank", question: "Should I share the OTP they sent?" });
+    const body = (await res.json()) as ScamAnswer;
+    const sent = JSON.stringify(mockedCall.mock.calls[0][0].user);
+    expect(sent).toContain("<question>\\nShould I share the OTP they sent?\\n</question>");
+    expect(body.verdict).toBe("scam");
+    expect(body.findings.find((f) => f.signal === "otp")?.ok).toBe(false);
+  });
+
+  it("fills in the recommendation from the advice and keeps only valid findings", async () => {
+    realMode();
+    modelSays({
+      verdict: "careful",
+      reasons: ["Unknown sender."],
+      advice: "Ask family first. Do not tap the link.",
+      language: "en",
+      findings: [
+        { signal: "sender", ok: false, text: "You don't know this number." },
+        { signal: "sender", ok: true, text: "Duplicate." },
+        { signal: "mood" as never, ok: true, text: "Not a sign." },
+      ],
+    });
+    const body = (await (await check({ text: "Hello, who is this?" })).json()) as ScamAnswer;
+    expect(body.recommendation).toBe("Ask family first.");
+    expect(body.findings).toEqual([{ signal: "sender", ok: false, text: "You don't know this number." }]);
+  });
+
+  it("rejects a question that is not text or is too long", async () => {
+    expect((await check({ text: "hi", question: 5 })).status).toBe(400);
+    const res = await check({ text: "hi", question: "a".repeat(1001) });
+    expect(((await res.json()) as ApiError).error).toBe("too_long");
   });
 
   it("accepts an image without text", async () => {

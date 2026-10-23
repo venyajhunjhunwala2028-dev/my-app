@@ -32,7 +32,7 @@ test("Ask my family from home: shows the message and a WhatsApp link to the save
 
 test("Ask my family for help from a guide step: shares the goal and the current step", async ({ page }) => {
   await page.goto("/app");
-  await page.getByLabel("What would you like help with?").fill("how do I post a story on Instagram");
+  await page.getByLabel("What would you like to do?").fill("how do I post a story on Instagram");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   await expect(page).toHaveURL(/\/guide\/[^/]+$/);
   await page.getByRole("button", { name: "I did it" }).click();

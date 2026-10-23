@@ -9,6 +9,7 @@ import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErro
 import { askHelper } from "@/lib/ai/askClient";
 import type { AskAnswer, AskMode, ClarifyAbout } from "@/lib/ai/schemas";
 import { useT, type MessageKey } from "@/lib/i18n";
+import { isSafetyQuestion, scamCheckHref } from "@/lib/safety/safetyIntent";
 import { isSpeechSupported, startListening, type ListenError } from "@/lib/speech/speech";
 import {
   getDevices,
@@ -171,9 +172,14 @@ export default function AskBox({
     if (!q || busy.current) return;
     // Once a question is sent, a late voice result must not replace it.
     cancelListening();
+    const { mode, lessonId } = options.current;
+    // "Is this message safe?" is checked, not guided: open the scam check with the question, spending no use.
+    if (!mode && isSafetyQuestion(q)) {
+      router.push(scamCheckHref(q));
+      return;
+    }
     busy.current = true;
     setStatus({ kind: "waiting" });
-    const { mode, lessonId } = options.current;
     const result = await askHelper({
       question: q,
       language: speakingLanguage,
@@ -208,9 +214,18 @@ export default function AskBox({
         router.push(`/guide/${id}`);
         return;
       }
+      case "safety_check":
+        // The helper recognised a safety question the phone's own check missed.
+        setStatus({ kind: "idle" });
+        router.push(scamCheckHref(q));
+        return;
       case "scam_warning":
       case "money_refusal":
         setStatus({ kind: "safety", safety: answer.kind, message: answer.message });
+        return;
+      case "screen_help":
+        // Only for a screenshot inside a guide; never the answer to a new question.
+        setStatus({ kind: "message", message: answer.diagnosis });
         return;
       case "off_topic":
         setStatus({ kind: "message", message: answer.message });
@@ -333,10 +348,14 @@ export default function AskBox({
               {t("ask.label")}
             </label>
           )}
+          <p id="question-hint" className="text-lg text-muted">
+            {t("ask.reassure")}
+          </p>
           <textarea
             ref={textBox}
             id="question"
             name="question"
+            aria-describedby="question-hint"
             rows={3}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}

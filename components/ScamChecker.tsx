@@ -6,7 +6,7 @@ import Mascot, { type MascotMood } from "@/components/Mascot";
 import PrivacyReminder from "@/components/PrivacyReminder";
 import SafetyNotice from "@/components/SafetyNotice";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
-import type { ScamAnswer, ScamRequest, ScamVerdict } from "@/lib/ai/scam";
+import type { ScamAnswer, ScamRequest, ScamSignal, ScamVerdict } from "@/lib/ai/scam";
 import { checkScam } from "@/lib/ai/scamClient";
 import { useT, type MessageKey } from "@/lib/i18n";
 import { MAX_SCAM_TEXT_CHARS } from "@/lib/http/limits";
@@ -27,12 +27,31 @@ const VERDICTS: Record<ScamVerdict, { icon: string; word: MessageKey; className:
   scam: { icon: "🔴", word: "scam.verdict.scam", className: "border-warning bg-warning-surface text-warning", mood: "warning" },
 };
 
+const SIGNAL_LABELS: Record<ScamSignal, MessageKey> = {
+  sender: "scam.signal.sender",
+  urgency: "scam.signal.urgency",
+  links: "scam.signal.links",
+  otp: "scam.signal.otp",
+  password: "scam.signal.password",
+  money: "scam.signal.money",
+  language: "scam.signal.language",
+};
+
+/** The "Verify before I do it" questions; the chosen one goes with the message. */
+const VERIFY_QUESTIONS: readonly MessageKey[] = [
+  "scam.verify.q.1",
+  "scam.verify.q.2",
+  "scam.verify.q.3",
+  "scam.verify.q.4",
+  "scam.verify.q.5",
+];
+
 type State =
   | { kind: "idle"; problem?: MessageKey }
   | { kind: "waiting" }
   | { kind: "limit" }
   | { kind: "error"; error: RequestError }
-  | { kind: "answer"; answer: ScamAnswer };
+  | { kind: "answer"; answer: ScamAnswer; question: string | null };
 
 function NeverShare() {
   const t = useT();
@@ -44,23 +63,63 @@ function NeverShare() {
   );
 }
 
-function Result({ answer }: { answer: ScamAnswer }) {
+function Result({ answer, question }: { answer: ScamAnswer; question: string | null }) {
   const t = useT();
   const verdict = VERDICTS[answer.verdict];
+  // Answers from before findings existed have none.
+  const findings = answer.findings ?? [];
   return (
     <div className="flex flex-col gap-4">
+      {question && (
+        <p className="text-xl text-muted">
+          {t("scam.verify.yourQuestion")} <span className="font-semibold text-foreground">{question}</span>
+        </p>
+      )}
       <section
         role="status"
-        className={`flex animate-scale-in items-center gap-4 rounded-[2rem] border-4 p-5 shadow-card ${verdict.className}`}
+        className={`flex animate-scale-in flex-col gap-3 rounded-[2rem] border-4 p-5 shadow-card ${verdict.className}`}
       >
-        <Mascot mood={verdict.mood} size={4} />
-        <h2 className="min-w-0 text-[1.65rem] leading-tight font-extrabold [overflow-wrap:normal]">
-          <span aria-hidden="true" className="mr-2">
-            {verdict.icon}
-          </span>
-          {t(verdict.word)}
-        </h2>
+        <div className="flex items-center gap-4">
+          <Mascot mood={verdict.mood} size={4} />
+          <h2 className="min-w-0 text-[1.65rem] leading-tight font-extrabold [overflow-wrap:normal]">
+            <span aria-hidden="true" className="mr-2">
+              {verdict.icon}
+            </span>
+            {t(verdict.word)}
+          </h2>
+        </div>
+        {answer.recommendation && (
+          <p data-testid="scam-recommendation" lang={answer.language} className="rounded-2xl bg-card p-4 text-2xl font-extrabold text-foreground">
+            {answer.recommendation}
+          </p>
+        )}
       </section>
+      {findings.length > 0 && (
+        <section aria-labelledby="scam-findings" className="card flex flex-col gap-3">
+          <h3 id="scam-findings" className="text-2xl font-bold">
+            {t("scam.findings")}
+          </h3>
+          <ul className="flex flex-col gap-3">
+            {findings.map((f) => (
+              <li key={f.signal} data-testid="scam-finding" data-ok={f.ok} className="flex items-start gap-3 text-xl">
+                <span
+                  aria-hidden="true"
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-black ${
+                    f.ok ? "bg-safe-surface text-safe" : "bg-warning-surface text-warning"
+                  }`}
+                >
+                  {f.ok ? "✓" : "⚠"}
+                </span>
+                <span>
+                  <span className="sr-only">{t(f.ok ? "scam.finding.ok" : "scam.finding.warn")} </span>
+                  <span className="font-bold">{t(SIGNAL_LABELS[f.signal])}: </span>
+                  <span lang={answer.language}>{f.text}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section aria-labelledby="scam-why" className="card flex flex-col gap-4">
         <h3 id="scam-why" className="text-2xl font-bold">
           {t("scam.why")}
@@ -79,10 +138,15 @@ function Result({ answer }: { answer: ScamAnswer }) {
   );
 }
 
-/** Paste a message or add a screenshot, then "Check it" says whether it looks safe, needs care, or is a scam. */
-export default function ScamChecker() {
+/**
+ * Paste a message or add a screenshot, then "Check it" says whether it looks safe, needs care, or is a scam.
+ * "Verify before I do it" adds the learner's own question ("Should I reply?"); `initialQuestion` comes from
+ * a safety question asked on the home screen.
+ */
+export default function ScamChecker({ initialQuestion }: { initialQuestion?: string } = {}) {
   const isClient = useIsClient();
   const t = useT();
+  const [question, setQuestion] = useState<string | null>(initialQuestion?.trim() || null);
   const [text, setText] = useState("");
   const [image, setImage] = useState<PreparedImage | null>(null);
   const [understood, setUnderstood] = useState(false);
@@ -139,7 +203,7 @@ export default function ScamChecker() {
     if (result.type === "limit") setState({ kind: "limit" });
     else if (result.type === "error")
       setState({ kind: "error", error: { code: result.code, message: result.message } });
-    else setState({ kind: "answer", answer: result.answer });
+    else setState({ kind: "answer", answer: result.answer, question: request.question ?? null });
   }
 
   function submit(e: FormEvent) {
@@ -149,6 +213,7 @@ export default function ScamChecker() {
     void send({
       ...(message ? { text: message } : {}),
       ...(image ? { image: image.base64, mediaType: image.mediaType, width: image.width, height: image.height } : {}),
+      ...(question ? { question } : {}),
       language: getSpeakingLanguage(),
     });
   }
@@ -181,7 +246,7 @@ export default function ScamChecker() {
     const { verdict } = state.answer;
     return (
       <div className="flex flex-col gap-6">
-        <Result answer={state.answer} />
+        <Result answer={state.answer} question={state.question} />
         <NeverShare />
         {verdict !== "safe" && <CallFamily />}
         <button type="button" className="btn-secondary" onClick={startAgain}>
@@ -196,6 +261,39 @@ export default function ScamChecker() {
   return (
     <div className="flex flex-col gap-6">
       <form className="flex flex-col gap-6" onSubmit={submit}>
+        {/* First the learner's question, then the thing to check, then Check it. */}
+        <section aria-labelledby="verify-heading" className="card flex flex-col gap-4">
+          <h2 id="verify-heading" className="flex items-center gap-2 text-2xl font-extrabold">
+            <span aria-hidden="true">✅</span>
+            {t("scam.verify.heading")}
+          </h2>
+          <p className="text-xl text-muted">{t("scam.verify.lead")}</p>
+          <ul className="flex flex-wrap gap-2">
+            {VERIFY_QUESTIONS.map((key) => {
+              const q = t(key);
+              const chosen = question === q;
+              return (
+                <li key={key} className="max-w-full">
+                  <button
+                    type="button"
+                    aria-pressed={chosen}
+                    className={`chip max-w-full text-left ${chosen ? "border-primary! bg-primary! text-primary-foreground!" : ""}`}
+                    disabled={waiting}
+                    onClick={() => setQuestion(chosen ? null : q)}
+                  >
+                    {chosen && <span aria-hidden="true">✓ </span>}
+                    {q}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {question && !VERIFY_QUESTIONS.some((key) => t(key) === question) && (
+            <p className="rounded-2xl bg-lavender p-4 text-xl">
+              {t("scam.verify.yourQuestion")} <span className="font-semibold">{question}</span>
+            </p>
+          )}
+        </section>
         {/* Its own card: the promise and the two big ways to send something. */}
         <section className="flex flex-col gap-5 rounded-[2rem] border-2 border-safe/25 bg-safe-surface p-5 shadow-card">
           <span aria-hidden="true" className="flex h-14 w-14 items-center justify-center rounded-2xl bg-card text-3xl shadow-card">

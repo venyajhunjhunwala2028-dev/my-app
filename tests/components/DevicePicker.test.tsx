@@ -31,7 +31,7 @@ describe("DevicePicker", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(<AskBox />);
-    await userEvent.type(screen.getByLabelText("What would you like help with?"), "How do I make the text bigger?");
+    await userEvent.type(screen.getByLabelText("What would you like to do?"), "How do I make the text bigger?");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
 
     expect(await screen.findByText("Which device are you using?")).toBeInTheDocument();

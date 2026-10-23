@@ -9,8 +9,8 @@ import {
 } from "@/lib/ai/scam";
 import type { ApiErrorCode } from "@/lib/ai/schemas";
 import { isObj } from "@/lib/guards";
-import { MAX_LANGUAGE_CHARS, MAX_SCAM_TEXT_CHARS } from "@/lib/http/limits";
-import { applyScamFloor, scamPrecheck } from "@/lib/safety/scamPrecheck";
+import { MAX_LANGUAGE_CHARS, MAX_QUESTION_CHARS, MAX_SCAM_TEXT_CHARS } from "@/lib/http/limits";
+import { applyScamChecks } from "@/lib/safety/scamPrecheck";
 
 const MESSAGES: Record<ApiErrorCode, string> = {
   bad_request: "Please paste the message or choose a screenshot, then try again.",
@@ -36,6 +36,12 @@ function parseRequest(raw: unknown): ScamRequest | "bad_request" | "too_long" {
     Object.assign(req, img);
   }
   if (!req.text && !req.image) return "bad_request";
+  if (raw.question !== undefined) {
+    if (typeof raw.question !== "string") return "bad_request";
+    if (raw.question.length > MAX_QUESTION_CHARS) return "too_long";
+    const question = raw.question.trim();
+    if (question) req.question = question;
+  }
   if (raw.language !== undefined) {
     if (typeof raw.language !== "string" || raw.language.length > MAX_LANGUAGE_CHARS) return "bad_request";
     req.language = raw.language;
@@ -57,10 +63,11 @@ export async function POST(request: Request): Promise<Response> {
   const req = parseRequest(raw);
   if (typeof req === "string") return fail(req);
 
-  // Obvious red flags in the text set a minimum verdict, whatever the AI says.
-  const check = req.text ? scamPrecheck(req.text) : null;
+  // Obvious red flags in the text (or in the learner's question, e.g. "Should I share the OTP?") set a minimum
+  // verdict and mark the signs they show as warnings, whatever the AI says.
+  const checked = [req.text, req.question].filter(Boolean).join("\n") || undefined;
 
-  if (process.env.FAKE_AI === "1") return Response.json(applyScamFloor(fakeScamAnswer(req), check));
+  if (process.env.FAKE_AI === "1") return Response.json(applyScamChecks(fakeScamAnswer(req), checked));
 
   if (!process.env.ANTHROPIC_API_KEY) return fail("setup", "missing_api_key");
 
@@ -77,5 +84,5 @@ export async function POST(request: Request): Promise<Response> {
     parseScamAnswer,
   );
   if ("logCode" in result) return fail("retry", result.logCode);
-  return Response.json(applyScamFloor(result.answer, check));
+  return Response.json(applyScamChecks(result.answer, checked));
 }

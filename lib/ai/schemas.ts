@@ -1,15 +1,35 @@
+import { NULLABLE_BOX_JSON_SCHEMA, clipBox, type Box } from "@/lib/ai/box";
 import { isObj, isStr } from "@/lib/guards";
+import type { AllowedImageType } from "@/lib/http/limits";
 import { warningFor, warningLanguage } from "@/lib/safety/stepWarnings";
 
 /**
  * ask: a new question. followup: "I don't understand this step". showMeHow: turn an explanation into steps.
  * showAgain: explain the current step in different words. simpler: explain it for very low tech literacy.
  * stuck: the learner is stuck on the current step (see `trouble`); re-explain and offer one other way.
+ *   With a screenshot it answers "screen_help": a diagnosis, a fixed step and where to tap.
+ * notWhatISee: the screenshot does not match the current step; correct the step from here (needs an image).
+ * checkScreen: "Am I on track?" after a step, from a screenshot (needs an image).
+ * teach: the same task again, taught so the learner can do it alone next time.
  */
-export type AskMode = "ask" | "followup" | "showMeHow" | "showAgain" | "simpler" | "stuck";
-export const ASK_MODES: readonly AskMode[] = ["ask", "followup", "showMeHow", "showAgain", "simpler", "stuck"];
+export type AskMode = "ask" | "followup" | "showMeHow" | "showAgain" | "simpler" | "stuck" | "notWhatISee" | "checkScreen" | "teach";
+export const ASK_MODES: readonly AskMode[] = [
+  "ask",
+  "followup",
+  "showMeHow",
+  "showAgain",
+  "simpler",
+  "stuck",
+  "notWhatISee",
+  "checkScreen",
+  "teach",
+];
 /** Modes that explain the current guide step; they need `guideContext`. */
-export const STEP_HELP_MODES: readonly AskMode[] = ["showAgain", "simpler", "stuck"];
+export const STEP_HELP_MODES: readonly AskMode[] = ["showAgain", "simpler", "stuck", "notWhatISee", "checkScreen"];
+/** Modes that may carry a screenshot of the learner's screen. */
+export const IMAGE_MODES: readonly AskMode[] = ["stuck", "notWhatISee", "checkScreen"];
+/** Modes that cannot work without a screenshot. */
+export const IMAGE_REQUIRED_MODES: readonly AskMode[] = ["notWhatISee", "checkScreen"];
 export type ExplanationLevel = "very_simple" | "simple" | "detailed";
 export const EXPLANATION_LEVELS: readonly ExplanationLevel[] = ["very_simple", "simple", "detailed"];
 export type ClarifyAbout = "app" | "device" | "other";
@@ -35,6 +55,13 @@ export interface AskRequest {
   previousExplanation?: string;
   /** Set by "Explain this in Hindi/English": answer in exactly this language, whatever the question is written in. */
   answerLanguage?: string;
+  /** Step-help modes: the instruction of the step before the current one, when there is one. */
+  previousInstruction?: string;
+  /** Image modes: base64 screenshot of the learner's screen, without the data: prefix. Never stored. */
+  image?: string;
+  mediaType?: AllowedImageType;
+  width?: number;
+  height?: number;
 }
 export interface Step {
   instruction: string;
@@ -71,6 +98,23 @@ export type AskAnswer =
   | { kind: "clarify"; language: string; prompt: string; options: string[]; about: ClarifyAbout }
   /** The question could not be understood; kind words and three example questions. */
   | { kind: "unclear"; language: string; message: string; examples: string[] }
+  /**
+   * From a screenshot of the learner's screen (modes stuck, notWhatISee, checkScreen).
+   * `steps` replace the current step and every step after it; empty when nothing needs to change.
+   */
+  | {
+      kind: "screen_help";
+      language: string;
+      /** True when the learner is in the right place (or the step worked). */
+      onTrack: boolean;
+      /** One or two short, reassuring sentences about what the screen shows. */
+      diagnosis: string;
+      steps: Step[];
+      /** Where to tap on the screenshot, or null. */
+      box: Box | null;
+    }
+  /** The learner asked whether something they received is safe: the app opens the scam check instead of a guide. */
+  | { kind: "safety_check"; language: string; message: string }
   | { kind: "scam_warning"; language: string; message: string }
   | { kind: "money_refusal"; language: string; message: string }
   | { kind: "off_topic"; language: string; message: string };
@@ -101,6 +145,22 @@ const askVariant = (kind: AskAnswer["kind"], properties: Record<string, unknown>
 const messageVariant = (kind: AskAnswer["kind"], description: string) =>
   askVariant(kind, { message: str(description) });
 
+/** One step of a guide; shared with the camera answer. */
+export const STEP_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    instruction: str("One action, in plain words."),
+    lookFor: str("What the control looks like and where it is on screen."),
+    spoken: str("The step as it should be read aloud."),
+    encouragement: {
+      type: "string",
+      description: "Short praise shown after this step is done, e.g. Great! or Well done. Empty string for the last step.",
+    },
+  },
+  required: ["instruction", "lookFor", "spoken", "encouragement"],
+  additionalProperties: false,
+};
+
 export const ASK_ANSWER_JSON_SCHEMA: Record<string, unknown> = {
   type: "object",
   properties: {
@@ -113,24 +173,7 @@ export const ASK_ANSWER_JSON_SCHEMA: Record<string, unknown> = {
           safety: nullableStr(
             "One-line warning starting with ⚠️ when the task involves OTPs, passwords, PINs, bank details, UPI, cards, remote access, suspicious links or screen sharing; otherwise null.",
           ),
-          steps: {
-            type: "array",
-            description: "Ordered steps, one action each.",
-            items: {
-              type: "object",
-              properties: {
-                instruction: str("One action, in plain words."),
-                lookFor: str("What the control looks like and where it is on screen."),
-                spoken: str("The step as it should be read aloud."),
-                encouragement: {
-                  type: "string",
-                  description: "Short praise shown after this step is done, e.g. Great! or Well done. Empty string for the last step.",
-                },
-              },
-              required: ["instruction", "lookFor", "spoken", "encouragement"],
-              additionalProperties: false,
-            },
-          },
+          steps: { type: "array", description: "Ordered steps, one action each.", items: STEP_JSON_SCHEMA },
           screenshotHowTo: strArray("Short steps for taking a screenshot on this device."),
         }),
         askVariant("explanation", {
@@ -148,6 +191,17 @@ export const ASK_ANSWER_JSON_SCHEMA: Record<string, unknown> = {
           message: str("Kindly says you are not sure what they mean and asks what they are trying to do."),
           examples: strArray("Three short example questions the learner could ask."),
         }),
+        askVariant("screen_help", {
+          onTrack: { type: "boolean", description: "True when the screenshot shows they are in the right place, or the step worked." },
+          diagnosis: str("One or two short, reassuring sentences about what the screen shows and what to do."),
+          steps: {
+            type: "array",
+            description: "Corrected steps that replace the current step and the steps after it. Empty when nothing needs to change.",
+            items: STEP_JSON_SCHEMA,
+          },
+          box: NULLABLE_BOX_JSON_SCHEMA,
+        }),
+        messageVariant("safety_check", "Kindly says you will check it together, and asks them to show you the message."),
         messageVariant("scam_warning", "Warning that this is likely a scam, and to call family."),
         messageVariant("money_refusal", "Explains you do not guide payments; ask a trusted person."),
         messageVariant("off_topic", "Kindly says you only help with technology and AI."),
@@ -165,9 +219,26 @@ const isStrArray = (v: unknown, min = 0): v is string[] =>
 const isStep = (v: unknown): v is Omit<Step, "encouragement"> & { encouragement?: unknown } =>
   isObj(v) && isStr(v.instruction) && isStr(v.lookFor) && isStr(v.spoken);
 const strOrNull = (v: unknown): string | null => (isStr(v) ? v : null);
+/** Steps from the model, with a missing encouragement filled in as "". */
+export const normaliseSteps = (steps: (Omit<Step, "encouragement"> & { encouragement?: unknown })[]): Step[] =>
+  steps.map(({ instruction, lookFor, spoken, encouragement }) => ({
+    instruction,
+    lookFor,
+    spoken,
+    encouragement: typeof encouragement === "string" ? encouragement : "",
+  }));
+export const isStepList = (v: unknown, min = 0): v is (Omit<Step, "encouragement"> & { encouragement?: unknown })[] =>
+  Array.isArray(v) && v.length >= min && v.every(isStep);
 
-/** Returns the answer when it matches the AskAnswer contract, otherwise null. */
-export function parseAskAnswer(v: unknown): AskAnswer | null {
+/** More steps than this from one screenshot are not a fix; they are dropped. */
+export const MAX_REPLACEMENT_STEPS = 12;
+
+/**
+ * Returns the answer when it matches the AskAnswer contract, otherwise null.
+ * `image` is the size of the screenshot sent with the request; a screen_help box is clipped to it,
+ * and dropped when there was no screenshot.
+ */
+export function parseAskAnswer(v: unknown, image?: { width: number; height: number }): AskAnswer | null {
   if (!isObj(v) || !isStr(v.language)) return null;
   const { language } = v;
   switch (v.kind) {
@@ -180,12 +251,7 @@ export function parseAskAnswer(v: unknown): AskAnswer | null {
         v.steps.every(isStep) &&
         isStrArray(v.screenshotHowTo, 1)
       ) {
-        const steps: Step[] = v.steps.map(({ instruction, lookFor, spoken, encouragement }) => ({
-          instruction,
-          lookFor,
-          spoken,
-          encouragement: typeof encouragement === "string" ? encouragement : "",
-        }));
+        const steps = normaliseSteps(v.steps);
         // The model may leave the safety note out; add the deterministic one so risky tasks always carry it.
         const safety =
           strOrNull(v.safety) ??
@@ -229,6 +295,19 @@ export function parseAskAnswer(v: unknown): AskAnswer | null {
         return { kind: "needs_device", language, prompt: v.prompt, options: v.options };
       }
       return null;
+    case "screen_help":
+      if (typeof v.onTrack === "boolean" && isStr(v.diagnosis) && isStepList(v.steps)) {
+        return {
+          kind: "screen_help",
+          language,
+          onTrack: v.onTrack,
+          diagnosis: v.diagnosis,
+          steps: normaliseSteps(v.steps).slice(0, MAX_REPLACEMENT_STEPS),
+          box: image && v.box ? clipBox(v.box, image.width, image.height) : null,
+        };
+      }
+      return null;
+    case "safety_check":
     case "scam_warning":
     case "money_refusal":
     case "off_topic":

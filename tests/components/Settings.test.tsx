@@ -70,7 +70,7 @@ describe("Settings sheet", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Settings" }));
     await userEvent.click(screen.getByRole("button", { name: "Android phone" }));
-    await userEvent.type(screen.getByLabelText("What would you like help with?"), "How do I call?");
+    await userEvent.type(screen.getByLabelText("What would you like to do?"), "How do I call?");
     await userEvent.click(screen.getByRole("button", { name: "Ask" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const body = JSON.parse(String(((fetchMock.mock.calls[0] as unknown[])[1] as RequestInit).body));
@@ -146,7 +146,7 @@ describe("Settings sheet: preferences", () => {
     await userEvent.click(screen.getByRole("button", { name: "Settings" }));
     await userEvent.click(screen.getByRole("button", { name: "Detailed" }));
     await userEvent.click(screen.getByRole("button", { name: "हिन्दी" }));
-    await userEvent.type(screen.getByLabelText("आप किस चीज़ में मदद चाहते हैं?"), "Call kaise karein?");
+    await userEvent.type(screen.getByLabelText("आप क्या करना चाहते हैं?"), "Call kaise karein?");
     await userEvent.click(screen.getByRole("button", { name: "पूछें" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const body = JSON.parse(String(((fetchMock.mock.calls[0] as unknown[])[1] as RequestInit).body));

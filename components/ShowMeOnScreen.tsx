@@ -28,13 +28,26 @@ type State =
 
 const pct = (n: number) => `${(n * 100).toFixed(2)}%`;
 
-const screenshotSrc = (image: PreparedImage) => `data:${image.mediaType};base64,${image.base64}`;
+export const screenshotSrc = (image: PreparedImage) => `data:${image.mediaType};base64,${image.base64}`;
 
 /**
  * The magic lens: a glowing ring on the place to tap, the rest of the screenshot gently dimmed,
  * and a "Tap here" tag beside the ring. Positioned in percentages of the image, so it matches at any size.
+ * The camera uses it on a photo, with its own tag ("Look here.") and picture name.
  */
-function MarkedScreenshot({ image, box }: { image: PreparedImage; box: Box }) {
+export function MarkedScreenshot({
+  image,
+  box,
+  tag,
+  alt,
+}: {
+  image: PreparedImage;
+  box: Box;
+  /** The words beside the ring; "Tap here." by default. */
+  tag?: string;
+  /** The picture's name; "Your screenshot" by default. */
+  alt?: string;
+}) {
   const t = useT();
   const [zoomed, setZoomed] = useState(false);
   const centreX = (box.x + box.width / 2) / image.width;
@@ -58,7 +71,7 @@ function MarkedScreenshot({ image, box }: { image: PreparedImage; box: Box }) {
         <span className="relative block overflow-hidden rounded-2xl border-2 border-lavender-strong">
           {/* A data URL of the learner's own screenshot; next/image adds nothing here. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={screenshotSrc(image)} alt={t("show.yourScreenshot")} className="block w-full" />
+          <img src={screenshotSrc(image)} alt={alt ?? t("show.yourScreenshot")} className="block w-full" />
           <span data-testid="tap-marker" className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2" style={place}>
             <span data-testid="tap-spotlight" className="spotlight absolute inset-0 animate-fade-in" />
             <span data-testid="tap-circle" className="lens-ring absolute inset-0 animate-scale-in" />
@@ -71,7 +84,7 @@ function MarkedScreenshot({ image, box }: { image: PreparedImage; box: Box }) {
             className={`absolute ${align} ${arrowBelow ? "top-full mt-2" : "bottom-full mb-2"} animate-fade-in rounded-full bg-card px-3 py-1 text-base font-extrabold whitespace-nowrap text-primary shadow-raised`}
           >
             {arrowBelow ? "↑ " : "↓ "}
-            {t("show.tapHere")}
+            {tag ?? t("show.tapHere")}
           </span>
         </span>
       </button>
@@ -83,14 +96,14 @@ function MarkedScreenshot({ image, box }: { image: PreparedImage; box: Box }) {
 const LENS_STEPS = ["📷", "🔎", "✨", "✓"];
 
 /** While the screenshot is read: the picture with a scanning line, and 📷 → 🔎 → ✨ → ✓ lighting up in turn. */
-function Scanning({ image }: { image: PreparedImage }) {
+export function Scanning({ image, label, alt }: { image: PreparedImage; label?: string; alt?: string }) {
   const t = useT();
   return (
     <div className="flex flex-col gap-4">
       <div role="status" className="card-lavender flex items-center gap-3">
         <Mascot mood="thinking" size={3} />
         <div className="flex min-w-0 flex-col gap-2">
-          <p className="text-xl font-bold">{t("show.looking")}</p>
+          <p className="text-xl font-bold">{label ?? t("show.looking")}</p>
           <p aria-hidden="true" className="flex flex-wrap items-center gap-1 text-lg">
             {LENS_STEPS.map((icon, i) => (
               <span key={icon} className="flex items-center gap-1">
@@ -108,7 +121,7 @@ function Scanning({ image }: { image: PreparedImage }) {
         className="relative mx-auto w-full max-w-xs overflow-hidden rounded-2xl border-2 border-lavender-strong shadow-card"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={screenshotSrc(image)} alt={t("show.yourScreenshot")} className="block w-full" />
+        <img src={screenshotSrc(image)} alt={alt ?? t("show.yourScreenshot")} className="block w-full" />
         <div className="pointer-events-none absolute inset-0 bg-[#7c74ff]/10">
           <div className="scan-line" />
         </div>
@@ -128,6 +141,7 @@ export default function ShowMeOnScreen({
   device,
   screenshotHowTo,
   language,
+  onImage,
 }: {
   instruction?: string;
   lookFor?: string;
@@ -135,6 +149,8 @@ export default function ShowMeOnScreen({
   /** Steps from the guide; when missing, plain steps for the chosen device are shown. */
   screenshotHowTo?: string[];
   language: string;
+  /** Told about each screenshot the learner chooses, so a guide can use it again for "I'm stuck". Kept in memory only. */
+  onImage?: (image: PreparedImage) => void;
 }) {
   const asking = instruction === undefined;
   const t = useT();
@@ -179,6 +195,7 @@ export default function ShowMeOnScreen({
     if ("problem" in result) return setState({ kind: "idle", problem: result.problem });
     const prepared = result.image;
     setImage(prepared);
+    onImage?.(prepared);
     if (asking) return setState({ kind: "question" });
     // Count the use only once there is a picture to send.
     if (!requestAllowance().allowed) return setState({ kind: "limit" });

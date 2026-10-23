@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 test("typing in the landing page box asks on /app and opens the guide", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1, name: "Technology doesn't have to be confusing." })).toBeVisible();
-  await page.getByRole("textbox", { name: "What would you like help with?" }).fill("How do I post a story on Instagram?");
+  await page.getByRole("textbox", { name: "What would you like to do?" }).fill("How do I post a story on Instagram?");
   await page.getByRole("button", { name: "Help me" }).click();
 
   await expect(page).toHaveURL(/\/guide\/[^/]+$/);
@@ -19,7 +19,7 @@ test("typing in the landing page box asks on /app and opens the guide", async ({
 
 test("a Try asking chip asks that question", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "How do I post on Instagram?" }).click();
+  await page.getByRole("link", { name: "I want to post something on Instagram" }).click();
   await expect(page).toHaveURL(/\/guide\/[^/]+$/);
   await expect(page.getByText("Step 1 of 3")).toBeVisible();
 });

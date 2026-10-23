@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import AskFamilySheet from "@/components/AskFamilySheet";
 import Mascot from "@/components/Mascot";
 import SafetyNotice from "@/components/SafetyNotice";
@@ -9,6 +10,7 @@ import { askHelper } from "@/lib/ai/askClient";
 import type { AskAnswer, AskMode } from "@/lib/ai/schemas";
 import { guideGoal } from "@/lib/family/message";
 import { getLocale, uiLanguageFor, useLocale, useT } from "@/lib/i18n";
+import { scamCheckHref } from "@/lib/safety/safetyIntent";
 import { getDevices, saveGuide, setCurrentGuide, setGuideStep, type SavedGuide } from "@/lib/store/localStore";
 import type { StepsAnswer } from "@/components/StepPlayer";
 
@@ -61,6 +63,23 @@ export function AnswerBody({ answer }: { answer: AskAnswer }) {
         <p lang={answer.language} className="text-2xl">
           {answer.message}
         </p>
+      );
+    case "screen_help":
+      return (
+        <p lang={answer.language} className="text-2xl">
+          {answer.diagnosis}
+        </p>
+      );
+    case "safety_check":
+      return (
+        <div className="flex flex-col gap-4">
+          <p lang={answer.language} className="text-2xl">
+            {answer.message}
+          </p>
+          <Link href={scamCheckHref("")} className="btn-primary">
+            {t("scam.verify.heading")}
+          </Link>
+        </div>
       );
   }
 }

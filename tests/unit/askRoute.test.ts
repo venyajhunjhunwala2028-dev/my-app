@@ -218,4 +218,101 @@ describe("POST /api/ask", () => {
       await bad({ question: "x", mode: "showAgain", guideContext, previousExplanation: "a".repeat(2001) }, "too_long");
     });
   });
+
+  describe("intent-first and screen help", () => {
+    const guideContext = { title: "Send a photo", steps: ["Open WhatsApp.", "Tap the clip.", "Tap Send."], stepIndex: 1 };
+    const IMAGE = Buffer.from("a small fake screenshot").toString("base64");
+    const shot = { image: IMAGE, mediaType: "image/jpeg", width: 1000, height: 2000 };
+
+    it("answers a safety question with safety_check, without calling the AI", async () => {
+      realMode();
+      for (const question of ["Is this message safe?", "Should I reply?", "Can I trust this email?"]) {
+        const answer = (await (await ask({ question })).json()) as AskAnswer;
+        expect(answer.kind).toBe("safety_check");
+      }
+      const hindi = (await (await ask({ question: "क्या यह मैसेज सुरक्षित है?" })).json()) as AskAnswer;
+      expect(hindi).toMatchObject({ kind: "safety_check", language: "hi" });
+      expect(mockedCall).not.toHaveBeenCalled();
+    });
+
+    it("still warns first when a safety question is a code handover", async () => {
+      const answer = (await (await ask({ question: "Should I reply and tell them my OTP?" })).json()) as AskAnswer;
+      expect(answer.kind).toBe("scam_warning");
+    });
+
+    it("answers an intent with steps in fake mode", async () => {
+      const answer = (await (await ask({ question: "I want to post something on Instagram" })).json()) as AskAnswer;
+      expect(answer.kind).toBe("steps");
+    });
+
+    it("notWhatISee sends the screenshot, the step and the previous step, and returns corrected steps with a clipped box", async () => {
+      realMode();
+      const help = {
+        kind: "screen_help",
+        language: "en",
+        onTrack: false,
+        diagnosis: "That's okay. You're on the home screen.",
+        steps: [{ instruction: "Tap WhatsApp.", lookFor: "Green icon.", spoken: "Tap WhatsApp.", encouragement: "Great!" }],
+        box: { x: 900, y: 1900, width: 300, height: 300 },
+      };
+      mockedCall.mockResolvedValue({ stopReason: "end_turn", text: JSON.stringify({ answer: help }) });
+      const res = await ask({ mode: "notWhatISee", guideContext, previousInstruction: "Open WhatsApp.", ...shot });
+      expect(res.status).toBe(200);
+      const answer = (await res.json()) as AskAnswer;
+      expect(answer).toMatchObject({ kind: "screen_help", onTrack: false, box: { x: 900, y: 1900, width: 100, height: 100 } });
+      const sent = mockedCall.mock.calls[0][0].user as { type: string; text?: string; source?: unknown }[];
+      expect(sent[0]).toEqual({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: IMAGE } });
+      expect(sent[1].text).toContain("Mode: notWhatISee");
+      expect(sent[1].text).toContain("Previous step: Open WhatsApp.");
+      expect(sent[1].text).toContain("The learner is on step 2.");
+      expect(sent[1].text).toContain("Screenshot size: 1000 x 2000 pixels");
+    });
+
+    it("returns screen help fixtures in fake mode", async () => {
+      const fixed = (await (await ask({ mode: "notWhatISee", guideContext, ...shot })).json()) as AskAnswer;
+      expect(fixed.kind).toBe("screen_help");
+      if (fixed.kind === "screen_help") {
+        expect(fixed.steps.map((s) => s.instruction)).toEqual(["Tap the back arrow once.", "Tap the clip.", "Tap Send."]);
+        expect(fixed.box).not.toBeNull();
+      }
+      const stuck = (await (await ask({ mode: "stuck", trouble: "I can't find it", guideContext, ...shot })).json()) as AskAnswer;
+      expect(stuck.kind).toBe("screen_help");
+      const check = (await (await ask({ mode: "checkScreen", guideContext, ...shot })).json()) as AskAnswer;
+      expect(check).toMatchObject({ kind: "screen_help", onTrack: true, steps: [] });
+      const plainStuck = (await (await ask({ mode: "stuck", trouble: "I can't find it", guideContext })).json()) as AskAnswer;
+      expect(plainStuck.kind).toBe("explanation");
+    });
+
+    it("teach mode gives steps for the same task", async () => {
+      const answer = (await (await ask({ question: "Teach me how to do this myself: Post a story on Instagram", mode: "teach" })).json()) as AskAnswer;
+      expect(answer.kind).toBe("steps");
+    });
+
+    it("rejects screenshots on the wrong modes, missing screenshots, and bad images", async () => {
+      const bad = async (body: unknown, error = "bad_request") => {
+        const res = await ask(body);
+        expect(res.status).toBe(400);
+        expect(((await res.json()) as ApiError).error).toBe(error);
+      };
+      await bad({ question: "x", ...shot });
+      await bad({ question: "x", mode: "showAgain", guideContext, ...shot });
+      await bad({ mode: "notWhatISee", guideContext });
+      await bad({ mode: "checkScreen", guideContext });
+      await bad({ mode: "notWhatISee", ...shot });
+      await bad({ mode: "notWhatISee", guideContext, ...shot, mediaType: "image/gif" });
+      await bad({ mode: "notWhatISee", guideContext, ...shot, width: undefined });
+      await bad({ mode: "notWhatISee", guideContext, ...shot, width: 4000 }, "too_long");
+      await bad({ mode: "notWhatISee", guideContext, ...shot, image: Buffer.alloc(3 * 1024 * 1024 + 1, 1).toString("base64") }, "too_long");
+      await bad({ mode: "stuck", guideContext, previousInstruction: 5 });
+    });
+
+    it("never logs the screenshot when the AI call fails", async () => {
+      realMode();
+      const logs = (["log", "info", "warn", "error", "debug"] as const).map((m) => vi.spyOn(console, m).mockImplementation(() => {}));
+      mockedCall.mockResolvedValueOnce({ stopReason: "end_turn", text: "not json" });
+      const res = await ask({ mode: "checkScreen", guideContext, ...shot });
+      expect(res.status).toBe(502);
+      expect(logs.flatMap((l) => l.mock.calls.flat().map(String))).toEqual(["ask_error:invalid_json"]);
+    });
+  });
 });

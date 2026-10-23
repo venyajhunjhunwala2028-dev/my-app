@@ -7,7 +7,7 @@ const SCREENSHOT = path.join(__dirname, "fixtures", "sample-screenshot.png");
 
 test("F2: show me on my screen circles the place to tap", async ({ page }) => {
   await page.goto("/app");
-  await page.getByLabel("What would you like help with?").fill("how do I post a story on Instagram");
+  await page.getByLabel("What would you like to do?").fill("how do I post a story on Instagram");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   await expect(page.getByText("Step 1 of 3")).toBeVisible();
 

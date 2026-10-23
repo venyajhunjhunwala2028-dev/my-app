@@ -104,3 +104,44 @@ describe("parseAskAnswer", () => {
     expect(parseAskAnswer(nd)).toEqual(nd);
   });
 });
+
+describe("screen_help and safety_check", () => {
+  const help = {
+    kind: "screen_help",
+    language: "en",
+    onTrack: false,
+    diagnosis: "That's okay.",
+    steps: [{ instruction: "Tap back.", lookFor: "Arrow.", spoken: "Tap back." }],
+    box: { x: -10, y: 5, width: 50, height: 50 },
+  };
+
+  it("are in the JSON schema", () => {
+    expect(variantOf("screen_help").required).toEqual(["kind", "language", "onTrack", "diagnosis", "steps", "box"]);
+    expect(variantOf("safety_check").required).toEqual(["kind", "language", "message"]);
+  });
+
+  it("clips the box to the screenshot, and drops it when there was no screenshot", () => {
+    expect(parseAskAnswer(help, { width: 30, height: 30 })).toMatchObject({
+      kind: "screen_help",
+      box: { x: 0, y: 5, width: 30, height: 25 },
+      steps: [{ instruction: "Tap back.", encouragement: "" }],
+    });
+    expect(parseAskAnswer(help)).toMatchObject({ box: null });
+    expect(parseAskAnswer({ ...help, box: null }, { width: 30, height: 30 })).toMatchObject({ box: null });
+  });
+
+  it("accepts no steps, and rejects a missing diagnosis or bad steps", () => {
+    expect(parseAskAnswer({ ...help, steps: [] })).toMatchObject({ steps: [] });
+    expect(parseAskAnswer({ ...help, diagnosis: "" })).toBeNull();
+    expect(parseAskAnswer({ ...help, onTrack: "yes" })).toBeNull();
+    expect(parseAskAnswer({ ...help, steps: [{ instruction: "x" }] })).toBeNull();
+  });
+
+  it("parses safety_check", () => {
+    expect(parseAskAnswer({ kind: "safety_check", language: "en", message: "Let's check it." })).toEqual({
+      kind: "safety_check",
+      language: "en",
+      message: "Let's check it.",
+    });
+  });
+});

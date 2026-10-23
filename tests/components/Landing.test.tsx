@@ -10,7 +10,7 @@ describe("Landing page", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Technology doesn't have to be confusing." })).toBeInTheDocument();
     expect(screen.getByText(/Tell me what you're trying to do, and I'll guide you one step at a time\./)).toBeInTheDocument();
     expect(screen.getByText(/Hi! I'm your Tech Helper/)).toBeInTheDocument();
-    const input = screen.getByRole("textbox", { name: "What would you like help with?" });
+    const input = screen.getByRole("textbox", { name: "What would you like to do?" });
     expect(input).toHaveAttribute("name", "q");
     const form = input.closest("form")!;
     expect(form.getAttribute("action")).toBe("/app");
@@ -19,15 +19,15 @@ describe("Landing page", () => {
 
   it("has Try asking chips that ask on /app", () => {
     render(<Landing />);
-    expect(screen.getByRole("link", { name: "How do I post on Instagram?" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "I want to post something on Instagram" })).toHaveAttribute(
       "href",
-      "/app?q=How%20do%20I%20post%20on%20Instagram%3F",
+      "/app?q=I%20want%20to%20post%20something%20on%20Instagram",
     );
-    expect(screen.getByRole("link", { name: "How do I send a photo on WhatsApp?" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "I want to send a photo to my daughter" })).toHaveAttribute(
       "href",
       expect.stringMatching(/^\/app\?q=/),
     );
-    expect(screen.getByRole("link", { name: "Why isn't my Wi-Fi working?" })).toHaveAttribute("href", expect.stringMatching(/^\/app\?q=/));
+    expect(screen.getByRole("link", { name: "Is this message safe?" })).toHaveAttribute("href", expect.stringMatching(/^\/app\?q=/));
   });
 
   it("has a minimal top bar with section anchors and a way into the app", () => {

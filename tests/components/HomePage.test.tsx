@@ -84,10 +84,36 @@ describe("Home page", () => {
     expect(screen.getByText("📚")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByRole("link", { name: "My previous help" })).toHaveAttribute("href", "#my-guides");
     expect(document.getElementById("my-guides")).toBeInTheDocument();
-    const nav = screen.getByRole("navigation", { name: "What would you like to do?" });
-    // The big cards: Ask and What do I press? (Speak is hidden here); then Is this a scam?, Teach me,
-    // Help library, Ask my family, Call my family, My previous help and Settings.
-    expect(within(nav).getAllByRole("listitem")).toHaveLength(9);
+    const nav = screen.getByRole("navigation", { name: "Ways I can help" });
+    // The big cards: Ask, What do I press? and Show me with my camera (Speak is hidden here); then Is this a scam?,
+    // Show me with my camera, Teach me, Help library, Ask my family, Call my family, My previous help and Settings.
+    expect(within(nav).getAllByRole("listitem")).toHaveLength(11);
+  });
+
+  it("offers goals as chips and Show me with my camera, as a big card and in More ways", () => {
+    render(<Home />);
+    for (const goal of [
+      "I want to send a photo to my daughter",
+      "I want to post something on Instagram",
+      "I can't find my photos",
+      "I want to join a Zoom call",
+      "Is this message safe?",
+    ]) {
+      expect(screen.getByRole("button", { name: goal })).toBeInTheDocument();
+    }
+    const camera = screen.getAllByRole("link", { name: "Show me with my camera" });
+    expect(camera).toHaveLength(2);
+    for (const link of camera) expect(link).toHaveAttribute("href", "/app/camera");
+    expect(camera[0]).toHaveAccessibleDescription("Take a photo of your router, TV or remote, and I'll explain it.");
+  });
+
+  it("the Is this message safe? chip opens the scam check instead of a guide", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Home />);
+    await userEvent.click(screen.getByRole("button", { name: "Is this message safe?" }));
+    expect(push).toHaveBeenCalledWith("/app/scam?q=Is%20this%20message%20safe%3F");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("greets with the mascot and the one-step-at-a-time promise", () => {
@@ -112,11 +138,11 @@ describe("Home page", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<Home />);
     expect(screen.getByText("Try asking:")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "How do I make the text bigger?" }));
+    await userEvent.click(screen.getByRole("button", { name: "I want to join a Zoom call" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
-    expect(body.question).toBe("How do I make the text bigger?");
-    expect(screen.getByLabelText("What would you like help with?")).toHaveValue("How do I make the text bigger?");
+    expect(body.question).toBe("I want to join a Zoom call");
+    expect(screen.getByLabelText("What would you like to do?")).toHaveValue("I want to join a Zoom call");
   });
 
   it("the Settings card opens the settings sheet", async () => {
@@ -151,7 +177,7 @@ describe("Home page", () => {
   it("Ask a question puts the cursor in the question box", async () => {
     render(<Home />);
     await userEvent.click(screen.getByRole("button", { name: "Ask a question" }));
-    expect(screen.getByLabelText("What would you like help with?")).toHaveFocus();
+    expect(screen.getByLabelText("What would you like to do?")).toHaveFocus();
   });
 
   it("hides Speak when the browser cannot listen", () => {
@@ -171,7 +197,7 @@ describe("Home page", () => {
       FakeRecognition.instances[0].onresult?.({ results: [[{ transcript: "how do I send a photo" }]] });
       FakeRecognition.instances[0].onend?.();
     });
-    expect(screen.getByLabelText("What would you like help with?")).toHaveValue("how do I send a photo");
+    expect(screen.getByLabelText("What would you like to do?")).toHaveValue("how do I send a photo");
     expect(screen.getByRole("button", { name: "Speak" })).toBeInTheDocument();
   });
 
@@ -229,7 +255,7 @@ describe("Home page", () => {
     it("?start=speak puts the cursor in the question box when the browser cannot listen", async () => {
       nav.search = new URLSearchParams("start=speak");
       render(<Home />);
-      await waitFor(() => expect(screen.getByLabelText("What would you like help with?")).toHaveFocus());
+      await waitFor(() => expect(screen.getByLabelText("What would you like to do?")).toHaveFocus());
     });
   });
 });

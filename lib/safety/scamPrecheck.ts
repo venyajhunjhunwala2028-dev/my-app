@@ -1,6 +1,6 @@
 // Deterministic red-flag check for the scam checker. It runs on pasted text and can only
 // raise the AI's verdict (safe → careful → scam), never lower it.
-import type { ScamAnswer, ScamVerdict } from "@/lib/ai/scam";
+import { SCAM_SIGNALS, type ScamAnswer, type ScamFinding, type ScamSignal, type ScamVerdict } from "@/lib/ai/scam";
 import { warningLanguage, type WarningLanguage } from "@/lib/safety/stepWarnings";
 
 type Floor = Exclude<ScamVerdict, "safe">;
@@ -79,14 +79,16 @@ const BLOCKED = rx(
 );
 const URGENT = rx(String.raw`\burgent\b|\bimmediately\b|\bwithin \d+ ?(?:hours?|hrs?|minutes?|mins?)\b|\btoday only\b|\bact now\b|\blast chance\b|तुरंत|जल्दी`);
 
-function asksForSecret(text: string): boolean {
-  if (ASK_SECRET_HI.test(text)) return true;
-  for (const m of text.matchAll(ASK_SECRET)) {
-    const before = text.slice(Math.max(0, (m.index ?? 0) - 25), m.index);
-    if (!NEGATION.test(before)) return true;
-  }
-  return false;
+/** The parts of the text that ask for a secret (not "never share your PIN"). */
+function secretAsks(text: string): string[] {
+  const asks = [...text.matchAll(ASK_SECRET)]
+    .filter((m) => !NEGATION.test(text.slice(Math.max(0, (m.index ?? 0) - 25), m.index)))
+    .map((m) => m[0]);
+  const hindi = ASK_SECRET_HI.exec(text);
+  return hindi ? [...asks, hindi[0]] : asks;
 }
+
+const asksForSecret = (text: string) => secretAsks(text).length > 0;
 
 /** Returns the minimum verdict obvious red flags call for, or null when there are none. */
 export function scamPrecheck(raw: string): ScamPrecheck | null {
@@ -113,6 +115,65 @@ export function scamPrecheck(raw: string): ScamPrecheck | null {
   };
 }
 
+// ---- Per-sign findings ----
+
+const URL_LINK = rx(String.raw`\bhttps?://|\bwww\.|\b[a-z0-9-]+\.(?:com|in|co|net|org|info|xyz|top|link|site|online|app)(?:/|\b)`);
+const OTP_WORD = rx(String.raw`\botps?\b|one[- ]time|ओटीपी`);
+const MONEY_ASK = rx(
+  String.raw`\b(?:send|pay|transfer|deposit)\b[^.!?\n]{0,30}(?:₹|\brs\.? ?\d|\brupees\b|\bmoney\b|\bpayment\b|\bfee\b|\bgift ?cards?\b)|\bgift ?cards?\b|(?:पैसे|रुपये)[^.!?\n]{0,20}भेज|\b(?:paise|paisa) bhej`,
+);
+const ODD_WORDS = rx(String.raw`\bdear (?:customer|user|sir/madam)\b`);
+
+/** Signs that the text clearly shows; they can turn a finding into a warning, never the other way. */
+export function scamSignals(raw: string): ScamSignal[] {
+  const text = raw.normalize("NFC").replace(/[’‘]/g, "'");
+  const asks = secretAsks(text);
+  const flagged = new Set<ScamSignal>();
+  if (URL_LINK.test(text) || SHORT_LINK.test(text)) flagged.add("links");
+  if (URGENT.test(text) || BLOCKED.test(text)) flagged.add("urgency");
+  if (asks.some((a) => OTP_WORD.test(a))) flagged.add("otp");
+  if (asks.some((a) => !OTP_WORD.test(a)) || COLLECT.test(text)) flagged.add("password");
+  if (COLLECT.test(text) || MONEY_ASK.test(text)) flagged.add("money");
+  if (LOTTERY.test(text) || PRIZE.test(text) || KYC.test(text) || REMOTE.test(text) || ODD_WORDS.test(text)) flagged.add("language");
+  return SCAM_SIGNALS.filter((s) => flagged.has(s));
+}
+
+const SIGNAL_WARNINGS: Record<WarningLanguage, Record<ScamSignal, string>> = {
+  en: {
+    sender: "You may not know who really sent it.",
+    urgency: "It rushes you or threatens you.",
+    links: "It has a link. Don't tap it until you are sure.",
+    otp: "It asks for a code (OTP). Never share it.",
+    password: "It asks for a password, PIN or card details. Never share them.",
+    money: "It asks for money or a payment.",
+    language: "It uses words scammers often use, like prizes, KYC or \"dear customer\".",
+  },
+  hi: {
+    sender: "शायद आपको पता नहीं कि इसे असल में किसने भेजा है।",
+    urgency: "इसमें जल्दी करने का दबाव या धमकी है।",
+    links: "इसमें लिंक है। पक्का होने तक इसे न खोलें।",
+    otp: "इसमें कोड (OTP) माँगा गया है। इसे कभी न बताएं।",
+    password: "इसमें पासवर्ड, PIN या कार्ड की जानकारी माँगी गई है। इसे कभी न बताएं।",
+    money: "इसमें पैसे या पेमेंट माँगा गया है।",
+    language: "इसमें ऐसे शब्द हैं जो धोखेबाज़ अक्सर लिखते हैं, जैसे इनाम या KYC।",
+  },
+};
+
+const RECOMMENDATIONS: Record<WarningLanguage, Record<Floor, string>> = {
+  en: { scam: "Don't reply, and don't tap anything.", careful: "Don't tap any link or reply yet." },
+  hi: { scam: "जवाब न दें, और कुछ भी न दबाएँ।", careful: "अभी कोई लिंक न खोलें और जवाब न दें।" },
+};
+
+/** Marks each clearly-seen sign as a warning, adding a finding when the model left it out. */
+function applySignals(findings: ScamFinding[], signals: ScamSignal[], lang: WarningLanguage): ScamFinding[] {
+  const bySignal = new Map(findings.map((f) => [f.signal, f]));
+  for (const signal of signals) {
+    if (bySignal.get(signal)?.ok === false) continue;
+    bySignal.set(signal, { signal, ok: false, text: SIGNAL_WARNINGS[lang][signal] });
+  }
+  return SCAM_SIGNALS.flatMap((s) => bySignal.get(s) ?? []);
+}
+
 const RANK: Record<ScamVerdict, number> = { safe: 0, careful: 1, scam: 2 };
 
 /** Raises the answer's verdict to the pre-check floor, leading with the pre-check's reasons. Never lowers it. */
@@ -121,5 +182,23 @@ export function applyScamFloor(answer: ScamAnswer, check: ScamPrecheck | null): 
   const lang = warningLanguage(answer.language);
   const ours = check.topics.map((t) => REASONS[lang][t]);
   const reasons = [...new Set(ours)].slice(0, 3);
-  return { ...answer, verdict: check.floor, reasons, advice: ADVICE[lang][check.floor] };
+  return {
+    ...answer,
+    verdict: check.floor,
+    reasons,
+    advice: ADVICE[lang][check.floor],
+    recommendation: RECOMMENDATIONS[lang][check.floor],
+  };
+}
+
+/**
+ * Everything the route applies to the AI's answer for this text: the verdict floor, then the clearly-seen
+ * signs as warnings. Never makes an answer look safer.
+ */
+export function applyScamChecks(answer: ScamAnswer, text: string | undefined): ScamAnswer {
+  if (!text) return answer;
+  const floored = applyScamFloor(answer, scamPrecheck(text));
+  const signals = scamSignals(text);
+  if (signals.length === 0) return floored;
+  return { ...floored, findings: applySignals(floored.findings ?? [], signals, warningLanguage(floored.language)) };
 }

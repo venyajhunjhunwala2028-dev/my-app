@@ -2,15 +2,18 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
+import AskBox, { type AskBoxHandle } from "@/components/AskBox";
 import AskFamilySheet from "@/components/AskFamilySheet";
 import { AnswerBody, ExplainOtherLanguage } from "@/components/ExplanationView";
 import Mascot, { type MascotMood } from "@/components/Mascot";
+import PicturePicker from "@/components/PicturePicker";
 import SafetyNotice from "@/components/SafetyNotice";
-import ShowMeOnScreen from "@/components/ShowMeOnScreen";
+import ShowMeOnScreen, { MarkedScreenshot, Scanning } from "@/components/ShowMeOnScreen";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import { askHelper } from "@/lib/ai/askClient";
 import type { AskAnswer, AskRequest, Step } from "@/lib/ai/schemas";
 import { guideGoal } from "@/lib/family/message";
+import type { PreparedImage } from "@/lib/image/resize";
 import { useT, type MessageKey } from "@/lib/i18n";
 import { warningFor, warningLanguage } from "@/lib/safety/stepWarnings";
 import {
@@ -31,6 +34,7 @@ import {
   getSpeakingLanguage,
   markLessonComplete,
   setCurrentGuide,
+  setGuideAnswer,
   setGuideHelpful,
   setGuideStep,
   setReadAloud,
@@ -47,18 +51,40 @@ const isFinished = (step: number, total: number) => step > total;
 /** The big choices after "I'm stuck"; the label, in the interface language, is sent as the trouble. */
 const TROUBLES: readonly MessageKey[] = ["steps.trouble.cantFind", "steps.trouble.different", "steps.trouble.nothing"];
 
+/** Rotated in the mascot's bubble on each step, when there is no praise to show. */
+const REASSURANCE: readonly MessageKey[] = [
+  "steps.reassure.together",
+  "steps.reassure.right",
+  "steps.reassure.time",
+  "steps.reassure.gotIt",
+];
+
 type Help =
   | { kind: "idle" }
-  | { kind: "waiting" }
+  | { kind: "waiting"; shot?: PreparedImage }
   | { kind: "error"; error: RequestError }
   | { kind: "limit" }
-  | { kind: "answer"; answer: AskAnswer };
+  /** `replaced` is set when the answer changed the steps from here on. */
+  | { kind: "answer"; answer: AskAnswer; shot?: PreparedImage; replaced?: boolean };
 
-/** What the help area under the step shows: nothing, the trouble question, the typed trouble, or help. */
-type Panel = "closed" | "trouble" | "troubleText" | "help";
+/**
+ * What the help area under the step shows: nothing, the trouble question, the typed trouble, help,
+ * or the screenshot picker for "That's not what I see" and "Check my screen".
+ */
+type Panel = "closed" | "trouble" | "troubleText" | "help" | "screen";
 
-/** The step-help parts of a request; the player adds language, devices and the guide context. */
-type HelpRequest = Pick<AskRequest, "question" | "mode" | "trouble" | "previousExplanation" | "level">;
+/** The two ways to send a screenshot of where the learner is now. */
+type ScreenMode = "notWhatISee" | "checkScreen";
+
+/**
+ * The step-help parts of a request; the player adds language, devices, the guide context and the previous step.
+ * `shot` is a screenshot from this guide, kept in memory only and never saved.
+ */
+type HelpRequest = Pick<AskRequest, "question" | "mode" | "trouble" | "previousExplanation" | "level"> & {
+  shot?: PreparedImage;
+};
+
+type ScreenHelpAnswer = Extract<AskAnswer, { kind: "screen_help" }>;
 
 /** Step voice: "playing" until the step is read to the end, "paused" after Pause. */
 type Voice = "off" | "playing" | "paused";
@@ -101,6 +127,65 @@ function Label({ emoji, children }: { emoji: string; children: ReactNode }) {
   );
 }
 
+/**
+ * What the helper saw on the learner's screenshot: "Yes, you're in the right place." with a way on,
+ * or a short diagnosis, a note that the steps changed, and the place to tap circled on their picture.
+ */
+function ScreenHelp({
+  answer,
+  shot,
+  replaced,
+  onNext,
+  onTry,
+}: {
+  answer: ScreenHelpAnswer;
+  shot?: PreparedImage;
+  replaced: boolean;
+  onNext: () => void;
+  onTry: () => void;
+}) {
+  const t = useT();
+  return (
+    <div className="flex flex-col gap-4">
+      {answer.onTrack && (
+        <p className="flex items-center gap-2 text-2xl font-extrabold text-safe">
+          <span aria-hidden="true">✓</span>
+          {t("steps.screen.onTrack")}
+        </p>
+      )}
+      <p lang={answer.language} className="text-2xl">
+        {answer.diagnosis}
+      </p>
+      {replaced && (
+        <p role="status" className="rounded-2xl bg-card p-4 text-xl font-semibold">
+          <span aria-hidden="true">✏️ </span>
+          {t("steps.screen.updated")}
+        </p>
+      )}
+      {answer.box && shot && (
+        <>
+          <p className="flex items-center gap-2 self-start rounded-full bg-primary px-5 py-2 text-lg font-bold text-primary-foreground shadow-raised">
+            <span aria-hidden="true">🔎</span>
+            {t("show.found")}
+          </p>
+          <MarkedScreenshot image={shot} box={answer.box} />
+        </>
+      )}
+      {answer.onTrack ? (
+        <button type="button" className="btn-primary min-h-20 text-2xl" onClick={onNext}>
+          {t("steps.screen.nextStep")}
+        </button>
+      ) : (
+        replaced && (
+          <button type="button" className="btn-primary min-h-20 text-2xl" onClick={onTry}>
+            {t("steps.screen.tryStep")}
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
 export default function StepPlayer({
   guide,
   onReplace,
@@ -111,7 +196,9 @@ export default function StepPlayer({
 }) {
   const { id, answer } = guide;
   const t = useT();
-  const total = answer.steps.length;
+  // Corrected from a screenshot partway through ("That's not what I see"); saved with the guide.
+  const [steps, setSteps] = useState(answer.steps);
+  const total = steps.length;
   const canSpeak = useSyncExternalStore(noSubscribe, canSpeakAloud, () => false);
   const canListen = useSyncExternalStore(noSubscribe, isSpeechSupported, () => false);
   const [step, setStep] = useState(() => Math.min(Math.max(guide.step, 1), total + 1));
@@ -128,7 +215,13 @@ export default function StepPlayer({
   const [specific, setSpecific] = useState("");
   const [troubleText, setTroubleText] = useState("");
   const [listening, setListening] = useState(false);
+  const [screenMode, setScreenMode] = useState<ScreenMode>("notWhatISee");
+  const [shotUnderstood, setShotUnderstood] = useState(false);
   const busy = useRef(false);
+  // The latest screenshot from this guide, so "I'm stuck" can look at it too. Memory only: never saved.
+  const lastShot = useRef<PreparedImage | null>(null);
+  const [hasShot, setHasShot] = useState(false);
+  const teachBox = useRef<AskBoxHandle>(null);
   const lastRequest = useRef<HelpRequest | null>(null);
   // The last explanation shown for this step, so "Show me again" can ask for different words.
   const lastExplanation = useRef<string | null>(null);
@@ -139,7 +232,7 @@ export default function StepPlayer({
   const listener = useRef<{ stop: () => void } | null>(null);
 
   const finished = isFinished(step, total);
-  const current = answer.steps[Math.min(step, total) - 1];
+  const current = steps[Math.min(step, total) - 1];
   const rate = slow ? SLOW_RATE : NORMAL_RATE;
 
   useEffect(() => {
@@ -215,7 +308,7 @@ export default function StepPlayer({
       setCurrentGuide(null);
       silence();
     } else if (reading) {
-      speakStep(answer.steps[next - 1]);
+      speakStep(steps[next - 1]);
     } else {
       silence();
     }
@@ -264,6 +357,14 @@ export default function StepPlayer({
     setHelpPlayed(true);
   }
 
+  /** The corrected steps replace the current step and every step after it; the learner stays on the same step number. */
+  function replaceFromHere(newSteps: Step[]) {
+    const merged = [...steps.slice(0, step - 1), ...newSteps];
+    setSteps(merged);
+    setGuideAnswer(id, { ...answer, steps: merged });
+    lastExplanation.current = null;
+  }
+
   async function ask(request: HelpRequest) {
     const q = request.question.trim();
     if (!q || busy.current) return;
@@ -272,22 +373,28 @@ export default function StepPlayer({
     lastRequest.current = request;
     stopListening();
     setPanel("help");
-    setHelp({ kind: "waiting" });
+    const { shot, ...fields } = request;
+    setHelp({ kind: "waiting", shot });
     try {
       const result = await askHelper({
-        ...request,
+        ...fields,
         question: q,
         devices: getDevices(),
-        guideContext: { title: guide.title, steps: answer.steps.map((s) => s.instruction), stepIndex: step - 1 },
+        guideContext: { title: guide.title, steps: steps.map((s) => s.instruction), stepIndex: step - 1 },
+        ...(step > 1 ? { previousInstruction: steps[step - 2].instruction } : {}),
+        ...(shot ? { image: shot.base64, mediaType: shot.mediaType, width: shot.width, height: shot.height } : {}),
       });
       // The learner moved on or closed help while waiting.
       if (myId !== requestId.current) return;
       if (result.type === "limit") setHelp({ kind: "limit" });
       else if (result.type === "error") setHelp({ kind: "error", error: { code: result.code, message: result.message } });
       else {
-        if (result.answer.kind === "explanation") lastExplanation.current = result.answer.text;
+        const { answer: reply } = result;
+        if (reply.kind === "explanation") lastExplanation.current = reply.text;
+        const replaced = reply.kind === "screen_help" && reply.steps.length > 0;
+        if (replaced) replaceFromHere(reply.steps);
         setHelpPlayed(false);
-        setHelp({ kind: "answer", answer: result.answer });
+        setHelp({ kind: "answer", answer: reply, shot, replaced });
       }
     } finally {
       // A dropped request already released busy; do not release a newer one's.
@@ -306,7 +413,29 @@ export default function StepPlayer({
   function stuck(trouble: string) {
     const text = trouble.trim();
     if (!text) return;
-    void ask({ question: current.instruction, mode: "stuck", trouble: text });
+    // The latest screenshot from this guide goes too, so the helper can see what went wrong.
+    void ask({ question: current.instruction, mode: "stuck", trouble: text, shot: lastShot.current ?? undefined });
+  }
+
+  function openScreen(mode: ScreenMode) {
+    closeHelp();
+    stopListening();
+    setScreenMode(mode);
+    setPanel("screen");
+  }
+
+  function keepShot(image: PreparedImage) {
+    lastShot.current = image;
+    setHasShot(true);
+  }
+
+  function sendScreen(image: PreparedImage) {
+    keepShot(image);
+    void ask({ question: current.instruction, mode: screenMode, shot: image });
+  }
+
+  function teach() {
+    teachBox.current?.ask(t("success.teachQuestion", { task: answer.title }), { mode: "teach" });
   }
 
   function openTrouble() {
@@ -377,6 +506,11 @@ export default function StepPlayer({
           <Link href="/app" className="btn-primary min-h-20 text-2xl">
             {t("success.goHome")}
           </Link>
+          <button type="button" className="btn-secondary" onClick={teach}>
+            <Label emoji="🧑‍🏫">{t("success.teach")}</Label>
+          </button>
+          {/* Asks the teach-style question and opens the new guide, as Teach me does. */}
+          <AskBox ref={teachBox} showForm={false} />
           <Link href="/app#question" className="btn-secondary">
             {t("success.another")}
           </Link>
@@ -421,6 +555,7 @@ export default function StepPlayer({
             device={answer.device}
             screenshotHowTo={answer.screenshotHowTo}
             language={answer.language}
+            onImage={keepShot}
           />
         </section>
         <button type="button" className="btn-secondary" onClick={() => setShowMe(false)}>
@@ -441,7 +576,11 @@ export default function StepPlayer({
   const helpSpeech =
     helpAnswer?.kind === "explanation"
       ? [helpAnswer.text, helpAnswer.alternative].filter(Boolean).join(". ")
-      : null;
+      : helpAnswer?.kind === "screen_help"
+        ? helpAnswer.diagnosis
+        : null;
+  const screenHelp = helpAnswer?.kind === "screen_help" ? helpAnswer : null;
+  const waitingShot = help.kind === "waiting" ? help.shot : undefined;
 
   const backToStep = (
     <button type="button" className="btn-secondary" onClick={closeHelp}>
@@ -474,13 +613,17 @@ export default function StepPlayer({
 
       <div data-testid="step-mascot" data-mood={mood} className="flex min-h-16 items-end gap-3">
         <Mascot mood={mood} size={3.5} />
-        {cheer && (
+        {cheer ? (
           <p
             role="status"
             lang={answer.language}
             className="mb-4 animate-fade-in rounded-3xl rounded-bl-md bg-card px-5 py-3 text-xl font-semibold shadow-card"
           >
             {cheer}
+          </p>
+        ) : (
+          <p data-testid="reassurance" className="mb-4 rounded-3xl rounded-bl-md bg-card px-5 py-3 text-xl font-semibold shadow-card">
+            {t(REASSURANCE[(step - 1) % REASSURANCE.length])}
           </p>
         )}
       </div>
@@ -517,7 +660,7 @@ export default function StepPlayer({
             aria-valuetext={t("steps.progress", { step, total })}
             className="flex flex-wrap items-center gap-3"
           >
-            {answer.steps.map((_, i) => (
+            {steps.map((_, i) => (
               <span
                 key={i}
                 data-testid="progress-dot"
@@ -552,12 +695,19 @@ export default function StepPlayer({
           <button type="button" className="btn-secondary min-h-16 text-xl" onClick={openTrouble}>
             <Label emoji="❓">{t("steps.stuck")}</Label>
           </button>
+          <button type="button" className="btn-secondary min-h-16 text-xl" onClick={() => openScreen("notWhatISee")}>
+            <Label emoji="🖼️">{t("steps.notWhatISee")}</Label>
+          </button>
         </div>
       </section>
 
       {(panel === "trouble" || panel === "troubleText") && (
         <section aria-label={t("steps.helpLabel")} className="card-lavender flex animate-fade-in flex-col gap-4">
+          <p className="text-xl font-semibold">
+            {t("steps.reassure.okay")} {t("steps.reassure.time")}
+          </p>
           <h2 className="text-2xl font-bold">{t("steps.troubleHeading")}</h2>
+          {hasShot && <p className="text-lg text-muted">{t("steps.screen.usingLast")}</p>}
           {panel === "trouble" ? (
             <>
               {TROUBLES.map((key) => (
@@ -591,24 +741,63 @@ export default function StepPlayer({
         </section>
       )}
 
+      {panel === "screen" && (
+        <section aria-label={t("steps.helpLabel")} className="card-lavender flex animate-fade-in flex-col gap-4">
+          <h2 className="text-2xl font-bold">
+            <span aria-hidden="true" className="mr-2">
+              {screenMode === "notWhatISee" ? "🖼️" : "📸"}
+            </span>
+            {t(screenMode === "notWhatISee" ? "steps.notWhatISee" : "steps.checkScreen")}
+          </h2>
+          <p className="text-xl">
+            {t(screenMode === "notWhatISee" ? "steps.screen.notWhatISeeLead" : "steps.screen.checkLead")}
+          </p>
+          {answer.screenshotHowTo?.length > 0 && (
+            <ol lang={answer.language} className="flex list-decimal flex-col gap-2 pl-8 text-xl">
+              {answer.screenshotHowTo.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ol>
+          )}
+          <PicturePicker
+            buttons={[{ label: t("show.choose"), testId: "step-screenshot-input", primary: true }]}
+            onPicked={sendScreen}
+            understood={shotUnderstood}
+            onUnderstand={() => setShotUnderstood(true)}
+          />
+          {backToStep}
+        </section>
+      )}
+
       {panel === "help" && help.kind !== "idle" && (
         <section aria-label={t("steps.helpLabel")} className="card-lavender flex animate-fade-in flex-col gap-4">
           {help.kind === "limit" ? (
             <SafetyNotice kind="daily_limit" />
           ) : (
             <>
-              {helpAnswer && <AnswerBody answer={helpAnswer} />}
+              {waitingShot && <Scanning image={waitingShot} />}
+              {screenHelp ? (
+                <ScreenHelp
+                  answer={screenHelp}
+                  shot={help.kind === "answer" ? help.shot : undefined}
+                  replaced={help.kind === "answer" && !!help.replaced}
+                  onNext={() => goTo(step + 1)}
+                  onTry={closeHelp}
+                />
+              ) : (
+                helpAnswer && <AnswerBody answer={helpAnswer} />
+              )}
               {canSpeak && helpAnswer && helpSpeech && (
                 <button type="button" className="btn-secondary" onClick={() => playHelp(helpSpeech, helpAnswer.language)}>
                   {helpPlayed ? t("steps.replayHelp") : t("steps.playHelp")}
                 </button>
               )}
               <WaitingAndErrors
-                waiting={help.kind === "waiting"}
+                waiting={help.kind === "waiting" && !waitingShot}
                 error={help.kind === "error" ? help.error : null}
                 onRetry={() => lastRequest.current && void ask(lastRequest.current)}
               />
-              {helpAnswer && (
+              {helpAnswer && !screenHelp && (
                 <>
                   <button type="button" className="btn-secondary" onClick={explainSimpler}>
                     {t("steps.simpler")}
@@ -649,6 +838,9 @@ export default function StepPlayer({
           <div className="grid grid-cols-1 gap-3 @[17rem]:grid-cols-2">
             <button type="button" className="btn-soft" onClick={showAgain} disabled={help.kind === "waiting"}>
               <Label emoji="🔁">{t("steps.showAgain")}</Label>
+            </button>
+            <button type="button" className="btn-soft" onClick={() => openScreen("checkScreen")} disabled={help.kind === "waiting"}>
+              <Label emoji="📸">{t("steps.checkScreen")}</Label>
             </button>
             <button type="button" className="btn-soft" onClick={() => setAskFamily(true)}>
               <Label emoji="👨‍👩‍👧">{t("askFamily.open")}</Label>

@@ -9,7 +9,7 @@ async function askForGuide(page: Page) {
   await expect(page.getByRole("heading", { name: "Tech Helper" })).toBeVisible();
   // Pixel 7 is Android Chrome, so the iPhone install walkthrough must not appear.
   await expect(page.getByRole("heading", { name: /put Tech Helper on the home screen/ })).toHaveCount(0);
-  await page.getByLabel("What would you like help with?").fill(QUESTION);
+  await page.getByLabel("What would you like to do?").fill(QUESTION);
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   await expect(page).toHaveURL(/\/guide\/[^/]+$/);
   await expect(page.getByText("Step 1 of 3")).toBeVisible();

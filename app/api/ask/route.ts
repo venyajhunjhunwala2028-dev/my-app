@@ -1,10 +1,12 @@
-import { callAndParseAnswer, makeFail } from "@/lib/ai/route";
+import { callAndParseAnswer, makeFail, parseImageFields } from "@/lib/ai/route";
 import { fakeAskAnswer } from "@/lib/ai/fakes";
 import { ASK_SYSTEM_PROMPT, buildAskUserMessage } from "@/lib/ai/prompts";
 import {
   ASK_ANSWER_JSON_SCHEMA,
   ASK_MODES,
   EXPLANATION_LEVELS,
+  IMAGE_MODES,
+  IMAGE_REQUIRED_MODES,
   STEP_HELP_MODES,
   parseAskAnswer,
   type ApiErrorCode,
@@ -25,6 +27,7 @@ import {
   MAX_TROUBLE_CHARS,
 } from "@/lib/http/limits";
 import { phraseCheck } from "@/lib/safety/phraseCheck";
+import { isSafetyQuestion, safetyCheckAnswer } from "@/lib/safety/safetyIntent";
 
 const MESSAGES: Record<ApiErrorCode, string> = {
   bad_request: "Please type or say your question, then try again.",
@@ -40,6 +43,8 @@ const DEFAULT_QUESTIONS: Partial<Record<AskMode, string>> = {
   showAgain: "Please explain this step again in a different way.",
   simpler: "Please explain this step more simply.",
   stuck: "I'm stuck on this step.",
+  notWhatISee: "That's not what I see on my screen.",
+  checkScreen: "Am I in the right place?",
 };
 
 type Invalid = "bad_request" | "too_long";
@@ -83,6 +88,20 @@ function parseRequest(raw: unknown): AskRequest | Invalid {
   if (isInvalid(trouble)) return trouble;
   if (trouble) req.trouble = trouble;
 
+  const previousInstruction = optionalText(raw.previousInstruction, MAX_QUESTION_CHARS);
+  if (isInvalid(previousInstruction)) return previousInstruction;
+  if (previousInstruction) req.previousInstruction = previousInstruction;
+
+  // A screenshot only goes with the modes that read the screen; some cannot work without one.
+  if (raw.image !== undefined || raw.mediaType !== undefined) {
+    if (!mode || !IMAGE_MODES.includes(mode)) return "bad_request";
+    const img = parseImageFields(raw, true);
+    if (typeof img === "string") return img;
+    Object.assign(req, img);
+  } else if (mode && IMAGE_REQUIRED_MODES.includes(mode)) {
+    return "bad_request";
+  }
+
   const previous = optionalText(raw.previousExplanation, MAX_PREVIOUS_EXPLANATION_CHARS);
   if (isInvalid(previous)) return previous;
   if (previous) req.previousExplanation = previous;
@@ -117,6 +136,7 @@ function parseRequest(raw: unknown): AskRequest | Invalid {
   return req;
 }
 
+// Any screenshot lives only in this request's memory: it is sent to Claude and never stored.
 // Allowed with cacheComponents (only dynamic, dynamicParams, revalidate, fetchCache and runtime are not).
 export const maxDuration = 60;
 
@@ -134,13 +154,29 @@ export async function POST(request: Request): Promise<Response> {
   const flagged = phraseCheck(req.question) ?? (req.trouble ? phraseCheck(req.trouble) : null);
   if (flagged) return Response.json(flagged);
 
+  // "Is this message safe?" opens the scam check, not a guide; no AI call is needed to know that.
+  const newQuestion = !req.mode || req.mode === "ask";
+  if (newQuestion && isSafetyQuestion(req.question)) return Response.json(safetyCheckAnswer(req.question));
+
   if (process.env.FAKE_AI === "1") return Response.json(fakeAskAnswer(req));
 
   if (!process.env.ANTHROPIC_API_KEY) return fail("setup", "missing_api_key");
 
+  const text = buildAskUserMessage(req);
+  const size = req.image && req.width && req.height ? { width: req.width, height: req.height } : undefined;
   const result = await callAndParseAnswer(
-    { system: ASK_SYSTEM_PROMPT, user: buildAskUserMessage(req), schema: ASK_ANSWER_JSON_SCHEMA },
-    parseAskAnswer,
+    {
+      system: ASK_SYSTEM_PROMPT,
+      user:
+        req.image && req.mediaType
+          ? [
+              { type: "image", source: { type: "base64", media_type: req.mediaType, data: req.image } },
+              { type: "text", text },
+            ]
+          : text,
+      schema: ASK_ANSWER_JSON_SCHEMA,
+    },
+    (answer) => parseAskAnswer(answer, size),
   );
   if ("logCode" in result) return fail("retry", result.logCode);
   return Response.json(result.answer);

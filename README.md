@@ -9,7 +9,7 @@ Nothing is stored on a server. Saved guides, settings, and the family contact st
 1. **Create an Anthropic API key** at https://console.anthropic.com → API Keys.
 2. **Set a monthly spend limit** in the Anthropic console (Settings → Limits). This is the hard cap on what the app can cost you.
 3. **Add the key to Vercel**: Project → Settings → Environment Variables → `ANTHROPIC_API_KEY`, then redeploy.
-4. **Add the rate-limit rule** in Vercel: Project → Firewall → Rules → New rule. Match requests whose path starts with `/api/ask`, `/api/locate` or `/api/scam`, action **Rate Limit**, 40 requests per IP per day. This stops a stranger who finds the link from using up your spend limit.
+4. **Add the rate-limit rule** in Vercel: Project → Firewall → Rules → New rule. Match requests whose path starts with `/api/ask`, `/api/locate`, `/api/scam` or `/api/camera`, action **Rate Limit**, 40 requests per IP per day. This stops a stranger who finds the link from using up your spend limit.
 
 Each phone can also make at most 30 requests a day; the app explains this kindly when it's reached.
 
@@ -24,7 +24,7 @@ Then open the app from the icon, set up **Call family** with your name and numbe
 
 ## Privacy
 
-The app does not save screenshots or questions. Each question and screenshot is sent to Anthropic's AI service to be answered, and Anthropic keeps API inputs for a limited time under its own policy. The app reminds the learner not to send bank, password, or private-message screens.
+The app does not save screenshots, camera photos or questions. Each question, screenshot and photo is sent to Anthropic's AI service to be answered, and Anthropic keeps API inputs for a limited time under its own policy. The app reminds the learner not to send bank, password, or private-message screens, or photos of bank cards, passwords or documents. A screenshot sent during a guide ("That's not what I see", "Check my screen") is kept in the page's memory only until the guide is closed, so "I'm stuck" can look at it again.
 
 ## Change the AI model
 

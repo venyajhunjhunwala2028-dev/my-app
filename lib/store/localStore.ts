@@ -226,6 +226,17 @@ export function setGuideStep(id: string, step: number): void {
   });
 }
 
+/**
+ * Replaces a saved guide's answer in place, keeping its step, its place in the list and its lesson.
+ * Used when steps are corrected from a screenshot partway through a guide.
+ */
+export function setGuideAnswer<A>(id: string, answer: A): void {
+  update((s) => {
+    const guide = s.guides.find((g) => g.id === id);
+    if (guide) guide.answer = answer;
+  });
+}
+
 export function setGuideHelpful(id: string, helpful: boolean): void {
   update((s) => {
     const guide = s.guides.find((g) => g.id === id);
