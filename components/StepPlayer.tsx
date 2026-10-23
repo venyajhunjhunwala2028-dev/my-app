@@ -164,7 +164,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
   }
 
   const home = (
-    <Link href="/" className="btn-text self-start">
+    <Link href="/app" className="btn-text self-start">
       Home
     </Link>
   );
@@ -177,7 +177,7 @@ export default function StepPlayer({ guide }: { guide: SavedGuide<StepsAnswer> }
           {answer.title}
         </p>
         <p className="text-xl text-muted">This guide is saved in My guides if you want to do it again.</p>
-        <Link href="/" className="btn-primary min-h-20 text-2xl">
+        <Link href="/app" className="btn-primary min-h-20 text-2xl">
           Home
         </Link>
       </div>
