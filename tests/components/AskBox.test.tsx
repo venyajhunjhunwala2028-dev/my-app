@@ -191,4 +191,45 @@ describe("AskBox", () => {
     expect(await screen.findByText(/ready again tomorrow/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
+
+  it("asks one clarifying question about the app, then sends the chosen app with the same question", async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          kind: "clarify",
+          language: "en",
+          prompt: "Which app do you want to post the picture on?",
+          options: ["Instagram", "WhatsApp", "Facebook"],
+          about: "app",
+        }),
+      ),
+    );
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(stepsAnswer)));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AskBox />);
+    await userEvent.type(screen.getByLabelText("What do you need help with?"), "How do I post a picture?");
+    await userEvent.click(screen.getByRole("button", { name: "Ask" }));
+    await userEvent.click(await screen.findByRole("button", { name: "WhatsApp" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    const second = JSON.parse(String(((fetchMock.mock.calls[1] as unknown[])[1] as RequestInit).body));
+    expect(second).toMatchObject({ question: "How do I post a picture?", app: "WhatsApp" });
+  });
+
+  it("shows a kind message and example questions when the question is unclear", async () => {
+    mockFetch({
+      kind: "unclear",
+      language: "en",
+      message: "I'm not completely sure what you mean. Tell me what you are trying to do, and I'll help.",
+      examples: ["How do I make a video call?", "How do I send a photo?", "How do I make the text bigger?"],
+    });
+    render(<AskBox />);
+    await userEvent.type(screen.getByLabelText("What do you need help with?"), "help");
+    await userEvent.click(screen.getByRole("button", { name: "Ask" }));
+
+    expect(await screen.findByText(/not completely sure what you mean/)).toBeInTheDocument();
+    expect(screen.getByText("How do I send a photo?")).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
 });

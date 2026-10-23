@@ -6,6 +6,14 @@ export const MAX_GUIDE_CONTEXT_CHARS = 4000;
 export const MAX_LANGUAGE_CHARS = 35;
 export const MAX_DEVICES = 10;
 export const MAX_DEVICE_CHARS = 60;
+/** An app name chosen in a clarification, e.g. "WhatsApp". */
+export const MAX_APP_CHARS = 60;
+/** What the learner says is wrong when stuck on a step. */
+export const MAX_TROUBLE_CHARS = 1000;
+/** The explanation shown last time, so "show again" can say it differently. */
+export const MAX_PREVIOUS_EXPLANATION_CHARS = 2000;
+/** A message, email or link pasted into the scam checker. */
+export const MAX_SCAM_TEXT_CHARS = 4000;
 
 // Screenshot limits, used by the locate route.
 export const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;

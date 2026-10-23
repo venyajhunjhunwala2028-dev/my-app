@@ -1,6 +1,19 @@
 import { isObj, isStr } from "@/lib/guards";
+import { warningFor, warningLanguage } from "@/lib/safety/stepWarnings";
 
-export type AskMode = "ask" | "followup" | "showMeHow";
+/**
+ * ask: a new question. followup: "I don't understand this step". showMeHow: turn an explanation into steps.
+ * showAgain: explain the current step in different words. simpler: explain it for very low tech literacy.
+ * stuck: the learner is stuck on the current step (see `trouble`); re-explain and offer one other way.
+ */
+export type AskMode = "ask" | "followup" | "showMeHow" | "showAgain" | "simpler" | "stuck";
+export const ASK_MODES: readonly AskMode[] = ["ask", "followup", "showMeHow", "showAgain", "simpler", "stuck"];
+/** Modes that explain the current guide step; they need `guideContext`. */
+export const STEP_HELP_MODES: readonly AskMode[] = ["showAgain", "simpler", "stuck"];
+export type ExplanationLevel = "very_simple" | "simple" | "detailed";
+export const EXPLANATION_LEVELS: readonly ExplanationLevel[] = ["very_simple", "simple", "detailed"];
+export type ClarifyAbout = "app" | "device" | "other";
+export const CLARIFY_ABOUT: readonly ClarifyAbout[] = ["app", "device", "other"];
 export interface GuideContext {
   title: string;
   steps: string[];
@@ -12,16 +25,50 @@ export interface AskRequest {
   devices?: string[];
   mode?: AskMode;
   guideContext?: GuideContext;
+  /** App the learner chose in a clarification, e.g. "WhatsApp". */
+  app?: string;
+  /** How simply to explain; default "simple". */
+  level?: ExplanationLevel;
+  /** mode "stuck": what is wrong, e.g. "I can't find the button". */
+  trouble?: string;
+  /** mode "showAgain": the explanation shown last time, so the new one is different. */
+  previousExplanation?: string;
 }
 export interface Step {
   instruction: string;
   lookFor: string;
   spoken: string;
+  /** Short praise shown after this step, before the next one (e.g. "Great!"); may be "". */
+  encouragement: string;
 }
 export type AskAnswer =
-  | { kind: "steps"; language: string; title: string; device: string | null; steps: Step[]; screenshotHowTo: string[] }
-  | { kind: "explanation"; language: string; title: string; text: string; offerShowMeHow: boolean }
+  | {
+      kind: "steps";
+      language: string;
+      title: string;
+      device: string | null;
+      /** App the steps are for, or null. */
+      app: string | null;
+      /** One-line warning for risky tasks (OTP, PIN, UPI, bank, remote access, links), or null. */
+      safety: string | null;
+      steps: Step[];
+      screenshotHowTo: string[];
+    }
+  | {
+      kind: "explanation";
+      language: string;
+      title: string;
+      text: string;
+      offerShowMeHow: boolean;
+      /** mode "stuck": one other way to do the step. Null or missing otherwise. */
+      alternative?: string | null;
+    }
+  /** Legacy device question; new answers use "clarify" with about "device". */
   | { kind: "needs_device"; language: string; prompt: string; options: string[] }
+  /** One simple question when the app, device or something else is unclear. */
+  | { kind: "clarify"; language: string; prompt: string; options: string[]; about: ClarifyAbout }
+  /** The question could not be understood; kind words and three example questions. */
+  | { kind: "unclear"; language: string; message: string; examples: string[] }
   | { kind: "scam_warning"; language: string; message: string }
   | { kind: "money_refusal"; language: string; message: string }
   | { kind: "off_topic"; language: string; message: string };
@@ -37,6 +84,7 @@ export interface ApiError {
 
 export const str = (description: string) => ({ type: "string", description });
 const strArray = (description: string) => ({ type: "array", items: { type: "string" }, description });
+const nullableStr = (description: string) => ({ anyOf: [{ type: "string" }, { type: "null" }], description });
 const LANGUAGE = str("BCP 47 code of the language the learner asked in, e.g. en, hi, es. The answer text uses this language.");
 
 /** One anyOf branch: an object whose properties are kind, then `shared`, then `properties`, all required. */
@@ -58,7 +106,11 @@ export const ASK_ANSWER_JSON_SCHEMA: Record<string, unknown> = {
       anyOf: [
         askVariant("steps", {
           title: str("Short name of the task, e.g. Post a story on Instagram."),
-          device: { anyOf: [{ type: "string" }, { type: "null" }], description: "Device the steps are for, or null." },
+          device: nullableStr("Device the steps are for, or null."),
+          app: nullableStr("App the steps are for, e.g. WhatsApp, or null."),
+          safety: nullableStr(
+            "One-line warning starting with ⚠️ when the task involves OTPs, passwords, PINs, bank details, UPI, cards, remote access, suspicious links or screen sharing; otherwise null.",
+          ),
           steps: {
             type: "array",
             description: "Ordered steps, one action each.",
@@ -68,8 +120,12 @@ export const ASK_ANSWER_JSON_SCHEMA: Record<string, unknown> = {
                 instruction: str("One action, in plain words."),
                 lookFor: str("What the control looks like and where it is on screen."),
                 spoken: str("The step as it should be read aloud."),
+                encouragement: {
+                  type: "string",
+                  description: "Short praise shown after this step is done, e.g. Great! or Well done. Empty string for the last step.",
+                },
               },
-              required: ["instruction", "lookFor", "spoken"],
+              required: ["instruction", "lookFor", "spoken", "encouragement"],
               additionalProperties: false,
             },
           },
@@ -79,10 +135,16 @@ export const ASK_ANSWER_JSON_SCHEMA: Record<string, unknown> = {
           title: str("Short title."),
           text: str("Short plain-language explanation."),
           offerShowMeHow: { type: "boolean", description: "True when there is something the learner could go and do." },
+          alternative: nullableStr("Mode stuck only: one other way to do the same step. Otherwise null."),
         }),
-        askVariant("needs_device", {
-          prompt: str("Question asking which device they are using."),
-          options: strArray("Device choices, e.g. iPhone, Android phone, Windows computer, Mac, TV."),
+        askVariant("clarify", {
+          prompt: str("One simple question, e.g. Which app do you want to use?"),
+          options: strArray("Two to five short choices, e.g. Instagram, WhatsApp, Facebook."),
+          about: { type: "string", enum: [...CLARIFY_ABOUT], description: "What the question is about." },
+        }),
+        askVariant("unclear", {
+          message: str("Kindly says you are not sure what they mean and asks what they are trying to do."),
+          examples: strArray("Three short example questions the learner could ask."),
         }),
         messageVariant("scam_warning", "Warning that this is likely a scam, and to call family."),
         messageVariant("money_refusal", "Explains you do not guide payments; ask a trusted person."),
@@ -98,8 +160,9 @@ export const ASK_ANSWER_JSON_SCHEMA: Record<string, unknown> = {
 
 const isStrArray = (v: unknown, min = 0): v is string[] =>
   Array.isArray(v) && v.length >= min && v.every(isStr);
-const isStep = (v: unknown): v is Step =>
+const isStep = (v: unknown): v is Omit<Step, "encouragement"> & { encouragement?: unknown } =>
   isObj(v) && isStr(v.instruction) && isStr(v.lookFor) && isStr(v.spoken);
+const strOrNull = (v: unknown): string | null => (isStr(v) ? v : null);
 
 /** Returns the answer when it matches the AskAnswer contract, otherwise null. */
 export function parseAskAnswer(v: unknown): AskAnswer | null {
@@ -115,13 +178,48 @@ export function parseAskAnswer(v: unknown): AskAnswer | null {
         v.steps.every(isStep) &&
         isStrArray(v.screenshotHowTo, 1)
       ) {
-        const steps = v.steps.map(({ instruction, lookFor, spoken }) => ({ instruction, lookFor, spoken }));
-        return { kind: "steps", language, title: v.title, device: v.device, steps, screenshotHowTo: v.screenshotHowTo };
+        const steps: Step[] = v.steps.map(({ instruction, lookFor, spoken, encouragement }) => ({
+          instruction,
+          lookFor,
+          spoken,
+          encouragement: typeof encouragement === "string" ? encouragement : "",
+        }));
+        // The model may leave the safety note out; add the deterministic one so risky tasks always carry it.
+        const safety =
+          strOrNull(v.safety) ??
+          warningFor([v.title, ...steps.map((s) => s.instruction)].join("\n"), warningLanguage(language));
+        return {
+          kind: "steps",
+          language,
+          title: v.title,
+          device: v.device,
+          app: strOrNull(v.app),
+          safety,
+          steps,
+          screenshotHowTo: v.screenshotHowTo,
+        };
       }
       return null;
     case "explanation":
       if (isStr(v.title) && isStr(v.text) && typeof v.offerShowMeHow === "boolean") {
-        return { kind: "explanation", language, title: v.title, text: v.text, offerShowMeHow: v.offerShowMeHow };
+        return {
+          kind: "explanation",
+          language,
+          title: v.title,
+          text: v.text,
+          offerShowMeHow: v.offerShowMeHow,
+          alternative: strOrNull(v.alternative),
+        };
+      }
+      return null;
+    case "clarify":
+      if (isStr(v.prompt) && isStrArray(v.options, 1) && CLARIFY_ABOUT.includes(v.about as ClarifyAbout)) {
+        return { kind: "clarify", language, prompt: v.prompt, options: v.options, about: v.about as ClarifyAbout };
+      }
+      return null;
+    case "unclear":
+      if (isStr(v.message) && isStrArray(v.examples, 1)) {
+        return { kind: "unclear", language, message: v.message, examples: v.examples.slice(0, 3) };
       }
       return null;
     case "needs_device":

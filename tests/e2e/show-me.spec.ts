@@ -26,7 +26,7 @@ test("F2: show me on my screen circles the place to tap", async ({ page }) => {
 
   await page.getByTestId("screenshot-input").setInputFiles(SCREENSHOT);
 
-  await expect(page.getByText("Tap the button inside the red circle.")).toBeVisible();
+  await expect(page.getByText("Tap the button in the circle.")).toBeVisible();
   await expect(page.getByRole("img", { name: "Your screenshot" })).toBeVisible();
   await expect(page.getByTestId("tap-circle")).toBeVisible();
 

@@ -101,4 +101,43 @@ describe("POST /api/locate", () => {
     expect(logged).toEqual(["locate_error:api_500"]);
     expect(logged.join(" ")).not.toContain(IMAGE);
   });
+
+  it("answers a question from a screenshot without a guide step", async () => {
+    const res = await locate({ question: "What do I press to send this?" });
+    expect(res.status).toBe(200);
+    const found = (await res.json()) as LocateAnswer;
+    expect(found.kind).toBe("found");
+    if (found.kind === "found") expect(found.instruction.split(/\s+/).length).toBeLessThanOrEqual(6);
+  });
+
+  it("sends the question to the model when there is no step", async () => {
+    vi.stubEnv("FAKE_AI", "");
+    vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+    mockedCall.mockResolvedValue({
+      stopReason: "end_turn",
+      text: JSON.stringify({ answer: { kind: "found", box: { x: 1, y: 1, width: 10, height: 10 }, instruction: "Tap here." } }),
+    });
+    const res = await locate({ question: "What do I press to send this?" });
+    expect(await res.json()).toMatchObject({ kind: "found", instruction: "Tap here." });
+    const text = JSON.stringify(mockedCall.mock.calls[0][0].user);
+    expect(text).toContain("Learner's question: What do I press to send this?");
+  });
+
+  it("warns without calling the AI when the question is an OTP handover", async () => {
+    vi.stubEnv("FAKE_AI", "");
+    vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+    const res = await locate({ question: "The caller wants me to tell them my OTP, where do I find it?" });
+    expect(((await res.json()) as LocateAnswer).kind).toBe("scam_warning");
+    expect(mockedCall).not.toHaveBeenCalled();
+  });
+
+  it("rejects a request with neither a step nor a question, or a bad question", async () => {
+    for (const body of [{}, { instruction: "  " }, { question: 4 }, { question: "  " }]) {
+      const res = await locate(body);
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as ApiError).error).toBe("bad_request");
+    }
+    const long = await locate({ question: "a".repeat(1001) });
+    expect(((await long.json()) as ApiError).error).toBe("too_long");
+  });
 });

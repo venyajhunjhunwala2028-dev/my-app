@@ -31,12 +31,14 @@ export function AnswerBody({ answer }: { answer: AskAnswer }) {
     case "money_refusal":
       return <SafetyNotice kind={answer.kind} message={answer.message} />;
     case "needs_device":
+    case "clarify":
       return (
         <p lang={answer.language} className="text-2xl">
           {answer.prompt}
         </p>
       );
     case "off_topic":
+    case "unclear":
       return (
         <p lang={answer.language} className="text-2xl">
           {answer.message}

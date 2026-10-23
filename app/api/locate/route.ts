@@ -1,4 +1,4 @@
-import { callAndParseAnswer, makeFail } from "@/lib/ai/route";
+import { callAndParseAnswer, makeFail, parseImageFields } from "@/lib/ai/route";
 import {
   LOCATE_ANSWER_JSON_SCHEMA,
   LOCATE_SYSTEM_PROMPT,
@@ -8,16 +8,9 @@ import {
   type LocateRequest,
 } from "@/lib/ai/locate";
 import type { ApiErrorCode } from "@/lib/ai/schemas";
-import { isObj, isStr } from "@/lib/guards";
-import {
-  ALLOWED_IMAGE_TYPES,
-  MAX_IMAGE_BYTES,
-  base64DecodedBytes,
-  MAX_IMAGE_LONG_EDGE_PX,
-  MAX_LANGUAGE_CHARS,
-  MAX_QUESTION_CHARS,
-  type AllowedImageType,
-} from "@/lib/http/limits";
+import { isObj } from "@/lib/guards";
+import { MAX_LANGUAGE_CHARS, MAX_QUESTION_CHARS } from "@/lib/http/limits";
+import { phraseCheck } from "@/lib/safety/phraseCheck";
 
 const MESSAGES: Record<ApiErrorCode, string> = {
   bad_request: "Sorry, that picture could not be read. Please choose your screenshot again.",
@@ -28,27 +21,35 @@ const MESSAGES: Record<ApiErrorCode, string> = {
 // Logs only a code, never the image or step text.
 const fail = makeFail("locate_error", MESSAGES);
 
-const isSize = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v > 0;
-const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
+type Invalid = "bad_request" | "too_long";
 
-function parseRequest(raw: unknown): LocateRequest | "bad_request" | "too_long" {
+/** An optional text field: undefined when absent or blank, the trimmed text when valid, otherwise an error code. */
+function optionalText(v: unknown): string | undefined | Invalid {
+  if (v === undefined) return undefined;
+  if (typeof v !== "string") return "bad_request";
+  if (v.length > MAX_QUESTION_CHARS) return "too_long";
+  return v.trim() || undefined;
+}
+
+function parseRequest(raw: unknown): LocateRequest | Invalid {
   if (!isObj(raw)) return "bad_request";
-  const { image, mediaType, width, height, instruction, lookFor, language } = raw;
-  if (!ALLOWED_IMAGE_TYPES.includes(mediaType as AllowedImageType)) return "bad_request";
-  if (typeof image !== "string" || !image) return "bad_request";
-  if (base64DecodedBytes(image) > MAX_IMAGE_BYTES) return "too_long";
-  if (image.length % 4 !== 0 || !BASE64.test(image)) return "bad_request";
-  if (!isSize(width) || !isSize(height)) return "bad_request";
-  if (Math.max(width, height) > MAX_IMAGE_LONG_EDGE_PX) return "too_long";
-  if (!isStr(instruction)) return "bad_request";
-  if (instruction.length > MAX_QUESTION_CHARS) return "too_long";
+  const { lookFor, language } = raw;
+  const img = parseImageFields(raw, true);
+  if (typeof img === "string") return img;
+  const instruction = optionalText(raw.instruction);
+  if (instruction === "bad_request" || instruction === "too_long") return instruction;
+  const question = optionalText(raw.question);
+  if (question === "bad_request" || question === "too_long") return question;
+  // A guide step, the learner's own question, or both.
+  if (!instruction && !question) return "bad_request";
   const req: LocateRequest = {
-    image,
-    mediaType: mediaType as AllowedImageType,
-    width,
-    height,
-    instruction: instruction.trim(),
+    image: img.image,
+    mediaType: img.mediaType,
+    width: img.width as number,
+    height: img.height as number,
   };
+  if (instruction) req.instruction = instruction;
+  if (question) req.question = question;
   if (lookFor !== undefined) {
     if (typeof lookFor !== "string") return "bad_request";
     if (lookFor.length > MAX_QUESTION_CHARS) return "too_long";
@@ -74,6 +75,10 @@ export async function POST(request: Request): Promise<Response> {
   }
   const req = parseRequest(raw);
   if (typeof req === "string") return fail(req);
+
+  // A typed question such as "the caller wants my OTP" gets the scam warning before any AI call.
+  const flagged = req.question ? phraseCheck(req.question) : null;
+  if (flagged?.kind === "scam_warning") return Response.json({ kind: "scam_warning", message: flagged.message });
 
   if (process.env.FAKE_AI === "1") return Response.json(fakeLocateAnswer(req));
 

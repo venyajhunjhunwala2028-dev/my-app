@@ -16,13 +16,15 @@ import GuidePage from "@/app/guide/[id]/page";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
-const step = (n: number) => ({ instruction: `Do thing ${n}`, lookFor: `Button ${n}`, spoken: `Say thing ${n}` });
+const step = (n: number) => ({ instruction: `Do thing ${n}`, lookFor: `Button ${n}`, spoken: `Say thing ${n}`, encouragement: "" });
 
 const answer: StepsAnswer = {
   kind: "steps",
   language: "hi",
   title: "Post a story",
   device: "iPhone",
+  app: null,
+  safety: null,
   steps: [1, 2, 3, 4].map(step),
   screenshotHowTo: ["Press the side button and volume up"],
 };

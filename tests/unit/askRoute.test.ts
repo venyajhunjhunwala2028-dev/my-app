@@ -54,7 +54,9 @@ describe("POST /api/ask", () => {
       language: "en",
       title: "Change your password",
       device: null,
-      steps: [{ instruction: "Open the app.", lookFor: "A coloured square.", spoken: "Open the app." }],
+      app: null,
+      safety: null,
+      steps: [{ instruction: "Open the app.", lookFor: "A coloured square.", spoken: "Open the app.", encouragement: "Great!" }],
       screenshotHowTo: ["Press the side button and volume up together."],
     };
     mockedCall.mockResolvedValue({ stopReason: "end_turn", text: JSON.stringify({ answer }) });
@@ -135,5 +137,76 @@ describe("POST /api/ask", () => {
       expect(body.error).toBe("retry");
       expect(body.message.length).toBeGreaterThan(0);
     }
+  });
+
+  describe("Phase 1 contract", () => {
+    const guideContext = { title: "Send a photo", steps: ["Open WhatsApp.", "Tap the clip."], stepIndex: 1 };
+    const explanation = { kind: "explanation", language: "en", title: "t", text: "x", offerShowMeHow: false, alternative: "Or tap the camera." };
+
+    it("sends showAgain, simpler and stuck to the model with the current step and the trouble", async () => {
+      realMode();
+      mockedCall.mockResolvedValue({ stopReason: "end_turn", text: JSON.stringify({ answer: explanation }) });
+      for (const mode of ["showAgain", "simpler", "stuck"] as const) {
+        const res = await ask({ question: "help me", mode, guideContext, trouble: mode === "stuck" ? "Something different is on my screen" : undefined });
+        expect(res.status).toBe(200);
+        expect(await res.json()).toMatchObject({ kind: "explanation", alternative: "Or tap the camera." });
+      }
+      const users = mockedCall.mock.calls.map((c) => c[0].user as string);
+      expect(users[0]).toContain("Mode: showAgain");
+      expect(users[1]).toContain("Mode: simpler");
+      expect(users[2]).toContain("Mode: stuck");
+      expect(users[2]).toContain("Something different is on my screen");
+      for (const u of users) expect(u).toContain("The learner is on step 2.");
+    });
+
+    it("fills a default question for the guide modes", async () => {
+      realMode();
+      mockedCall.mockResolvedValue({ stopReason: "end_turn", text: JSON.stringify({ answer: explanation }) });
+      const res = await ask({ mode: "stuck", trouble: "It's not working", guideContext });
+      expect(res.status).toBe(200);
+      expect(mockedCall.mock.calls[0][0].user).toMatch(/<question>\n.+\n<\/question>/);
+    });
+
+    it("passes app, level and a Hindi request to the model", async () => {
+      realMode();
+      mockedCall.mockResolvedValue({ stopReason: "end_turn", text: JSON.stringify({ answer: explanation }) });
+      await ask({ question: "How do I post a picture?", app: "Instagram", level: "detailed", language: "hi-IN", devices: ["iPhone"] });
+      const user = mockedCall.mock.calls[0][0].user as string;
+      expect(user).toContain("App: Instagram");
+      expect(user).toContain("Explanation level: detailed");
+      expect(user).toContain("hi-IN");
+      expect(user).toContain("Usual devices: iPhone");
+    });
+
+    it("returns clarify and unclear in fake mode", async () => {
+      expect(await (await ask({ question: "How do I post a picture?" })).json()).toMatchObject({ kind: "clarify", about: "app" });
+      expect(await (await ask({ question: "How do I post a picture?", app: "Facebook" })).json()).toMatchObject({ kind: "steps", app: "Facebook" });
+      expect(await (await ask({ question: "help" })).json()).toMatchObject({ kind: "unclear" });
+    });
+
+    it("checks the trouble text for handover patterns before the AI", async () => {
+      realMode();
+      const res = await ask({ mode: "stuck", trouble: "The caller asked me for my OTP", guideContext });
+      expect(((await res.json()) as AskAnswer).kind).toBe("scam_warning");
+      expect(mockedCall).not.toHaveBeenCalled();
+    });
+
+    it("rejects bad new fields with 400", async () => {
+      const bad = async (body: unknown, error = "bad_request") => {
+        const res = await ask(body);
+        expect(res.status).toBe(400);
+        expect(((await res.json()) as ApiError).error).toBe(error);
+      };
+      await bad({ question: "x", mode: "explode" });
+      await bad({ question: "x", level: "expert" });
+      await bad({ question: "x", app: 5 });
+      await bad({ question: "x", app: "a".repeat(61) });
+      await bad({ question: "x", mode: "stuck" });
+      await bad({ question: "x", mode: "showAgain" });
+      await bad({ mode: "ask" });
+      await bad({ question: "x", mode: "stuck", guideContext, trouble: 3 });
+      await bad({ question: "x", mode: "stuck", guideContext, trouble: "a".repeat(1001) }, "too_long");
+      await bad({ question: "x", mode: "showAgain", guideContext, previousExplanation: "a".repeat(2001) }, "too_long");
+    });
   });
 });

@@ -7,7 +7,7 @@ import LanguagePicker, { languageName } from "@/components/LanguagePicker";
 import SafetyNotice from "@/components/SafetyNotice";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import { askHelper } from "@/lib/ai/askClient";
-import type { AskAnswer } from "@/lib/ai/schemas";
+import type { AskAnswer, ClarifyAbout } from "@/lib/ai/schemas";
 import { isSpeechSupported, startListening, type ListenError } from "@/lib/speech/speech";
 import {
   getDevices,
@@ -24,9 +24,9 @@ type Status =
   | { kind: "waiting" }
   | { kind: "error"; error: RequestError }
   | { kind: "limit" }
-  | { kind: "device"; prompt: string; options: string[] }
+  | { kind: "device"; prompt: string; options: string[]; about: ClarifyAbout }
   | { kind: "safety"; safety: "scam_warning" | "money_refusal"; message: string }
-  | { kind: "message"; message: string };
+  | { kind: "message"; message: string; examples?: string[] };
 
 type Mic = "idle" | "listening" | ListenError;
 
@@ -55,7 +55,7 @@ export default function AskBox() {
   if (!isClient) return null;
   const speakingLanguage = language ?? getSpeakingLanguage();
 
-  async function send(text: string) {
+  async function send(text: string, app?: string) {
     const q = text.trim();
     // A double tap must send one request only.
     if (!q || busy.current) return;
@@ -63,7 +63,7 @@ export default function AskBox() {
     cancelListening();
     busy.current = true;
     setStatus({ kind: "waiting" });
-    const result = await askHelper({ question: q, language: speakingLanguage, devices: getDevices() });
+    const result = await askHelper({ question: q, language: speakingLanguage, devices: getDevices(), ...(app ? { app } : {}) });
     busy.current = false;
     if (result.type === "limit") setStatus({ kind: "limit" });
     else if (result.type === "error") setStatus({ kind: "error", error: { code: result.code, message: result.message } });
@@ -73,7 +73,13 @@ export default function AskBox() {
   function route(q: string, answer: AskAnswer) {
     switch (answer.kind) {
       case "needs_device":
-        setStatus({ kind: "device", prompt: answer.prompt, options: answer.options });
+        setStatus({ kind: "device", prompt: answer.prompt, options: answer.options, about: "device" });
+        return;
+      case "clarify":
+        setStatus({ kind: "device", prompt: answer.prompt, options: answer.options, about: answer.about });
+        return;
+      case "unclear":
+        setStatus({ kind: "message", message: answer.message, examples: answer.examples });
         return;
       case "steps":
       case "explanation": {
@@ -94,9 +100,16 @@ export default function AskBox() {
     }
   }
 
-  function chooseDevice(device: string) {
-    setDevices([device, ...getDevices().filter((d) => d !== device)]);
-    void send(question);
+  // One clarifying question at most: the answer goes back with the same question.
+  function choose(about: ClarifyAbout, choice: string) {
+    if (about === "device") {
+      setDevices([choice, ...getDevices().filter((d) => d !== choice)]);
+      void send(question);
+    } else if (about === "app") {
+      void send(question, choice);
+    } else {
+      void send(`${question.trim()} (${choice})`);
+    }
   }
 
   function submit(e: FormEvent) {
@@ -161,7 +174,7 @@ export default function AskBox() {
   if (status.kind === "device") {
     return (
       <div className="flex flex-col gap-4">
-        <DevicePicker prompt={status.prompt} options={status.options} onChoose={chooseDevice} />
+        <DevicePicker prompt={status.prompt} options={status.options} onChoose={(c) => choose(status.about, c)} />
         {askAgain}
       </div>
     );
@@ -218,7 +231,18 @@ export default function AskBox() {
           Ask
         </button>
       </form>
-      {status.kind === "message" && <p className="rounded-2xl bg-surface p-4 text-xl">{status.message}</p>}
+      {status.kind === "message" && (
+        <div className="flex flex-col gap-2 rounded-2xl bg-surface p-4 text-xl">
+          <p>{status.message}</p>
+          {status.examples && status.examples.length > 0 && (
+            <ul className="list-disc pl-6">
+              {status.examples.map((example) => (
+                <li key={example}>{example}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       <WaitingAndErrors
         waiting={waiting}
         error={status.kind === "error" ? status.error : null}
