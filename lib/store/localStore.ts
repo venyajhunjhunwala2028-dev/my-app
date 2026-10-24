@@ -55,6 +55,13 @@ type State = {
   completedLessons: string[];
   /** Easy Mode: bigger, clearer and calmer screens, very simple answers and voice on. */
   easyMode: boolean;
+  /** Ids of the Practice exercises (lib/content/practice) finished at least once. */
+  completedPractice: string[];
+  /**
+   * What Ask my family messages call the learner ("Mom", "Nani", their name). null until asked;
+   * "" once they chose to leave it out, so they are asked only once.
+   */
+  familyCallMe: string | null;
 };
 
 function today(): string {
@@ -84,6 +91,8 @@ function defaults(): State {
     textSize: "normal",
     completedLessons: [],
     easyMode: false,
+    completedPractice: [],
+    familyCallMe: null,
   };
 }
 
@@ -108,6 +117,12 @@ function cleanGuide(guide: SavedGuide): SavedGuide {
   const { bookmarked: _drop, ...rest } = guide;
   void _drop;
   return rest;
+}
+
+/** The name for family messages: one line, at most 40 characters. */
+export const CALL_ME_MAX = 40;
+function cleanCallMe(name: string): string {
+  return name.replace(/\s+/g, " ").trim().slice(0, CALL_ME_MAX);
 }
 
 // Keeps each valid field and falls back to its default for anything missing or malformed.
@@ -141,6 +156,10 @@ function sanitize(raw: unknown): State {
       ? [...new Set(raw.completedLessons.filter(isString))]
       : base.completedLessons,
     easyMode: typeof raw.easyMode === "boolean" ? raw.easyMode : base.easyMode,
+    completedPractice: Array.isArray(raw.completedPractice)
+      ? [...new Set(raw.completedPractice.filter(isString))]
+      : base.completedPractice,
+    familyCallMe: isString(raw.familyCallMe) ? cleanCallMe(raw.familyCallMe) : base.familyCallMe,
   };
 }
 
@@ -493,5 +512,28 @@ export function markLessonComplete(id: string): void {
   if (!isString(id) || !id) return;
   update((s) => {
     if (!s.completedLessons.includes(id)) s.completedLessons.push(id);
+  });
+}
+
+export function getCompletedPractice(): string[] {
+  return load().completedPractice;
+}
+
+export function markPracticeComplete(id: string): void {
+  if (!isString(id) || !id) return;
+  update((s) => {
+    if (!s.completedPractice.includes(id)) s.completedPractice.push(id);
+  });
+}
+
+/** What Ask my family messages call the learner; null until asked, "" when they chose to leave it out. */
+export function getFamilyCallMe(): string | null {
+  return load().familyCallMe;
+}
+
+/** Saves the name family messages use; an empty name means "don't say a name" (and is not asked again). */
+export function setFamilyCallMe(name: string): void {
+  update((s) => {
+    s.familyCallMe = cleanCallMe(name);
   });
 }

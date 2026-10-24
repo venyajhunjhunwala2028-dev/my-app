@@ -13,6 +13,7 @@ import ShowMeOnScreen, { MarkedScreenshot, Scanning } from "@/components/ShowMeO
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import { askHelper } from "@/lib/ai/askClient";
 import type { AskAnswer, AskRequest, Step } from "@/lib/ai/schemas";
+import type { FamilyHelpContext } from "@/lib/family/message";
 import { useEasyMode } from "@/lib/easyMode";
 import { guideGoal } from "@/lib/family/message";
 import type { PreparedImage } from "@/lib/image/resize";
@@ -56,6 +57,15 @@ const isFinished = (step: number, total: number) => step > total;
 
 /** The big choices after "I'm stuck"; the label, in the interface language, is sent as the trouble. */
 const TROUBLES: readonly MessageKey[] = ["steps.trouble.cantFind", "steps.trouble.different", "steps.trouble.nothing"];
+
+/** What Ask my family says went wrong after each trouble; "Nothing happens" is sent as it is. */
+const FAMILY_PROBLEM_FOR: Partial<Record<MessageKey, MessageKey>> = {
+  "steps.trouble.cantFind": "askFamily.problem.cantFind",
+  "steps.trouble.different": "askFamily.problem.different",
+};
+
+/** The help that means the learner is still stuck, so "Ask my family" is offered with it. */
+const STUCK_MODES: readonly AskRequest["mode"][] = ["stuck", "notWhatISee"];
 
 /** Rotated in the mascot's bubble on each step, when there is no praise to show. */
 const REASSURANCE: readonly MessageKey[] = [
@@ -247,10 +257,16 @@ function ScreenHelp({
 export default function StepPlayer({
   guide,
   onReplace,
+  onFinished,
 }: {
   guide: SavedGuide<StepsAnswer>;
   /** Called with the saved guide after "Explain this in …"; omit to hide that button. */
   onReplace?: (guide: SavedGuide) => void;
+  /**
+   * A lesson's SHOW stage: called after the last step instead of showing "You did it!"; the lesson goes on to
+   * LET ME TRY and marks itself complete at the end.
+   */
+  onFinished?: () => void;
 }) {
   const { id, answer } = guide;
   const t = useT();
@@ -281,9 +297,13 @@ export default function StepPlayer({
   const [screenMode, setScreenMode] = useState<ScreenMode>("notWhatISee");
   const [shotUnderstood, setShotUnderstood] = useState(false);
   const busy = useRef(false);
-  // The latest screenshot from this guide, so "I'm stuck" can look at it too. Memory only: never saved.
-  const lastShot = useRef<PreparedImage | null>(null);
-  const [hasShot, setHasShot] = useState(false);
+  // The latest screenshot from this guide, so "I'm stuck" (and Ask my family) can use it too. Memory only: never saved.
+  const [lastShot, setLastShot] = useState<PreparedImage | null>(null);
+  const hasShot = lastShot !== null;
+  // The kind of help on screen, so "Ask my family" is offered while the learner is still stuck.
+  const [helpMode, setHelpMode] = useState<AskRequest["mode"]>();
+  // What went wrong, for Ask my family: from I'm stuck or That's not what I see.
+  const [familyContext, setFamilyContext] = useState<Pick<FamilyHelpContext, "problem" | "note">>({});
   const teachBox = useRef<AskBoxHandle>(null);
   const lastRequest = useRef<HelpRequest | null>(null);
   // The last explanation shown for this step, so "Show me again" can ask for different words.
@@ -315,11 +335,18 @@ export default function StepPlayer({
     return () => document.removeEventListener("visibilitychange", save);
   }, [id, step]);
 
-  // A "Teach me" lesson counts as done once its success screen shows.
+  // A "Teach me" lesson counts as done once its success screen shows; inside a lesson page, the lesson does that.
   const { lessonId } = guide;
+  const finishedRef = useRef(onFinished);
   useEffect(() => {
-    if (finished && lessonId) markLessonComplete(lessonId);
-  }, [finished, lessonId]);
+    finishedRef.current = onFinished;
+  });
+  const inLesson = !!onFinished;
+  useEffect(() => {
+    if (!finished) return;
+    if (inLesson) finishedRef.current?.();
+    else if (lessonId) markLessonComplete(lessonId);
+  }, [finished, lessonId, inLesson]);
 
   // Stop talking when the learner leaves the guide.
   useEffect(() => stopSpeaking, []);
@@ -488,6 +515,7 @@ export default function StepPlayer({
     const myId = ++requestId.current;
     lastRequest.current = request;
     stopListening();
+    setHelpMode(request.mode);
     setPanel("help");
     const { shot, ...fields } = request;
     setHelp({ kind: "waiting", shot });
@@ -530,11 +558,18 @@ export default function StepPlayer({
     void ask({ question: current.instruction, mode: "simpler", level: "very_simple" });
   }
 
-  function stuck(trouble: string) {
+  /** `problem` is what Ask my family will say went wrong; a typed trouble goes there as a note instead. */
+  function stuck(trouble: string, family: Pick<FamilyHelpContext, "problem" | "note"> = { note: trouble }) {
     const text = trouble.trim();
     if (!text) return;
+    setFamilyContext(family);
     // The latest screenshot from this guide goes too, so the helper can see what went wrong.
-    void ask({ question: current.instruction, mode: "stuck", trouble: text, shot: lastShot.current ?? undefined });
+    void ask({ question: current.instruction, mode: "stuck", trouble: text, shot: lastShot ?? undefined });
+  }
+
+  function chooseTrouble(key: MessageKey) {
+    const familyKey = FAMILY_PROBLEM_FOR[key];
+    stuck(t(key), { problem: t(familyKey ?? key) });
   }
 
   function openScreen(mode: ScreenMode) {
@@ -551,13 +586,18 @@ export default function StepPlayer({
   }
 
   function keepShot(image: PreparedImage) {
-    lastShot.current = image;
-    setHasShot(true);
+    setLastShot(image);
   }
 
   function sendScreen(image: PreparedImage) {
     keepShot(image);
+    if (screenMode === "notWhatISee") setFamilyContext({ problem: t("askFamily.problem.different") });
     void ask({ question: current.instruction, mode: screenMode, shot: image });
+  }
+
+  function openFamily() {
+    talk.stop();
+    setAskFamily(true);
   }
 
   function teach() {
@@ -605,6 +645,9 @@ export default function StepPlayer({
     setGuideHelpful(id, value);
     setHelpful(value);
   }
+
+  // In a lesson, the lesson page takes over after the last step.
+  if (finished && inLesson) return null;
 
   if (finished) {
     return (
@@ -726,6 +769,20 @@ export default function StepPlayer({
         {listening ? t("common.listening") : t("common.speak")}
       </button>
     );
+
+  // Still stuck after help (I'm stuck, or a screenshot that showed the wrong screen): family is one tap away.
+  const stillStuck =
+    help.kind !== "waiting" &&
+    help.kind !== "limit" &&
+    (STUCK_MODES.includes(helpMode) || (screenHelp !== null && !screenHelp.onTrack));
+  const familyOffer = (
+    <div className="flex flex-col gap-3 rounded-2xl border-2 border-primary/30 bg-card p-4">
+      <p className="text-xl font-semibold">{t("askFamily.stuckLead")}</p>
+      <button type="button" className="btn-primary" onClick={openFamily}>
+        <Label emoji="👨‍👩‍👧">{t("askFamily.stuckOpen")}</Label>
+      </button>
+    </div>
+  );
 
   const mood: MascotMood = help.kind === "waiting" ? "thinking" : "ready";
   const dot = (i: number) => (i + 1 < step ? "done" : i + 1 === step ? "current" : "todo");
@@ -881,7 +938,7 @@ export default function StepPlayer({
           {panel === "trouble" ? (
             <>
               {TROUBLES.map((key) => (
-                <button key={key} type="button" className="btn-secondary" onClick={() => stuck(t(key))}>
+                <button key={key} type="button" className="btn-secondary" onClick={() => chooseTrouble(key)}>
                   {t(key)}
                 </button>
               ))}
@@ -907,6 +964,7 @@ export default function StepPlayer({
               </button>
             </form>
           )}
+          {familyOffer}
           {backToStep}
         </section>
       )}
@@ -965,6 +1023,7 @@ export default function StepPlayer({
                 error={help.kind === "error" ? help.error : null}
                 onRetry={() => lastRequest.current && void ask(lastRequest.current)}
               />
+              {stillStuck && familyOffer}
               {helpAnswer && !screenHelp && (
                 <>
                   <button type="button" className="btn-secondary" onClick={explainSimpler}>
@@ -1035,7 +1094,7 @@ export default function StepPlayer({
                 >
                   <Label emoji="📸">{t("steps.checkScreen")}</Label>
                 </button>
-                <button type="button" className="btn-soft" onClick={() => setAskFamily(true)}>
+                <button type="button" className="btn-soft" onClick={openFamily}>
                   <Label emoji="👨‍👩‍👧">{t("askFamily.open")}</Label>
                 </button>
                 <div className="col-span-full flex flex-col gap-3">
@@ -1062,7 +1121,12 @@ export default function StepPlayer({
 
       {askFamily && (
         <AskFamilySheet
-          context={{ goal: guideGoal(guide), step: { number: step, total, instruction: current.instruction } }}
+          context={{
+            goal: guideGoal(guide),
+            step: { number: step, total, instruction: current.instruction },
+            ...familyContext,
+          }}
+          screenshot={lastShot}
           onClose={() => setAskFamily(false)}
         />
       )}

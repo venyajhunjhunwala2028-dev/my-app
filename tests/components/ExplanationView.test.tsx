@@ -63,7 +63,7 @@ describe("ExplanationView (AE6)", () => {
     });
     await userEvent.click(await screen.findByRole("button", { name: "Ask my family for help" }));
     const lines = [...screen.getByTestId("family-message").querySelectorAll("p")].map((p) => p.textContent);
-    expect(lines).toEqual(["I need help with: What is ChatGPT?", "Sent from Tech Helper"]);
+    expect(lines).toEqual(["I'm stuck on this: What is ChatGPT?", "Sent from Tech Helper"]);
   });
 });
 

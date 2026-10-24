@@ -78,7 +78,12 @@ describe("Home page", () => {
     expect(document.getElementById("call-family")).toBeInTheDocument();
     expect(screen.getByText("📷")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Teach me" })).toHaveAttribute("href", "/app/learn");
+    expect(screen.getByRole("link", { name: "Teach me how this works" })).toHaveAttribute("href", "/app/learn");
+    expect(screen.getByRole("link", { name: "Teach me how this works" })).toHaveAccessibleDescription(
+      "Short lessons: what it is, how it works, then you try it yourself.",
+    );
+    expect(screen.getByRole("link", { name: "Practice on a pretend phone" })).toHaveAttribute("href", "/app/practice");
+    expect(screen.getByRole("region", { name: "Help me do this" })).toContainElement(screen.getByLabelText("What would you like to do?"));
     expect(screen.getByRole("link", { name: "Help library" })).toHaveAttribute("href", "/app/library");
     expect(screen.getByText("🧑‍🏫")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByText("📚")).toHaveAttribute("aria-hidden", "true");
@@ -86,10 +91,10 @@ describe("Home page", () => {
     expect(document.getElementById("my-guides")).toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Ways I can help" });
     expect(screen.getByRole("link", { name: "My saved guides" })).toHaveAttribute("href", "/app/saved");
-    // The big cards: Ask, What do I press? and Show me with my camera (Speak and Talk me through it are hidden here);
-    // then Is this a scam?, Show me with my camera, Teach me, Help library, Ask my family, Call my family,
-    // Recent help, My saved guides and Settings.
-    expect(within(nav).getAllByRole("listitem")).toHaveLength(12);
+    // The big cards: Ask, What do I press?, Teach me how this works and Show me with my camera (Speak and Talk me
+    // through it are hidden here); then Is this a scam?, Show me with my camera, Practice, Help library,
+    // Ask my family, Call my family, Recent help, My saved guides and Settings.
+    expect(within(nav).getAllByRole("listitem")).toHaveLength(13);
   });
 
   it("offers goals as chips and Show me with my camera, as a big card and in More ways", () => {

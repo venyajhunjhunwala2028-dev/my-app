@@ -1,6 +1,7 @@
 // "Your Tech Confidence": a gentle level from what the learner has finished on this phone.
 // Worked out from the local store only; nothing is sent anywhere.
 
+import { PRACTICE } from "@/lib/content/practice";
 import type { MessageKey } from "@/lib/i18n";
 import type { SavedGuide } from "@/lib/store/localStore";
 
@@ -28,13 +29,22 @@ export function isFinishedGuide(guide: SavedGuide): boolean {
   return answer?.kind === "steps" && Array.isArray(answer.steps) && guide.step > answer.steps.length;
 }
 
-export type ConfidenceInput = { completedLessons: readonly string[]; guides: readonly SavedGuide[] };
+export type ConfidenceInput = {
+  completedLessons: readonly string[];
+  guides: readonly SavedGuide[];
+  /** Practice exercises finished (lib/content/practice ids). */
+  completedPractice?: readonly string[];
+};
 
-/** Each completed lesson once, plus each finished guide that is not a lesson (those count through the lesson). */
-export function confidencePoints({ completedLessons, guides }: ConfidenceInput): number {
+/**
+ * Each completed lesson once, each finished Practice exercise once, plus each finished guide that is not a lesson
+ * (those count through the lesson).
+ */
+export function confidencePoints({ completedLessons, guides, completedPractice = [] }: ConfidenceInput): number {
   const lessons = new Set(completedLessons).size;
+  const practice = new Set(completedPractice).size;
   const finished = guides.filter((g) => !g.lessonId && isFinishedGuide(g)).length;
-  return lessons + finished;
+  return lessons + practice + finished;
 }
 
 export type TechConfidence = {
@@ -61,8 +71,8 @@ export function techConfidence(input: ConfidenceInput): TechConfidence {
 
 /**
  * The things people learn here, as plain topics ("WhatsApp", "Video calls"). A topic is learned once one of its
- * lessons is finished, or a guide about it reaches "You did it!": a Help library question from its categories,
- * or a question or title with one of its words. In this order, the first topic not learned yet is "Next".
+ * lessons or Practice exercises is finished, or a guide about it reaches "You did it!": a Help library question
+ * from its categories, or a question or title with one of its words. In this order, the first topic not learned yet is "Next".
  */
 export type ConfidenceTopic = {
   id: string;
@@ -91,10 +101,23 @@ const topic = (
   words,
 });
 
+/** Practice exercises count towards their topics (`topics` in lib/content/practice). */
+const PRACTICE_TOPICS: ReadonlyMap<string, readonly string[]> = new Map(PRACTICE.map((p) => [p.id, p.topics]));
+
 // Devanagari has no \b, so Hindi words are matched without it. "Wi‑Fi" is often written with a non-breaking hyphen.
 export const CONFIDENCE_TOPICS: readonly ConfidenceTopic[] = [
-  topic("whatsapp", ["whatsapp-video-call", "whatsapp-photo"], ["whatsapp"], /whats ?app|व्हाट्सऐप|व्हाट्सएप/iu),
-  topic("videoCalls", ["whatsapp-video-call"], [], /video ?call|वीडियो कॉल|\bzoom\b|google meet|facetime/iu),
+  topic(
+    "whatsapp",
+    ["whatsapp-video-call", "whatsapp-photo", "whatsapp-voice-message"],
+    ["whatsapp"],
+    /whats ?app|व्हाट्सऐप|व्हाट्सएप/iu,
+  ),
+  topic(
+    "videoCalls",
+    ["whatsapp-video-call", "join-video-meeting"],
+    [],
+    /video ?call|वीडियो कॉल|\bzoom\b|google meet|facetime|video meeting|वीडियो मीटिंग/iu,
+  ),
   topic("photos", ["whatsapp-photo"], [], /\b(?:photo|photos|picture|pictures)\b|फ़ोटो|फोटो|तस्वीर/iu),
   topic("scams", ["spot-scam", "block-caller"], ["safety"], /\bscams?\b|\bfraud\b|\bblock\b|\bdhokh|धोखे|धोखा|फ्रॉड|ब्लॉक/iu),
   topic("screenshots", ["screenshot"], [], /screen ?shot|स्क्रीनशॉट/iu),
@@ -104,10 +127,12 @@ export const CONFIDENCE_TOPICS: readonly ConfidenceTopic[] = [
   topic("email", ["send-email"], ["email"], /\be-?mails?\b|\bgmail\b|ईमेल/iu),
   topic("payments", ["upi-check"], ["payments"], /\bupi\b|\bpayments?\b|\bpaytm\b|phone ?pe|google pay|\bgpay\b|पेमेंट/iu),
   topic("ai", ["ask-chatgpt"], [], /chat ?gpt|\bgemini\b|\bai\b|चैटजीपीटी/iu),
-  topic("instagram", [], ["instagram"], /instagram|इंस्टाग्राम/iu),
+  topic("instagram", ["instagram-post"], ["instagram"], /instagram|इंस्टाग्राम/iu),
   topic("computer", [], ["computer"], /\bcomputer\b|\blaptop\b|\bcopy and paste\b|कंप्यूटर/iu),
   topic("tv", [], ["tv"], /\btv\b|\btelevision\b|\byoutube\b|टीवी/iu),
-  topic("shopping", [], ["shopping"], /\bamazon\b|\bflipkart\b|\bshopping\b|\border\b|ख़रीदारी|खरीदारी/iu),
+  topic("shopping", ["track-order"], ["shopping"], /\bamazon\b|\bflipkart\b|\bshopping\b|\border\b|ख़रीदारी|खरीदारी/iu),
+  topic("search", ["google-search"], [], /\bgoogle search\b|\bsearch (?:on|for)\b|\bgoogle (?:it|pe|par|पर)|गूगल/iu),
+  topic("maps", ["maps-directions"], [], /\bmaps?\b|\bdirections?\b|\braasta\b|नक्श|रास्ता/iu),
 ];
 
 export type ProgressInput = ConfidenceInput & {
@@ -127,10 +152,11 @@ function guideTopics(guide: SavedGuide, libraryQuestions: ProgressInput["library
   return ids;
 }
 
-/** The ids of the topics learned, from finished lessons and finished guides. */
-export function learnedTopicIds({ completedLessons, guides, libraryQuestions }: ProgressInput): Set<string> {
+/** The ids of the topics learned, from finished lessons, Practice exercises and guides. */
+export function learnedTopicIds({ completedLessons, guides, libraryQuestions, completedPractice = [] }: ProgressInput): Set<string> {
   const done = new Set(completedLessons);
   const learned = new Set(CONFIDENCE_TOPICS.filter((t) => t.lessons.some((l) => done.has(l))).map((t) => t.id));
+  for (const id of completedPractice) for (const t of PRACTICE_TOPICS.get(id) ?? []) learned.add(t);
   for (const g of guides) {
     if (isFinishedGuide(g)) for (const id of guideTopics(g, libraryQuestions)) learned.add(id);
   }
@@ -142,7 +168,7 @@ export type TopicStart = { href: string; /** The lesson that "Next" starts, when
 /** Where "Next" goes: the topic's first unfinished lesson, else its Help library category. */
 export function topicStart(t: ConfidenceTopic, completedLessons: readonly string[]): TopicStart {
   const lessonId = t.lessons.find((l) => !completedLessons.includes(l)) ?? t.lessons[0];
-  if (lessonId) return { href: `/app/learn?lesson=${encodeURIComponent(lessonId)}`, lessonId };
+  if (lessonId) return { href: `/app/learn/${encodeURIComponent(lessonId)}`, lessonId };
   const category = t.libraryCategories[0];
   return { href: category ? `/app/library?topic=${encodeURIComponent(category)}` : "/app/learn" };
 }

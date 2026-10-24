@@ -153,8 +153,9 @@ export default function Home() {
   const speakListening = listening && micCard === "speak";
   const talkListening = listening && micCard === "talk";
 
-  // Things people want to get done, in their own words; the last one opens the scam check.
-  const examples = [t("home.example.1"), t("home.example.2"), t("home.example.3"), t("home.example.4"), t("home.example.5")];
+  // Things people want to get done, in their own words; the last one opens the scam check. Easy Mode shows three.
+  const allExamples = [t("home.example.1"), t("home.example.2"), t("home.example.3"), t("home.example.4"), t("home.example.5")];
+  const examples = easy ? allExamples.slice(0, 3) : allExamples;
 
   return (
     <InstallGuide>
@@ -170,7 +171,17 @@ export default function Home() {
 
         <FirstRunDevice onChosen={() => setDeviceVersion((v) => v + 1)} />
 
-        <section className="card flex flex-col gap-4 p-5 shadow-raised">
+        {/* "Help me do this" (a task, guided on the learner's own phone) is kept apart from "Teach me how this works". */}
+        <section aria-labelledby="help-me-heading" className="card flex flex-col gap-4 p-5 shadow-raised">
+          <div className="flex flex-col gap-1">
+            <h2 id="help-me-heading" className="text-sm font-extrabold tracking-[0.15em] text-primary uppercase">
+              <span aria-hidden="true" className="mr-1">
+                🛠️
+              </span>
+              {t("home.helpMe")}
+            </h2>
+            <p className="text-lg text-muted">{t("home.helpMeDesc")}</p>
+          </div>
           <AskBox ref={askBox} big examples={examples} showSpeakButton={false} onListeningChange={setListening} />
         </section>
         {/* Search params are only known per request, so they are read inside Suspense (Cache Components). */}
@@ -265,6 +276,22 @@ export default function Home() {
               {full && (
                 <li className="col-span-full">
                   <Link
+                    href="/app/learn"
+                    aria-labelledby="card-learn-title"
+                    aria-describedby="card-learn-desc"
+                    className="card-action flex-col gap-3 border-lavender-strong! bg-lavender!"
+                  >
+                    <CardBody
+                      id="card-learn"
+                      emoji="🧑‍🏫"
+                      text={{ tag: t("home.tag.learn"), title: t("home.learn"), desc: t("home.learnDesc") }}
+                    />
+                  </Link>
+                </li>
+              )}
+              {full && (
+                <li className="col-span-full">
+                  <Link
                     href="/app/camera"
                     aria-labelledby="card-camera-title"
                     aria-describedby="card-camera-desc"
@@ -299,8 +326,8 @@ export default function Home() {
                     </Link>
                   </li>
                   <li>
-                    <Link href="/app/learn" className={TILE}>
-                      <TileBody emoji="🧑‍🏫">{t("home.learn")}</TileBody>
+                    <Link href="/app/practice" className={TILE}>
+                      <TileBody emoji="🎯">{t("home.practice")}</TileBody>
                     </Link>
                   </li>
                   <li>
@@ -391,7 +418,8 @@ export default function Home() {
           <MyGuides initial={easy ? 3 : 5} />
         </div>
         <div id="call-family" className="scroll-mt-4">
-          <CallFamily />
+          {/* Easy Mode keeps the setup form behind one button until it is wanted. */}
+          <CallFamily collapsed={easy} />
         </div>
         {/* From home there is no guide yet, so the message is the generic one. */}
         {askFamily && <AskFamilySheet context={{}} onClose={() => setAskFamily(false)} />}

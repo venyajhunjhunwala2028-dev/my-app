@@ -107,7 +107,7 @@ describe("Tech Confidence by topic", () => {
     const progress = confidenceProgress({ completedLessons: [], guides: [] });
     expect(progress).toMatchObject({ percent: 0, learned: [], total: CONFIDENCE_TOPICS.length });
     expect(progress.next).toMatchObject({ topic: { id: "whatsapp" }, lessonId: "whatsapp-video-call" });
-    expect(progress.next?.href).toBe("/app/learn?lesson=whatsapp-video-call");
+    expect(progress.next?.href).toBe("/app/learn/whatsapp-video-call");
   });
 
   it("learns topics from lessons: a WhatsApp video call lesson is WhatsApp and Video calls", () => {
@@ -136,20 +136,35 @@ describe("Tech Confidence by topic", () => {
       completedLessons: ["whatsapp-video-call", "whatsapp-photo"],
       guides: [finished("wifi", "How do I connect to Wi‑Fi?")],
     });
-    // WhatsApp, Video calls, Sending photos, Wi‑Fi: 4 of 15.
+    // WhatsApp, Video calls, Sending photos, Wi‑Fi: 4 of 17.
+    expect(progress.total).toBe(17);
     expect(progress.learned.map((t) => t.id)).toEqual(["whatsapp", "videoCalls", "photos", "wifi"]);
-    expect(progress.percent).toBe(Math.round((4 / 15) * 100));
+    expect(progress.percent).toBe(Math.round((4 / 17) * 100));
     expect(progress.next).toMatchObject({ topic: { id: "scams", nextKey: "topic.scams.next" }, lessonId: "spot-scam" });
   });
 
   it("sends a topic with no lesson to its Help library category", () => {
+    const computer = CONFIDENCE_TOPICS.find((t) => t.id === "computer")!;
+    expect(topicStart(computer, [])).toEqual({ href: "/app/library?topic=computer" });
+  });
+
+  it("starts a topic with a lesson on that lesson's own page", () => {
     const instagram = CONFIDENCE_TOPICS.find((t) => t.id === "instagram")!;
-    expect(topicStart(instagram, [])).toEqual({ href: "/app/library?topic=instagram" });
+    expect(topicStart(instagram, [])).toEqual({ href: "/app/learn/instagram-post", lessonId: "instagram-post" });
+  });
+
+  it("maps every lesson to at least one topic, including the new Google Search, Maps and shopping lessons", () => {
+    const covered = new Set(CONFIDENCE_TOPICS.flatMap((t) => t.lessons));
+    for (const lesson of ALL_LESSONS) expect(covered.has(lesson.id), lesson.id).toBe(true);
+    const ids = (lesson: string) => [...learnedTopicIds({ completedLessons: [lesson], guides: [] })];
+    expect(ids("google-search")).toEqual(["search"]);
+    expect(ids("maps-directions")).toEqual(["maps"]);
+    expect(ids("track-order")).toEqual(["shopping"]);
   });
 
   it("starts a topic at its first lesson not finished yet", () => {
     const scams = CONFIDENCE_TOPICS.find((t) => t.id === "scams")!;
-    expect(topicStart(scams, ["spot-scam"])).toEqual({ href: "/app/learn?lesson=block-caller", lessonId: "block-caller" });
+    expect(topicStart(scams, ["spot-scam"])).toEqual({ href: "/app/learn/block-caller", lessonId: "block-caller" });
   });
 
   it("is 100% with nothing next once every topic is learned", () => {
@@ -169,5 +184,20 @@ describe("Tech Confidence by topic", () => {
     }
     const ids = CONFIDENCE_TOPICS.map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("Practice towards Tech Confidence", () => {
+  it("learns a Practice exercise's topics once it is finished", () => {
+    const ids = learnedTopicIds({ completedLessons: [], guides: [], completedPractice: ["send-photo", "spot-scam"] });
+    expect([...ids].sort()).toEqual(["photos", "scams", "whatsapp"]);
+  });
+
+  it("counts each finished exercise once towards the level", () => {
+    expect(confidencePoints({ completedLessons: ["wifi"], guides: [], completedPractice: ["video-call", "video-call"] })).toBe(2);
+  });
+
+  it("ignores unknown exercises", () => {
+    expect(learnedTopicIds({ completedLessons: [], guides: [], completedPractice: ["nope"] }).size).toBe(0);
   });
 });

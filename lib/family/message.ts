@@ -12,13 +12,31 @@ export type FamilyHelpContext = {
   goal?: string;
   /** Set inside a steps guide. */
   step?: { number: number; total: number; instruction: string };
+  /**
+   * What went wrong, in a few words: from I'm stuck or That's not what I see, or a quick choice in the sheet
+   * ("I can't find the button").
+   */
+  problem?: string;
+  /** Anything else the learner typed for their family. */
+  note?: string;
 };
+
+/** Who the message is from: what the learner asked to be called ("Mom", "Nani"); empty or missing means "I". */
+export type FamilySender = { callMe?: string | null };
 
 export type FamilyMessage = {
   /** Shown one per line in the sheet, exactly as sent. */
   lines: string[];
   text: string;
 };
+
+/** The quick choices for "What went wrong?" in Ask my family. */
+export const FAMILY_PROBLEMS: readonly MessageKey[] = [
+  "askFamily.problem.cantFind",
+  "askFamily.problem.different",
+  "askFamily.problem.error",
+  "askFamily.problem.unsure",
+];
 
 // Words for secrets, and anything that looks like a code or card number (4+ digits, spaces or dashes allowed).
 const SECRET_WORDS =
@@ -36,18 +54,74 @@ export function hasPrivateInfo(text: string): boolean {
   return scamPrecheck(t)?.topics.includes("secret") ?? false;
 }
 
-export function buildFamilyMessage({ goal, step }: FamilyHelpContext, t: Translate): FamilyMessage {
-  const g = goal?.replace(/\s+/g, " ").trim() ?? "";
-  const lines = [g && !hasPrivateInfo(g) ? t("askFamily.msg.goal", { goal: g }) : t("askFamily.msg.generic")];
+const oneLine = (text: string | null | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
+
+/** Kept only when it holds nothing private. */
+const safe = (text: string | null | undefined) => {
+  const line = oneLine(text);
+  return line && !hasPrivateInfo(line) ? line : "";
+};
+
+// Guide titles start with a verb ("Post a story on Instagram"); it reads as "trying to post a story on Instagram".
+const VERBS =
+  /^(?:add|ask|block|book|call|change|check|connect|copy|delete|download|find|get|install|join|learn|log|make|open|order|pay|post|print|put|read|record|reset|save|search|see|send|set|share|sign|spot|start|stop|take|track|turn|update|use|watch|write)$/;
+
+/** "Post a story on Instagram." → "post a story on Instagram"; app names and other words keep their capitals. */
+export function plainTask(goal: string): string {
+  const task = oneLine(goal).replace(/[.!।]+$/u, "");
+  const first = task.split(" ")[0] ?? "";
+  return VERBS.test(first.toLowerCase()) && /^[A-Z][a-z]*$/.test(first) ? first.toLowerCase() + task.slice(first.length) : task;
+}
+
+/** A question ("how do I send a photo?") reads as "stuck on this: …", not "trying to …". */
+const isQuestion = (goal: string) => /\?\s*$/.test(goal) || /^(?:how|what|why|where|when|which|can|could|is|are|do|does)\b/i.test(goal);
+
+/**
+ * The message to family, one line each: who is stuck and on what, the step, what went wrong and an optional note,
+ * then "Sent from Tech Helper". With a name ("Mom") it repeats the name and never uses he or she; without one it
+ * is written as "I". The goal, step, problem and note are each left out when they hold anything private.
+ */
+export function buildFamilyMessage(
+  { goal, step, problem, note }: FamilyHelpContext,
+  t: Translate,
+  { callMe }: FamilySender = {},
+): FamilyMessage {
+  const name = oneLine(callMe);
+  const g = safe(goal);
+  const lines: string[] = [];
+  if (g) {
+    const task = plainTask(g);
+    const key = isQuestion(g)
+      ? name
+        ? "askFamily.msg.named.question"
+        : "askFamily.msg.question"
+      : name
+        ? "askFamily.msg.named.goal"
+        : "askFamily.msg.goal";
+    lines.push(t(key, { name, task }));
+  } else {
+    lines.push(name ? t("askFamily.msg.named.generic", { name }) : t("askFamily.msg.generic"));
+  }
   if (step) {
-    const instruction = step.instruction.replace(/\s+/g, " ").trim();
-    const vars = { step: step.number, total: step.total };
+    const instruction = safe(step.instruction);
+    const vars = { name, step: step.number, total: step.total, instruction };
     lines.push(
-      instruction && !hasPrivateInfo(instruction)
-        ? t("askFamily.msg.step", { ...vars, instruction })
-        : t("askFamily.msg.stepOnly", vars),
+      t(
+        instruction
+          ? name
+            ? "askFamily.msg.named.step"
+            : "askFamily.msg.step"
+          : name
+            ? "askFamily.msg.named.stepOnly"
+            : "askFamily.msg.stepOnly",
+        vars,
+      ),
     );
   }
+  const what = safe(problem);
+  if (what) lines.push(t("askFamily.msg.problem", { problem: what }));
+  const extra = safe(note);
+  if (extra) lines.push(t("askFamily.msg.note", { note: extra }));
   lines.push(t("askFamily.msg.from"));
   return { lines, text: lines.join("\n") };
 }

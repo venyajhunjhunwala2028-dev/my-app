@@ -24,7 +24,7 @@ Then open the app from the icon, set up **Call family** with your name and numbe
 
 ## Privacy
 
-The app does not save screenshots, camera photos or questions. Each question, screenshot and photo is sent to Anthropic's AI service to be answered, and Anthropic keeps API inputs for a limited time under its own policy. The app reminds the learner not to send bank, password, or private-message screens, or photos of bank cards, passwords or documents. A screenshot sent during a guide ("That's not what I see", "Check my screen") is kept in the page's memory only until the guide is closed, so "I'm stuck" can look at it again.
+The app does not save screenshots, camera photos or questions. Each question, screenshot and photo is sent to Anthropic's AI service to be answered, and Anthropic keeps API inputs for a limited time under its own policy. The app reminds the learner not to send bank, password, or private-message screens, or photos of bank cards, passwords or documents. A screenshot sent during a guide ("That's not what I see", "Check my screen") is kept in the page's memory only until the guide is closed, so "I'm stuck" can look at it again, and "Ask my family" can include it when the learner ticks "Include my screenshot" (off by default; it goes only through the phone's own share sheet and is never uploaded or saved). Practice screens are pretend: nothing on them is sent anywhere.
 
 ## Change the AI model
 

@@ -40,17 +40,25 @@ test("Ask my family for help from a guide step: shares the goal and the current 
 
   await page.getByRole("button", { name: "Ask my family for help" }).click();
   const dialog = page.getByRole("dialog", { name: "Ask my family" });
-  await expect(dialog.getByText("I need help with: Post a story on Instagram")).toBeVisible();
-  await expect(dialog.getByText("I'm on step 2 of 3: Tap your picture at the top left.")).toBeVisible();
+  await expect(dialog.getByText("I'm stuck while trying to post a story on Instagram.")).toBeVisible();
+  await expect(dialog.getByText("I'm on Step 2 of 3: Tap your picture at the top left.")).toBeVisible();
+
+  // Asked once: what the message calls me. The name is used again, never he or she.
+  await dialog.getByLabel("What should the message call you?").fill("Mom");
+  await dialog.getByRole("button", { name: "Use this name" }).click();
+  await dialog.getByRole("button", { name: "I can't find the button" }).click();
   const text = [
-    "I need help with: Post a story on Instagram",
-    "I'm on step 2 of 3: Tap your picture at the top left.",
+    "Mom is stuck while trying to post a story on Instagram.",
+    "Mom is on Step 2 of 3: Tap your picture at the top left.",
+    "What went wrong: I can't find the button",
     "Sent from Tech Helper",
   ].join("\n");
   await expect(dialog.getByRole("link", { name: "Send on WhatsApp" })).toHaveAttribute(
     "href",
     `https://wa.me/447700900123?text=${encodeURIComponent(text)}`,
   );
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
 
   await dialog.getByRole("button", { name: "Close" }).click();
   await expect(page.getByText("Step 2 of 3")).toBeVisible();

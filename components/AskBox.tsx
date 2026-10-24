@@ -20,6 +20,7 @@ import {
   setCurrentGuide,
   setPreferredDevice,
   setSpeakingLanguage,
+  type SavedGuide,
 } from "@/lib/store/localStore";
 import { noSubscribe, useIsClient } from "@/lib/useIsClient";
 
@@ -65,6 +66,7 @@ export default function AskBox({
   showForm = true,
   examples = [],
   big = false,
+  onGuide,
 }: {
   ref?: Ref<AskBoxHandle>;
   /** "Try asking:" chips under the box; tapping one asks it straight away. */
@@ -76,6 +78,11 @@ export default function AskBox({
   /** False when the page shows its own Speak button (see `ref`). */
   showSpeakButton?: boolean;
   onListeningChange?: (listening: boolean) => void;
+  /**
+   * Called with the saved guide instead of opening it on its own page: a "Teach me how this works" lesson plays
+   * the guide inside its SHOW stage.
+   */
+  onGuide?: (guide: SavedGuide) => void;
 } = {}) {
   const router = useRouter();
   const t = useT();
@@ -228,7 +235,6 @@ export default function AskBox({
   }
 
   function route(q: string, answer: AskAnswer, lessonId?: string) {
-
     switch (answer.kind) {
       case "needs_device":
         setStatus({ kind: "clarify", prompt: answer.prompt, options: answer.options, about: "device", language: answer.language });
@@ -242,10 +248,11 @@ export default function AskBox({
       case "steps":
       case "explanation": {
         const id = crypto.randomUUID();
-        saveGuide({ id, question: q, title: answer.title, answer, ...(lessonId ? { lessonId } : {}) });
+        const saved = saveGuide({ id, question: q, title: answer.title, answer, ...(lessonId ? { lessonId } : {}) });
         setCurrentGuide(id);
         setStatus({ kind: "idle" });
-        router.push(`/guide/${id}`);
+        if (onGuide) onGuide(saved);
+        else router.push(`/guide/${id}`);
         return;
       }
       case "safety_check":

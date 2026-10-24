@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ALL_LESSONS, LESSON_GROUPS } from "@/lib/content/lessons";
 import { LIBRARY } from "@/lib/content/library";
+import { getPractice } from "@/lib/content/practice";
 import type { Localized } from "@/lib/content/localized";
 import { LOCALES } from "@/lib/i18n/locales";
 import { phraseCheck } from "@/lib/safety/phraseCheck";
@@ -15,7 +16,7 @@ const SHARE_SECRET_EN = /\b(share|give|tell|send|read out)\b[^.?!]*\b(otp|pin|pa
 const SHARE_SECRET_HI = /(otp|ओटीपी|pin|पिन|password|पासवर्ड|cvv)\s*(बताएँ|बताएं|बताइए|दें|दीजिए|भेजें|शेयर करें)/iu;
 
 const allTexts = (): Localized[] => [
-  ...LESSON_GROUPS.flatMap((g) => [g.title, ...g.lessons.flatMap((l) => [l.title, l.question])]),
+  ...LESSON_GROUPS.flatMap((g) => [g.title, ...g.lessons.flatMap((l) => [l.title, l.question, l.explain])]),
   ...LIBRARY.flatMap((c) => [c.title, ...c.questions]),
 ];
 
@@ -28,18 +29,66 @@ function expectComplete(text: Localized) {
 }
 
 describe("lessons", () => {
-  it("has 10 to 12 lessons with unique ids, in simple groups", () => {
-    expect(ALL_LESSONS.length).toBeGreaterThanOrEqual(10);
-    expect(ALL_LESSONS.length).toBeLessThanOrEqual(12);
+  it("groups the lessons by topic, with unique ids", () => {
     const ids = ALL_LESSONS.map((l) => l.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(LESSON_GROUPS.map((g) => g.title.en)).toEqual([
-      "Using your phone",
-      "Staying safe",
-      "AI helpers",
+      "WhatsApp",
+      "Instagram",
       "Email",
-      "Online payments",
+      "Video calls",
+      "Phone basics",
+      "Online safety",
+      "Google Search",
+      "Maps",
+      "Online shopping",
+      "AI helpers",
     ]);
+    for (const group of LESSON_GROUPS) expect(group.lessons.length, group.id).toBeGreaterThan(0);
+  });
+
+  it("keeps every earlier lesson id, so finished lessons stay finished", () => {
+    const ids = ALL_LESSONS.map((l) => l.id);
+    for (const id of [
+      "whatsapp-video-call",
+      "whatsapp-photo",
+      "screenshot",
+      "bigger-text",
+      "wifi",
+      "save-contact",
+      "spot-scam",
+      "strong-password",
+      "block-caller",
+      "ask-chatgpt",
+      "send-email",
+      "upi-check",
+    ]) {
+      expect(ids, id).toContain(id);
+    }
+  });
+
+  it("adds lessons for the new topics", () => {
+    const group = (id: string) => LESSON_GROUPS.find((g) => g.id === id)!.lessons.map((l) => l.id);
+    expect(group("instagram")).toContain("instagram-post");
+    expect(group("search")).toContain("google-search");
+    expect(group("maps")).toContain("maps-directions");
+    expect(group("shopping")).toContain("track-order");
+  });
+
+  it("explains every lesson in two or three short sentences, in English, Hindi and Hinglish", () => {
+    for (const lesson of ALL_LESSONS) {
+      expectComplete(lesson.explain);
+      const sentences = lesson.explain.en.split(/(?<=[.!?])\s+/).filter(Boolean);
+      expect(sentences.length, lesson.id).toBeGreaterThanOrEqual(2);
+      expect(sentences.length, lesson.id).toBeLessThanOrEqual(3);
+      expect(lesson.explain.en.length, lesson.id).toBeLessThanOrEqual(220);
+    }
+  });
+
+  it("links lessons to Practice exercises that exist", () => {
+    const withPractice = ALL_LESSONS.filter((l) => l.practiceId);
+    expect(withPractice.map((l) => l.practiceId).sort()).toEqual(["post-photo", "send-photo", "spot-scam", "video-call"]);
+    for (const lesson of withPractice) expect(getPractice(lesson.practiceId), lesson.id).toBeDefined();
   });
 
   it("phrases every lesson as Teach me how to …", () => {

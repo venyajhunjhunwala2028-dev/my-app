@@ -12,6 +12,7 @@ import {
   getUiLanguage,
   saveGuide,
   setEasyMode,
+  setFamilyContact,
   setPreferredDevice,
   setUiLanguage,
 } from "@/lib/store/localStore";
@@ -100,11 +101,40 @@ describe("Easy Mode on home", () => {
     expect(screen.getByRole("button", { name: "Show less" })).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("shows only three Try asking chips", () => {
+    setEasyMode(true);
+    render(<Home />);
+    const chips = within(screen.getByText("Try asking:").parentElement as HTMLElement).getAllByRole("button");
+    expect(chips.map((c) => c.textContent)).toEqual([
+      "I want to send a photo to my daughter",
+      "I want to post something on Instagram",
+      "I can't find my photos",
+    ]);
+  });
+
+  it("keeps the Call family setup behind one button until a contact is saved", async () => {
+    setEasyMode(true);
+    render(<Home />);
+    expect(screen.queryByRole("heading", { name: "Who should we call for help?" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Set up Call family" }));
+    expect(screen.getByRole("heading", { name: "Who should we call for help?" })).toBeInTheDocument();
+  });
+
+  it("shows the call button when a contact is saved", () => {
+    setEasyMode(true);
+    setFamilyContact({ name: "Priya", phone: "+44 7700 900123" });
+    render(<Home />);
+    expect(screen.getByRole("heading", { name: "Call Priya" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Set up Call family" })).not.toBeInTheDocument();
+  });
+
   it("shows everything when Easy Mode is off", () => {
     render(<Home />);
     expect(screen.getByRole("heading", { name: "More ways I can help" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Your Tech Confidence" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "More" })).not.toBeInTheDocument();
+    expect(within(screen.getByText("Try asking:").parentElement as HTMLElement).getAllByRole("button")).toHaveLength(5);
+    expect(screen.getByRole("heading", { name: "Who should we call for help?" })).toBeInTheDocument();
   });
 });
 

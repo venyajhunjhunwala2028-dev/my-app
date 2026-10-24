@@ -518,13 +518,39 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
     expect(screen.getByRole("heading", { name: "You did it!" })).toBeInTheDocument();
   });
 
+  it("I'm stuck offers Ask my family straight away, and a chosen trouble becomes what went wrong", async () => {
+    mockFetch(explain("Try the back arrow."));
+    render(<StepPlayer guide={seed()} />);
+    await userEvent.click(screen.getByRole("button", { name: "I'm stuck" }));
+    expect(screen.getByRole("button", { name: "Ask my family to help with this" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "I can't find it" }));
+    expect(await screen.findByText("Try the back arrow.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Ask my family to help with this" }));
+    const message = within(screen.getByRole("dialog", { name: "Ask my family" })).getByTestId("family-message");
+    expect(message).toHaveTextContent("What went wrong: I can't find the button");
+    // No screenshot in this guide yet: nothing to include.
+    expect(screen.queryByRole("checkbox", { name: "Include my screenshot" })).not.toBeInTheDocument();
+  });
+
+  it("a typed trouble goes to family as a note", async () => {
+    mockFetch(explain("Let's look again."));
+    render(<StepPlayer guide={seed()} />);
+    await userEvent.click(screen.getByRole("button", { name: "I'm stuck" }));
+    await userEvent.click(screen.getByRole("button", { name: "Something else" }));
+    await userEvent.type(screen.getByLabelText("Tell me what is wrong"), "The screen went black");
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Let's look again.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Ask my family to help with this" }));
+    expect(screen.getByTestId("family-message")).toHaveTextContent("Note: The screen went black");
+  });
+
   it("Ask my family for help shares the guide title and the current step, and closing keeps the step", async () => {
     render(<StepPlayer guide={seed()} />);
     await done();
     await userEvent.click(screen.getByRole("button", { name: "Ask my family for help" }));
     const dialog = screen.getByRole("dialog", { name: "Ask my family" });
     const lines = [...within(dialog).getByTestId("family-message").querySelectorAll("p")].map((p) => p.textContent);
-    expect(lines).toEqual(["I need help with: Post a story", "I'm on step 2 of 4: Do thing 2", "Sent from Tech Helper"]);
+    expect(lines).toEqual(["I'm stuck while trying to post a story.", "I'm on Step 2 of 4: Do thing 2", "Sent from Tech Helper"]);
     await userEvent.click(within(dialog).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByText("Step 2 of 4")).toBeInTheDocument();
@@ -640,6 +666,42 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
       expect(screen.queryByText("That's okay. You're on the home screen.")).not.toBeInTheDocument();
       await done();
       expect(screen.getByRole("heading", { level: 1, name: "Tap Share now." })).toBeInTheDocument();
+    });
+
+    it("after an off-track That's not what I see, offers Ask my family with what went wrong and the screenshot", async () => {
+      const share = vi.fn<(data: ShareData) => Promise<void>>(async () => {});
+      vi.stubGlobal("navigator", { ...navigator, share, canShare: () => true });
+      const fetchMock = mockFetch(screenHelp());
+      render(<StepPlayer guide={seed()} />);
+      await done();
+      await sendScreenshot("That's not what I see");
+      expect(await screen.findByText("That's okay. You're on the home screen.")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Ask my family to help with this" }));
+      const dialog = screen.getByRole("dialog", { name: "Ask my family" });
+      const lines = [...within(dialog).getByTestId("family-message").querySelectorAll("p")].map((p) => p.textContent);
+      expect(lines).toEqual([
+        "I'm stuck while trying to post a story.",
+        "I'm on Step 2 of 3: Tap the back arrow.",
+        "What went wrong: Something different is on my screen",
+        "Sent from Tech Helper",
+      ]);
+      expect(within(dialog).getByRole("button", { name: "Something different is on my screen" })).toHaveAttribute("aria-pressed", "true");
+
+      // The screenshot from this guide is offered, off by default, and shown before it is sent.
+      const include = within(dialog).getByRole("checkbox", { name: "Include my screenshot" });
+      expect(include).not.toBeChecked();
+      expect(within(dialog).queryByRole("img", { name: "Your screenshot" })).not.toBeInTheDocument();
+      await userEvent.click(include);
+      expect(within(dialog).getByRole("img", { name: "Your screenshot" })).toHaveAttribute("src", "data:image/jpeg;base64,AAAA");
+      expect(within(dialog).getByText(/Tech Helper never uploads or saves it/)).toBeInTheDocument();
+      await userEvent.click(within(dialog).getByRole("button", { name: "Send with my picture" }));
+      await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
+      expect(share.mock.calls[0][0].files).toHaveLength(1);
+      expect(share.mock.calls[0][0].text).toContain("What went wrong: Something different is on my screen");
+      // Only the helper's question went over the network; the picture goes only through the share sheet.
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(localStorage.getItem(STORAGE_KEY)).not.toContain("AAAA");
     });
 
     it("Check my screen says Yes, you're in the right place and moves on", async () => {

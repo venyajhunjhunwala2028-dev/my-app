@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { STORAGE_KEY, getFamilyContact, setFamilyContact } from "@/lib/store/localStore";
+import { STORAGE_KEY, getFamilyCallMe, getFamilyContact, setFamilyContact } from "@/lib/store/localStore";
 import CallFamily from "@/components/CallFamily";
 
 describe("CallFamily", () => {
@@ -49,5 +49,42 @@ describe("CallFamily", () => {
 
     expect(getFamilyContact()).toEqual({ name: "Priya", phone: "+91 98765 43210" });
     expect(screen.getByRole("link", { name: /WhatsApp/ })).toHaveAttribute("href", "https://wa.me/919876543210");
+  });
+
+  it("also asks what messages to family should call the learner, and saves it", async () => {
+    const user = userEvent.setup();
+    render(<CallFamily />);
+    await user.type(screen.getByLabelText("Name"), "Priya");
+    await user.type(screen.getByLabelText(/Phone number/), "+44 7700 900123");
+    const callMe = screen.getByLabelText("What should messages to your family call you? (optional)");
+    expect(callMe).toHaveAccessibleDescription("For example Mom, Dad, Nani, or your name.");
+    await user.type(callMe, "Mom");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(getFamilyCallMe()).toBe("Mom");
+  });
+
+  it("left empty, the name counts as asked, so Ask my family does not ask again", async () => {
+    const user = userEvent.setup();
+    render(<CallFamily />);
+    await user.type(screen.getByLabelText("Name"), "Priya");
+    await user.type(screen.getByLabelText(/Phone number/), "+44 7700 900123");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(getFamilyCallMe()).toBe("");
+  });
+
+  describe("collapsed (Easy Mode home)", () => {
+    it("keeps the setup form behind one button until it is wanted", async () => {
+      render(<CallFamily collapsed />);
+      expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Set up Call family" }));
+      expect(screen.getByLabelText("Name")).toBeInTheDocument();
+    });
+
+    it("shows the call button straight away once a contact is saved", () => {
+      setFamilyContact({ name: "Priya", phone: "+44 7700 900123" });
+      render(<CallFamily collapsed />);
+      expect(screen.queryByRole("button", { name: "Set up Call family" })).not.toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Call/ })).toHaveAttribute("href", "tel:+44 7700 900123");
+    });
   });
 });

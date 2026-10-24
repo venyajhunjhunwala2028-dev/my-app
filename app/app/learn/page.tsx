@@ -2,51 +2,45 @@
 
 import { Suspense, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import AskBox, { type AskBoxHandle } from "@/components/AskBox";
+import { useRouter, useSearchParams } from "next/navigation";
 import TechConfidence from "@/components/TechConfidence";
-import { ALL_LESSONS, LESSON_GROUPS, type Lesson } from "@/lib/content/lessons";
+import { ALL_LESSONS, LESSON_GROUPS, getLesson } from "@/lib/content/lessons";
+import { lessonHref } from "@/lib/learn/lessonFlow";
 import { useT, useUiLanguage } from "@/lib/i18n";
 import { getCompletedLessons } from "@/lib/store/localStore";
 import { useIsClient } from "@/lib/useIsClient";
 
 /**
- * `?lesson=<id>` (from "Next:" on the home Tech Confidence card) starts that lesson once, then leaves the address
- * clean so going back or reloading does not start it again. Search params are read inside Suspense (Cache Components).
+ * Older links (`?lesson=<id>`) open that lesson's own page, replacing this address so going back does not
+ * bounce there again. Search params are read inside Suspense (Cache Components).
  */
-function StartLessonFromUrl({ onStart }: { onStart: (lesson: Lesson) => void }) {
+function OpenLessonFromUrl() {
   const id = useSearchParams().get("lesson");
-  const isClient = useIsClient();
+  const router = useRouter();
   const done = useRef(false);
   useEffect(() => {
-    if (!isClient || done.current || !id) return;
+    if (done.current || !id) return;
     done.current = true;
-    const lesson = ALL_LESSONS.find((l) => l.id === id);
-    window.history.replaceState(null, "", window.location.pathname);
-    if (lesson) onStart(lesson);
-  }, [isClient, id, onStart]);
+    if (getLesson(id)) router.replace(lessonHref(id));
+    else window.history.replaceState(null, "", window.location.pathname);
+  }, [id, router]);
   return null;
 }
 
-/** "Teach me": beginner lessons, each asked as Show me how and played in the normal step player. */
+/**
+ * "Teach me how this works": lessons by topic, each in four stages (Explain · Show · Try · Done), and Practice.
+ * Getting a task done right now is "Help me do this" on home.
+ */
 export default function LearnPage() {
   const t = useT();
   const language = useUiLanguage();
   // Completed lessons live in localStorage, so read them only in the browser.
   const isClient = useIsClient();
-  const askBox = useRef<AskBoxHandle>(null);
-  const answerArea = useRef<HTMLDivElement>(null);
 
   const completed = new Set(isClient ? getCompletedLessons() : []);
   const total = ALL_LESSONS.length;
   const done = ALL_LESSONS.filter((l) => completed.has(l.id)).length;
   const progress = t("learn.progress", { done, total });
-
-  function start(lesson: Lesson) {
-    askBox.current?.ask(lesson.question[language], { mode: "showMeHow", lessonId: lesson.id });
-    // The waiting message and any question back appear above the lessons.
-    answerArea.current?.scrollIntoView?.({ block: "start" });
-  }
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-6">
@@ -58,7 +52,19 @@ export default function LearnPage() {
         {t("learn.title")}
       </h1>
       <p className="text-xl">{t("learn.intro")}</p>
-      <TechConfidence onStartLesson={start} />
+      <p className="flex flex-wrap items-center gap-x-2 text-lg text-muted">
+        {t("learn.helpInstead")}
+        <Link href="/app#question" className="btn-text min-h-12 px-1">
+          <span aria-hidden="true" className="mr-1">
+            🛠️
+          </span>
+          {t("home.helpMe")}
+        </Link>
+      </p>
+      <Suspense fallback={null}>
+        <OpenLessonFromUrl />
+      </Suspense>
+      <TechConfidence />
       <div className="flex flex-col gap-2">
         <p id="lesson-progress" className="text-xl font-semibold text-muted">
           {progress}
@@ -75,33 +81,49 @@ export default function LearnPage() {
           <div className="h-full bg-primary" style={{ width: `${(done / total) * 100}%` }} />
         </div>
       </div>
-      <div ref={answerArea} className="scroll-mt-4">
-        <AskBox ref={askBox} showForm={false} />
-      </div>
-      <Suspense fallback={null}>
-        <StartLessonFromUrl onStart={start} />
-      </Suspense>
+      <Link href="/app/practice" aria-describedby="practice-card-desc" className="card-action items-center gap-4 bg-lavender!">
+        <span aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-card text-3xl">
+          🎯
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="text-xl leading-tight font-extrabold text-primary">{t("home.practice")}</span>
+          {/* Heard as the link's description, not its name. */}
+          <span id="practice-card-desc" aria-hidden="true" className="text-base text-muted">
+            {t("learn.practiceDesc")}
+          </span>
+        </span>
+        <span aria-hidden="true" className="text-3xl font-bold text-primary">
+          →
+        </span>
+      </Link>
       {LESSON_GROUPS.map((group) => (
         <section key={group.id} aria-labelledby={`lessons-${group.id}`} className="flex flex-col gap-3">
           <h2 id={`lessons-${group.id}`} className="mt-2 text-2xl font-bold">
+            <span aria-hidden="true" className="mr-2">
+              {group.emoji}
+            </span>
             {group.title[language]}
           </h2>
           <ul className="flex flex-col gap-3">
             {group.lessons.map((lesson) => (
               <li key={lesson.id}>
-                <button
-                  type="button"
-                  className="card-action items-center justify-between gap-3 text-xl font-semibold"
-                  onClick={() => start(lesson)}
-                >
-                  <span>{lesson.title[language]}</span>
+                <Link href={lessonHref(lesson.id)} className="card-action items-center justify-between gap-3 text-xl font-semibold">
+                  <span className="flex flex-col gap-1">
+                    <span>{lesson.title[language]}</span>
+                    {lesson.practiceId && (
+                      <span className="text-base font-semibold text-primary">
+                        <span aria-hidden="true">🎯 </span>
+                        {t("learn.hasPractice")}
+                      </span>
+                    )}
+                  </span>
                   {completed.has(lesson.id) && (
                     <span className="shrink-0 rounded-full bg-safe-surface px-3 py-1 text-lg text-safe">
                       <span aria-hidden="true">✓&nbsp;</span>
                       <span>{t("common.done")}</span>
                     </span>
                   )}
-                </button>
+                </Link>
               </li>
             ))}
           </ul>

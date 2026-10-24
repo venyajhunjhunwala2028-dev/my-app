@@ -297,4 +297,33 @@ describe("localStore", () => {
     store = await loadStore();
     expect(store.getGuide("a")).toMatchObject({ title: "t2", lessonId: "screenshot" });
   });
+
+  it("remembers finished Practice exercises once each, after reload", async () => {
+    let store = await loadStore();
+    expect(store.getCompletedPractice()).toEqual([]);
+    store.markPracticeComplete("send-photo");
+    store.markPracticeComplete("send-photo");
+    store.markPracticeComplete("spot-scam");
+    store = await loadStore();
+    expect(store.getCompletedPractice()).toEqual(["send-photo", "spot-scam"]);
+  });
+
+  it("remembers what family messages call the learner: null until asked, empty when left out", async () => {
+    let store = await loadStore();
+    expect(store.getFamilyCallMe()).toBeNull();
+    store.setFamilyCallMe("  Nani   ji ");
+    store = await loadStore();
+    expect(store.getFamilyCallMe()).toBe("Nani ji");
+    store.setFamilyCallMe("");
+    expect(store.getFamilyCallMe()).toBe("");
+    store.setFamilyCallMe("x".repeat(100));
+    expect(store.getFamilyCallMe()).toHaveLength(store.CALL_ME_MAX);
+  });
+
+  it("reads malformed practice and name fields as their defaults", async () => {
+    localStorage.setItem(KEY, JSON.stringify({ completedPractice: "nope", familyCallMe: 42 }));
+    const store = await loadStore();
+    expect(store.getCompletedPractice()).toEqual([]);
+    expect(store.getFamilyCallMe()).toBeNull();
+  });
 });

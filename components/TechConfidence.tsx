@@ -2,11 +2,10 @@
 
 import { useId } from "react";
 import Link from "next/link";
-import { ALL_LESSONS, type Lesson } from "@/lib/content/lessons";
 import { LIBRARY } from "@/lib/content/library";
 import { useT } from "@/lib/i18n";
 import { confidenceProgress, techConfidence } from "@/lib/progress/confidence";
-import { getCompletedLessons, getSavedGuides } from "@/lib/store/localStore";
+import { getCompletedLessons, getCompletedPractice, getSavedGuides } from "@/lib/store/localStore";
 import { useIsClient } from "@/lib/useIsClient";
 
 /** Every Help library question, in every language, by category: a finished one counts towards its topic. */
@@ -51,31 +50,24 @@ function Ring({ percent, label }: { percent: number; label: string }) {
 
 /**
  * "Your Tech Confidence 72%": a ring, the topics learned ("✓ WhatsApp ✓ Video calls") and the next topic to learn,
- * from lessons and guides finished on this phone (nothing leaves it). Gentle and never competitive.
- * The level stays as a small extra line. The compact card (home) links to the next topic and to Teach me;
- * the full card (Teach me) starts the next lesson straight away.
+ * from lessons, Practice exercises and guides finished on this phone (nothing leaves it). Gentle and never
+ * competitive. The level stays as a small extra line. "Next" opens the next topic's lesson (or its Help library
+ * topic); the compact card (home) also links to Teach me.
  */
-export default function TechConfidence({
-  compact = false,
-  onStartLesson,
-}: {
-  compact?: boolean;
-  /** Full card only: starts a lesson, as tapping it in the list does. */
-  onStartLesson?: (lesson: Lesson) => void;
-}) {
+export default function TechConfidence({ compact = false }: { compact?: boolean }) {
   const t = useT();
   const isClient = useIsClient();
   const id = useId();
   if (!isClient) return null;
 
   const completedLessons = [...new Set(getCompletedLessons())];
+  const completedPractice = getCompletedPractice();
   const guides = getSavedGuides();
-  const level = techConfidence({ completedLessons, guides });
-  const progress = confidenceProgress({ completedLessons, guides, libraryQuestions: LIBRARY_QUESTIONS });
+  const level = techConfidence({ completedLessons, guides, completedPractice });
+  const progress = confidenceProgress({ completedLessons, guides, completedPractice, libraryQuestions: LIBRARY_QUESTIONS });
   const headingId = `${id}-heading`;
   const learnedId = `${id}-learned`;
   const next = progress.next;
-  const nextLesson = next?.lessonId ? ALL_LESSONS.find((l) => l.id === next.lessonId) : undefined;
   const cheer =
     progress.learned.length === 0
       ? t("confidence.start")
@@ -129,19 +121,9 @@ export default function TechConfidence({
         </div>
       )}
       {next ? (
-        !compact && nextLesson && onStartLesson ? (
-          <button
-            type="button"
-            className="btn-primary flex-col items-start! gap-1 py-4 text-left"
-            onClick={() => onStartLesson(nextLesson)}
-          >
-            {nextLabel}
-          </button>
-        ) : (
-          <Link href={next.href} className="btn-primary flex-col items-start! gap-1 py-4 text-left">
-            {nextLabel}
-          </Link>
-        )
+        <Link href={next.href} className="btn-primary flex-col items-start! gap-1 py-4 text-left">
+          {nextLabel}
+        </Link>
       ) : (
         <p className="text-xl font-semibold text-safe">
           <span aria-hidden="true">🎉 </span>
