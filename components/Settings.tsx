@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { DEVICE_CHOICES, deviceLabel } from "@/lib/device";
+import { changeEasyMode, useEasyMode } from "@/lib/easyMode";
 import { EXPLANATION_LEVELS, type ExplanationLevel } from "@/lib/ai/schemas";
 import { LOCALES, changeUiLanguage, useT, useUiLanguage, type MessageKey, type UiLanguage } from "@/lib/i18n";
 import {
@@ -38,18 +40,21 @@ function Choice({
   onClick,
   className = "",
   lang,
+  disabled = false,
   children,
 }: {
   on: boolean;
   onClick: () => void;
   className?: string;
   lang?: string;
+  disabled?: boolean;
   children: ReactNode;
 }) {
   return (
     <button
       type="button"
       lang={lang}
+      disabled={disabled}
       aria-pressed={on}
       className={`${on ? "btn-primary" : "btn-secondary"} ${className}`}
       onClick={onClick}
@@ -76,7 +81,8 @@ function Group({ id, heading, children }: { id: string; heading: string; childre
 }
 
 /**
- * The "Aa Settings" button and its sheet: language, text size, device, explanation level and voice. Saved once, on this phone.
+ * The "Aa Settings" button and its sheet: Easy Mode, language, text size, device, explanation level and voice.
+ * Saved once, on this phone.
  * Pass `open` and `onOpenChange` when the page shows its own Settings button (the home screen's card); then only the sheet shows here.
  */
 export default function Settings({
@@ -86,6 +92,7 @@ export default function Settings({
   const isClient = useIsClient();
   const t = useT();
   const uiLanguage = useUiLanguage();
+  const easy = useEasyMode();
   const [ownOpen, setOwnOpen] = useState(false);
   const controlled = controlledOpen !== undefined;
   const open = controlled ? controlledOpen : ownOpen;
@@ -123,7 +130,8 @@ export default function Settings({
 
   const size = getTextSize();
   const device = getDevices()[0] ?? null;
-  const level = getLevel();
+  // Easy Mode always asks for very simple answers.
+  const level = easy ? "very_simple" : getLevel();
   const voice = getReadAloud();
   const slow = getSlowSpeech();
 
@@ -144,11 +152,20 @@ export default function Settings({
         </span>
         {t("settings.heading")}
       </h2>
+      <Group id="easy-heading" heading={t("settings.easy")}>
+        <p className="text-lg">{t("settings.easyDesc")}</p>
+        <Choice on={easy} onClick={() => choose(() => changeEasyMode(true))}>
+          {t("settings.easyOn")}
+        </Choice>
+        <Choice on={!easy} onClick={() => choose(() => changeEasyMode(false))}>
+          {t("settings.easyOff")}
+        </Choice>
+      </Group>
       <Group id="language-heading" heading={t("settings.language")}>
         {LOCALES.map((l) => (
           <Choice
             key={l.code}
-            lang={l.code}
+            lang={l.htmlLang}
             on={uiLanguage === l.code}
             onClick={() => changeUiLanguage(l.code as UiLanguage)}
           >
@@ -179,10 +196,17 @@ export default function Settings({
             {deviceLabel(d, t)}
           </Choice>
         ))}
+        <Link href="/app/devices" className="btn-soft justify-center">
+          <span aria-hidden="true" className="mr-2">
+            📱
+          </span>
+          {t("settings.myDevices")}
+        </Link>
       </Group>
       <Group id="level-heading" heading={t("settings.level")}>
+        {easy && <p className="text-lg font-semibold">{t("settings.easyLevel")}</p>}
         {EXPLANATION_LEVELS.map((l) => (
-          <Choice key={l} on={level === l} onClick={() => choose(() => setLevel(l))}>
+          <Choice key={l} on={level === l} disabled={easy} onClick={() => choose(() => setLevel(l))}>
             {t(LEVEL_LABELS[l])}
           </Choice>
         ))}

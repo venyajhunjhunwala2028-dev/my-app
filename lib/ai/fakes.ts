@@ -37,6 +37,24 @@ function fakeFixedSteps(req: AskRequest): Step[] {
   ];
 }
 
+/** The default guide in Hinglish, for "Answer language: hi-Latn". */
+function fakeHinglishSteps(req: AskRequest, device: string | null): AskAnswer {
+  return {
+    kind: "steps",
+    language: "hi-Latn",
+    title: "Instagram pe story daaliye",
+    device,
+    app: "Instagram",
+    safety: warningFor(req.question, "hinglish"),
+    steps: [
+      fakeStep("Instagram kholiye.", "Pink aur orange rang ka chaukor icon, jismein camera bana hai.", "Badhiya!"),
+      fakeStep("Upar left mein apni photo pe tap kijiye.", "Aapki gol photo, jis pe chhota neela + hai.", "Bahut accha."),
+      fakeStep("Ek photo chuniye aur Share pe tap kijiye.", "Share button screen ke neeche hai.", ""),
+    ],
+    screenshotHowTo: ["Side button aur volume up button ek saath dabaiye.", "Jaldi chhod dijiye."],
+  };
+}
+
 export function fakeAskAnswer(req: AskRequest): AskAnswer {
   const q = req.question.toLowerCase();
   const device = req.devices?.[0] ?? null;
@@ -161,6 +179,7 @@ export function fakeAskAnswer(req: AskRequest): AskAnswer {
       ],
     };
   }
+  if (/^hi-latn\b/i.test(req.answerLanguage ?? "")) return fakeHinglishSteps(req, device);
   return {
     kind: "steps",
     language: "en",

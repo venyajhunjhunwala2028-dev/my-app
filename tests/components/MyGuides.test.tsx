@@ -21,7 +21,7 @@ function seedAt(id: string, question: string, when: Date) {
   saveGuide({ id, question, title: `Title ${id}`, answer: {} });
 }
 
-describe("My previous help", () => {
+describe("Recent help", () => {
   beforeEach(() => {
     push.mockReset();
     localStorage.setItem(STORAGE_KEY, "{}");
@@ -38,7 +38,7 @@ describe("My previous help", () => {
     setGuideStep("photo", 3);
 
     render(<MyGuides />);
-    expect(screen.getByRole("heading", { name: "My previous help" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent help" })).toBeInTheDocument();
     const items = within(screen.getByRole("list")).getAllByRole("listitem");
     expect(items.map((li) => within(li).getAllByRole("button")[0].textContent)).toEqual([
       expect.stringContaining("How do I turn on wifi?"),
@@ -112,7 +112,7 @@ describe("My previous help", () => {
     setUiLanguage("hi");
     saveGuide({ id: "photo", question: "फोटो कैसे भेजूँ?", title: "फोटो", answer: {} });
     render(<MyGuides />);
-    expect(screen.getByRole("heading", { name: "मेरी पिछली मदद" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "हाल की मदद" })).toBeInTheDocument();
     expect(screen.getByText("आज")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "मेरी पूरी हिस्ट्री मिटाएँ" })).toBeInTheDocument();
   });

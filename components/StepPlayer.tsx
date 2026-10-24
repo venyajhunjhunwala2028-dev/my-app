@@ -8,10 +8,12 @@ import { AnswerBody, ExplainOtherLanguage } from "@/components/ExplanationView";
 import Mascot, { type MascotMood } from "@/components/Mascot";
 import PicturePicker from "@/components/PicturePicker";
 import SafetyNotice from "@/components/SafetyNotice";
+import SaveGuideButton from "@/components/SaveGuideButton";
 import ShowMeOnScreen, { MarkedScreenshot, Scanning } from "@/components/ShowMeOnScreen";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import { askHelper } from "@/lib/ai/askClient";
 import type { AskAnswer, AskRequest, Step } from "@/lib/ai/schemas";
+import { useEasyMode } from "@/lib/easyMode";
 import { guideGoal } from "@/lib/family/message";
 import type { PreparedImage } from "@/lib/image/resize";
 import { useT, type MessageKey } from "@/lib/i18n";
@@ -27,6 +29,10 @@ import {
   startListening,
   stopSpeaking,
 } from "@/lib/speech/speech";
+import type { VoiceCommand } from "@/lib/speech/commands";
+import { cancelTalkThrough, isTalkThroughRequested } from "@/lib/speech/talkIntent";
+import { MIC_HELP } from "@/lib/speech/useDictation";
+import { useTalkThrough, type TalkPhase } from "@/lib/speech/useTalkThrough";
 import {
   getDevices,
   getReadAloud,
@@ -128,6 +134,58 @@ function Label({ emoji, children }: { emoji: string; children: ReactNode }) {
 }
 
 /**
+ * "Talk me through it" while it runs: a big, plain "Listening…" (or "Reading the step to you…"), the words it
+ * heard, what it can understand, and a clear way to stop.
+ */
+function TalkPanel({
+  phase,
+  heard,
+  missed,
+  onListenAgain,
+  onStop,
+}: {
+  phase: Exclude<TalkPhase, "off">;
+  heard: string | null;
+  missed: boolean;
+  onListenAgain: () => void;
+  onStop: () => void;
+}) {
+  const t = useT();
+  const listening = phase === "listening";
+  return (
+    <section
+      aria-label={t("talk.label")}
+      data-testid="talk-panel"
+      data-phase={phase}
+      className="flex animate-fade-in flex-col gap-3 rounded-3xl border-4 border-primary bg-lavender p-4"
+    >
+      <p role="status" className="flex items-center gap-4 text-2xl leading-tight font-extrabold">
+        <span
+          aria-hidden="true"
+          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-3xl ${
+            listening ? "animate-pulse-ring bg-primary text-primary-foreground" : "bg-card"
+          }`}
+        >
+          {listening ? "🎙️" : phase === "reading" ? "🔊" : "⏸"}
+        </span>
+        {listening ? t("talk.listening") : phase === "reading" ? t("talk.reading") : t("talk.paused")}
+      </p>
+      {heard && <p className="text-xl font-semibold">{t("talk.heard", { words: heard })}</p>}
+      {missed && <p className="text-xl">{t("talk.notUnderstood")}</p>}
+      <p className="text-lg">{t("talk.hint")}</p>
+      {phase === "paused" && (
+        <button type="button" className="btn-primary" onClick={onListenAgain}>
+          <Label emoji="🎙️">{t("talk.listenAgain")}</Label>
+        </button>
+      )}
+      <button type="button" className="btn-secondary" onClick={onStop}>
+        <Label emoji="⏹">{t("talk.stop")}</Label>
+      </button>
+    </section>
+  );
+}
+
+/**
  * What the helper saw on the learner's screenshot: "Yes, you're in the right place." with a way on,
  * or a short diagnosis, a note that the steps changed, and the place to tap circled on their picture.
  */
@@ -196,6 +254,11 @@ export default function StepPlayer({
 }) {
   const { id, answer } = guide;
   const t = useT();
+  const easy = useEasyMode();
+  // Easy Mode keeps "More help" folded away until it is asked for.
+  const [moreOpen, setMoreOpen] = useState(false);
+  // Voice help asked for on home ("Talk me through it"): it starts as soon as the guide opens.
+  const [autoTalk] = useState(isTalkThroughRequested);
   // Corrected from a screenshot partway through ("That's not what I see"); saved with the guide.
   const [steps, setSteps] = useState(answer.steps);
   const total = steps.length;
@@ -235,6 +298,8 @@ export default function StepPlayer({
   const current = steps[Math.min(step, total) - 1];
   const rate = slow ? SLOW_RATE : NORMAL_RATE;
 
+  const talk = useTalkThrough({ listenLanguage: getSpeakingLanguage(), onCommand: voiceCommand });
+
   useEffect(() => {
     if (step <= total) setCurrentGuide(id);
     // Only on opening the guide; finishing clears it below.
@@ -258,6 +323,20 @@ export default function StepPlayer({
 
   // Stop talking when the learner leaves the guide.
   useEffect(() => stopSpeaking, []);
+
+  // Voice first: from home's "Talk me through it", voice help starts straight away; in Easy Mode with
+  // reading on, the first step is read aloud as the guide opens.
+  useEffect(() => {
+    if (finished) return;
+    if (autoTalk) {
+      cancelTalkThrough();
+      if (talk.supported) startTalk();
+    } else if (easy && reading && canSpeakAloud()) {
+      speakStep(current);
+    }
+    // Only on opening the guide.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Leaving the guide must not leave the microphone open.
   useEffect(() => () => listener.current?.stop(), []);
@@ -306,11 +385,45 @@ export default function StepPlayer({
     lastExplanation.current = null;
     if (isFinished(next, total)) {
       setCurrentGuide(null);
+      talk.stop();
       silence();
+    } else if (talk.active) {
+      // Voice help reads the new step, then listens again.
+      talk.read(steps[next - 1].spoken, answer.language, rate);
     } else if (reading) {
       speakStep(steps[next - 1]);
     } else {
       silence();
+    }
+  }
+
+  function startTalk() {
+    stopListening();
+    speechId.current++;
+    setVoice("off");
+    talk.read(current.spoken, answer.language, rate);
+  }
+
+  /** What a spoken command does on the step screen. */
+  function voiceCommand(command: VoiceCommand) {
+    switch (command) {
+      case "next":
+        goTo(step + 1);
+        return;
+      case "back":
+        if (step > 1) goTo(step - 1);
+        else talk.read(current.spoken, answer.language, rate);
+        return;
+      case "repeat":
+        talk.read(current.spoken, answer.language, rate);
+        return;
+      case "stuck":
+        talk.stop();
+        openTrouble();
+        return;
+      case "stop":
+        talk.stop();
+        return;
     }
   }
 
@@ -320,6 +433,7 @@ export default function StepPlayer({
   }
 
   function play() {
+    talk.stop();
     turnReadingOn();
     if (voice === "paused") {
       resumeSpeaking();
@@ -338,6 +452,7 @@ export default function StepPlayer({
   }
 
   function replay() {
+    talk.stop();
     turnReadingOn();
     speakStep(current);
   }
@@ -351,6 +466,7 @@ export default function StepPlayer({
   }
 
   function playHelp(text: string, language: string) {
+    talk.stop();
     speechId.current++;
     setVoice("off");
     speak(text, language, { rate });
@@ -403,7 +519,11 @@ export default function StepPlayer({
   }
 
   function showAgain() {
-    void ask({ question: current.instruction, mode: "showAgain", previousExplanation: lastExplanation.current ?? undefined });
+    void ask({
+      question: current.instruction,
+      mode: "showAgain",
+      previousExplanation: lastExplanation.current ?? undefined,
+    });
   }
 
   function explainSimpler() {
@@ -418,10 +538,16 @@ export default function StepPlayer({
   }
 
   function openScreen(mode: ScreenMode) {
+    talk.stop();
     closeHelp();
     stopListening();
     setScreenMode(mode);
     setPanel("screen");
+  }
+
+  function openShowMe() {
+    talk.stop();
+    setShowMe(true);
   }
 
   function keepShot(image: PreparedImage) {
@@ -439,6 +565,7 @@ export default function StepPlayer({
   }
 
   function openTrouble() {
+    talk.stop();
     closeHelp();
     stopListening();
     setPanel("trouble");
@@ -455,6 +582,7 @@ export default function StepPlayer({
   }
 
   function listen(onText: (text: string) => void) {
+    talk.stop();
     setListening(true);
     // Declared first: startListening can call back synchronously when it fails to start.
     let handle: { stop: () => void } | null = null;
@@ -497,7 +625,10 @@ export default function StepPlayer({
         </h1>
         <div className="flex items-end gap-3 text-left">
           <Mascot mood="celebrate" size={5} />
-          <p lang={answer.language} className="mb-6 rounded-3xl rounded-bl-md bg-card px-5 py-3 text-xl font-semibold shadow-card">
+          <p
+            lang={answer.language}
+            className="mb-6 rounded-3xl rounded-bl-md bg-card px-5 py-3 text-xl font-semibold shadow-card"
+          >
             {answer.title}
           </p>
         </div>
@@ -506,6 +637,7 @@ export default function StepPlayer({
           <Link href="/app" className="btn-primary min-h-20 text-2xl">
             {t("success.goHome")}
           </Link>
+          <SaveGuideButton id={id} />
           <button type="button" className="btn-secondary" onClick={teach}>
             <Label emoji="🧑‍🏫">{t("success.teach")}</Label>
           </button>
@@ -622,7 +754,10 @@ export default function StepPlayer({
             {cheer}
           </p>
         ) : (
-          <p data-testid="reassurance" className="mb-4 rounded-3xl rounded-bl-md bg-card px-5 py-3 text-xl font-semibold shadow-card">
+          <p
+            data-testid="reassurance"
+            className="mb-4 rounded-3xl rounded-bl-md bg-card px-5 py-3 text-xl font-semibold shadow-card"
+          >
             {t(REASSURANCE[(step - 1) % REASSURANCE.length])}
           </p>
         )}
@@ -689,7 +824,7 @@ export default function StepPlayer({
           <button type="button" className="btn-primary min-h-20 text-2xl" onClick={() => goTo(step + 1)}>
             <Label emoji="✓">{t("steps.next")}</Label>
           </button>
-          <button type="button" className="btn-secondary min-h-16 text-xl" onClick={() => setShowMe(true)}>
+          <button type="button" className="btn-secondary min-h-16 text-xl" onClick={openShowMe}>
             <Label emoji="📱">{t("steps.showWhere")}</Label>
           </button>
           <button type="button" className="btn-secondary min-h-16 text-xl" onClick={openTrouble}>
@@ -699,6 +834,41 @@ export default function StepPlayer({
             <Label emoji="🖼️">{t("steps.notWhatISee")}</Label>
           </button>
         </div>
+        {(canSpeak || talk.supported) && (
+          <div className="flex flex-col gap-3 border-t-2 border-lavender-strong pt-4">
+            {canSpeak &&
+              !talk.active &&
+              (voice === "playing" ? (
+                <button type="button" className="btn-soft min-h-16 justify-center text-xl" onClick={pause}>
+                  <Label emoji="⏸">{t("steps.pause")}</Label>
+                </button>
+              ) : (
+                <button type="button" className="btn-soft min-h-16 justify-center text-xl" onClick={play}>
+                  <Label emoji="🔊">{t("steps.play")}</Label>
+                </button>
+              ))}
+            {talk.active ? (
+              <TalkPanel
+                phase={talk.phase as Exclude<TalkPhase, "off">}
+                heard={talk.heard}
+                missed={talk.missed}
+                onListenAgain={talk.listenAgain}
+                onStop={talk.stop}
+              />
+            ) : (
+              talk.supported && (
+                <button type="button" className="btn-soft min-h-16 justify-center text-xl" onClick={startTalk}>
+                  <Label emoji="🎙️">{t("talk.start")}</Label>
+                </button>
+              )
+            )}
+            {talk.error && !talk.active && (
+              <p role="status" className="text-xl">
+                {t(MIC_HELP[talk.error])}
+              </p>
+            )}
+          </div>
+        )}
       </section>
 
       {(panel === "trouble" || panel === "troubleText") && (
@@ -749,9 +919,7 @@ export default function StepPlayer({
             </span>
             {t(screenMode === "notWhatISee" ? "steps.notWhatISee" : "steps.checkScreen")}
           </h2>
-          <p className="text-xl">
-            {t(screenMode === "notWhatISee" ? "steps.screen.notWhatISeeLead" : "steps.screen.checkLead")}
-          </p>
+          <p className="text-xl">{t(screenMode === "notWhatISee" ? "steps.screen.notWhatISeeLead" : "steps.screen.checkLead")}</p>
           {answer.screenshotHowTo?.length > 0 && (
             <ol lang={answer.language} className="flex list-decimal flex-col gap-2 pl-8 text-xl">
               {answer.screenshotHowTo.map((line) => (
@@ -802,7 +970,7 @@ export default function StepPlayer({
                   <button type="button" className="btn-secondary" onClick={explainSimpler}>
                     {t("steps.simpler")}
                   </button>
-                  <button type="button" className="btn-secondary" onClick={() => setShowMe(true)}>
+                  <button type="button" className="btn-secondary" onClick={openShowMe}>
                     <Label emoji="📱">{t("steps.showWhere")}</Label>
                   </button>
                   <form className="flex flex-col gap-3" onSubmit={submitSpecific}>
@@ -830,45 +998,66 @@ export default function StepPlayer({
       )}
 
       <section aria-labelledby="more-help-heading" className="flex flex-col gap-3">
-        <h2 id="more-help-heading" className="text-lg font-bold text-muted">
-          {t("steps.moreHelp")}
-        </h2>
-        {/* Two columns only when there is room at the chosen text size. */}
-        <div className="@container">
-          <div className="grid grid-cols-1 gap-3 @[17rem]:grid-cols-2">
-            <button type="button" className="btn-soft" onClick={showAgain} disabled={help.kind === "waiting"}>
-              <Label emoji="🔁">{t("steps.showAgain")}</Label>
+        {easy ? (
+          <h2 id="more-help-heading">
+            {/* Easy Mode: one button opens the rest of the help, so the step screen stays simple. */}
+            <button
+              type="button"
+              aria-expanded={moreOpen}
+              aria-controls="more-help-content"
+              className="btn-secondary"
+              onClick={() => setMoreOpen((o) => !o)}
+            >
+              <span aria-hidden="true" className="mr-2">
+                {moreOpen ? "▲" : "▼"}
+              </span>
+              {t("steps.moreHelp")}
             </button>
-            <button type="button" className="btn-soft" onClick={() => openScreen("checkScreen")} disabled={help.kind === "waiting"}>
-              <Label emoji="📸">{t("steps.checkScreen")}</Label>
-            </button>
-            <button type="button" className="btn-soft" onClick={() => setAskFamily(true)}>
-              <Label emoji="👨‍👩‍👧">{t("askFamily.open")}</Label>
-            </button>
-            {canSpeak && (
-              <>
-                {voice === "playing" ? (
-                  <button type="button" className="btn-soft" onClick={pause}>
-                    <Label emoji="⏸">{t("steps.pause")}</Label>
-                  </button>
-                ) : (
-                  <button type="button" className="btn-soft" onClick={play}>
-                    <Label emoji="🔊">{t("steps.play")}</Label>
-                  </button>
+          </h2>
+        ) : (
+          <h2 id="more-help-heading" className="text-lg font-bold text-muted">
+            {t("steps.moreHelp")}
+          </h2>
+        )}
+        {(!easy || moreOpen) && (
+          <div id="more-help-content" className="flex flex-col gap-3">
+            {/* Two columns only when there is room at the chosen text size. */}
+            <div className="@container">
+              <div className="grid grid-cols-1 gap-3 @[17rem]:grid-cols-2">
+                <button type="button" className="btn-soft" onClick={showAgain} disabled={help.kind === "waiting"}>
+                  <Label emoji="🔁">{t("steps.showAgain")}</Label>
+                </button>
+                <button
+                  type="button"
+                  className="btn-soft"
+                  onClick={() => openScreen("checkScreen")}
+                  disabled={help.kind === "waiting"}
+                >
+                  <Label emoji="📸">{t("steps.checkScreen")}</Label>
+                </button>
+                <button type="button" className="btn-soft" onClick={() => setAskFamily(true)}>
+                  <Label emoji="👨‍👩‍👧">{t("askFamily.open")}</Label>
+                </button>
+                <div className="col-span-full flex flex-col gap-3">
+                  <SaveGuideButton id={id} className="btn-soft" />
+                </div>
+                {canSpeak && (
+                  <>
+                    <button type="button" className="btn-soft" onClick={replay}>
+                      <Label emoji="↺">{t("steps.replay")}</Label>
+                    </button>
+                    <button type="button" className="btn-soft col-span-full" aria-pressed={slow} onClick={toggleSlow}>
+                      {/* The tick shows the setting is on without relying on colour; aria-pressed tells screen readers. */}
+                      <span aria-hidden="true">{slow ? "✓\u00a0" : "🐢\u00a0"}</span>
+                      {t("steps.slower")}
+                    </button>
+                  </>
                 )}
-                <button type="button" className="btn-soft" onClick={replay}>
-                  <Label emoji="↺">{t("steps.replay")}</Label>
-                </button>
-                <button type="button" className="btn-soft col-span-full" aria-pressed={slow} onClick={toggleSlow}>
-                  {/* The tick shows the setting is on without relying on colour; aria-pressed tells screen readers. */}
-                  <span aria-hidden="true">{slow ? "✓\u00a0" : "🐢\u00a0"}</span>
-                  {t("steps.slower")}
-                </button>
-              </>
-            )}
+              </div>
+            </div>
+            {onReplace && <ExplainOtherLanguage guide={guide} mode="showMeHow" step={step} onReplace={onReplace} />}
           </div>
-        </div>
-        {onReplace && <ExplainOtherLanguage guide={guide} mode="showMeHow" step={step} onReplace={onReplace} />}
+        )}
       </section>
 
       {askFamily && (

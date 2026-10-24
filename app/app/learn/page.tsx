@@ -1,13 +1,32 @@
 "use client";
 
-import { useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import AskBox, { type AskBoxHandle } from "@/components/AskBox";
 import TechConfidence from "@/components/TechConfidence";
 import { ALL_LESSONS, LESSON_GROUPS, type Lesson } from "@/lib/content/lessons";
 import { useT, useUiLanguage } from "@/lib/i18n";
 import { getCompletedLessons } from "@/lib/store/localStore";
 import { useIsClient } from "@/lib/useIsClient";
+
+/**
+ * `?lesson=<id>` (from "Next:" on the home Tech Confidence card) starts that lesson once, then leaves the address
+ * clean so going back or reloading does not start it again. Search params are read inside Suspense (Cache Components).
+ */
+function StartLessonFromUrl({ onStart }: { onStart: (lesson: Lesson) => void }) {
+  const id = useSearchParams().get("lesson");
+  const isClient = useIsClient();
+  const done = useRef(false);
+  useEffect(() => {
+    if (!isClient || done.current || !id) return;
+    done.current = true;
+    const lesson = ALL_LESSONS.find((l) => l.id === id);
+    window.history.replaceState(null, "", window.location.pathname);
+    if (lesson) onStart(lesson);
+  }, [isClient, id, onStart]);
+  return null;
+}
 
 /** "Teach me": beginner lessons, each asked as Show me how and played in the normal step player. */
 export default function LearnPage() {
@@ -59,6 +78,9 @@ export default function LearnPage() {
       <div ref={answerArea} className="scroll-mt-4">
         <AskBox ref={askBox} showForm={false} />
       </div>
+      <Suspense fallback={null}>
+        <StartLessonFromUrl onStart={start} />
+      </Suspense>
       {LESSON_GROUPS.map((group) => (
         <section key={group.id} aria-labelledby={`lessons-${group.id}`} className="flex flex-col gap-3">
           <h2 id={`lessons-${group.id}`} className="mt-2 text-2xl font-bold">

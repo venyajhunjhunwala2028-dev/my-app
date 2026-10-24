@@ -1,7 +1,7 @@
 // Client-safe, deterministic: finds risky topics in a step's text and returns a one-line warning.
 // The UI can show it on any step, even when the AI left the guide's safety note out.
 
-export type WarningLanguage = "en" | "hi";
+export type WarningLanguage = "en" | "hi" | "hinglish";
 
 type Topic = "remote" | "otp" | "upi" | "bank" | "secret" | "link";
 
@@ -23,6 +23,16 @@ const WARNINGS: Record<WarningLanguage, Record<Topic, string>> = {
     bank: "⚠️ अपना कार्ड नंबर, CVV या बैंक की जानकारी फ़ोन या मैसेज करने वाले किसी को न दें।",
     secret: "⚠️ अपना पासवर्ड या PIN कभी किसी को न बताएं। इसे ख़ुद लिखें, जहाँ कोई देख न सके।",
     link: "⚠️ अनजान लोगों के भेजे लिंक न खोलें। पक्का न हो तो पहले परिवार से पूछें।",
+  },
+  // Hindi in Latin letters, for Hinglish answers.
+  hinglish: {
+    remote:
+      "⚠️ Kisi ke kehne pe koi remote access app install mat kijiye aur apni screen share mat kijiye. Rukiye aur apni family ko call kijiye.",
+    otp: "⚠️ Apna OTP kabhi kisi ko mat bataiye, chahe woh bank se hone ki baat kahein.",
+    upi: "⚠️ UPI PIN sirf paise bhejne ke liye hota hai, paise paane ke liye kabhi nahi. Ise kisi ko mat bataiye.",
+    bank: "⚠️ Apna card number, CVV ya bank ki jaankari call ya message karne wale kisi ko mat dijiye.",
+    secret: "⚠️ Apna password ya PIN kabhi kisi ko mat bataiye. Ise khud type kijiye, jahan koi dekh na sake.",
+    link: "⚠️ Anjaan logon ke bheje link mat kholiye. Pakka na ho to pehle family se poochiye.",
   },
 };
 
@@ -63,7 +73,9 @@ export function warningFor(text: string, language: WarningLanguage): string | nu
   return hit ? WARNINGS[language][hit[0]] : null;
 }
 
-/** "hi", "hi-IN" and similar map to Hindi; everything else to English. */
+/** "hi-Latn" maps to Hinglish; "hi", "hi-IN" and similar to Hindi; everything else to English. */
 export function warningLanguage(language: string | undefined | null): WarningLanguage {
-  return language?.toLowerCase().startsWith("hi") ? "hi" : "en";
+  const code = language?.toLowerCase() ?? "";
+  if (/^hi-latn\b/.test(code)) return "hinglish";
+  return code.startsWith("hi") ? "hi" : "en";
 }

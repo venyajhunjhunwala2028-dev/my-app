@@ -66,14 +66,14 @@ describe("Hindi interface", () => {
     expect(await screen.findByRole("button", { name: "सवाल पूछें" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "क्या यह धोखा है?" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "सेटिंग्स" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "मेरी पिछली मदद" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "हाल की मदद" })).toBeInTheDocument();
     await waitFor(() => expect(document.documentElement.lang).toBe("hi"));
   });
 
   it("is English by default", () => {
     render(<Home />);
     expect(screen.getByRole("button", { name: "Ask a question" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "My previous help" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent help" })).toBeInTheDocument();
   });
 
   it("shows the step player controls in Hindi", async () => {

@@ -49,6 +49,9 @@ const DEFAULT_QUESTIONS: Partial<Record<AskMode, string>> = {
 
 type Invalid = "bad_request" | "too_long";
 
+/** A BCP 47 language tag: "en", "hi-IN", "hi-Latn", "zh-Hant-TW", "es-419". */
+const LANGUAGE_TAG = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}$/;
+
 /** An optional string field: undefined when absent, the trimmed text when valid, otherwise an error code. */
 function optionalText(v: unknown, max: number): string | undefined | Invalid {
   if (v === undefined) return undefined;
@@ -112,7 +115,10 @@ function parseRequest(raw: unknown): AskRequest | Invalid {
   }
   if (raw.answerLanguage !== undefined) {
     if (typeof raw.answerLanguage !== "string" || raw.answerLanguage.length > MAX_LANGUAGE_CHARS) return "bad_request";
-    if (raw.answerLanguage.trim()) req.answerLanguage = raw.answerLanguage.trim();
+    const answerLanguage = raw.answerLanguage.trim();
+    // A language code such as "hi-IN", "en-IN" or "hi-Latn" (Hinglish), nothing else: it goes into the prompt.
+    if (answerLanguage && !LANGUAGE_TAG.test(answerLanguage)) return "bad_request";
+    if (answerLanguage) req.answerLanguage = answerLanguage;
   }
   if (raw.devices !== undefined) {
     const d = raw.devices;

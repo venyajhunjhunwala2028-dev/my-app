@@ -41,6 +41,19 @@ const REASONS: Record<WarningLanguage, Record<Topic, string>> = {
     short_link: "इसमें छोटा लिंक है, जो असली पता छिपा देता है।",
     urgent_link: "इसमें जल्दी करने और लिंक खोलने का दबाव है।",
   },
+  hinglish: {
+    secret: "Ismein OTP, PIN, password ya card ki jaankari maangi gayi hai. Asli bank yeh kabhi nahi maangte.",
+    collect: "Yeh paise maangne ki request hai. UPI PIN daalne se paise jaate hain, aate nahi.",
+    remote: "Ismein aisa app daalne ko kaha gaya hai jisse koi anjaan insaan aapka phone chala sake.",
+    lottery: "Ismein likha hai ki aapne lottery ya inaam jeeta hai, jismein aapne kabhi hissa nahi liya.",
+    kyc_link: "Ismein link se KYC update karne ko kaha gaya hai. Bank message se aisa nahi karte.",
+    blocked_link: "Ismein account band hone ka darr dikhakar link diya gaya hai, taaki aap jaldi karein.",
+    blocked: "Ismein account band hone ka darr dikhaya gaya hai, taaki aap ghabrakar jaldi karein.",
+    kyc: "Ismein KYC update ki baat hai. Bank message se yeh nahi maangte.",
+    prize: "Ismein likha hai ki aapne kuch jeeta hai, jiski aapko ummeed nahi thi.",
+    short_link: "Ismein chhota link hai, jo asli address chhupa deta hai.",
+    urgent_link: "Ismein jaldi karne aur link kholne ka dabaav hai.",
+  },
 };
 
 const ADVICE: Record<WarningLanguage, Record<Floor, string>> = {
@@ -51,6 +64,10 @@ const ADVICE: Record<WarningLanguage, Record<Floor, string>> = {
   hi: {
     scam: "जवाब न दें, कोई लिंक न खोलें, और OTP, PIN या पासवर्ड कभी न बताएं। इसे मिटा दें और परिवार को फ़ोन करें।",
     careful: "अभी कोई लिंक न खोलें और जवाब न दें। पहले परिवार से पूछें, या कंपनी के भरोसेमंद नंबर पर फ़ोन करें।",
+  },
+  hinglish: {
+    scam: "Reply mat kijiye, koi link mat kholiye, aur OTP, PIN ya password kabhi mat bataiye. Ise delete kijiye aur family ko call kijiye.",
+    careful: "Abhi koi link mat kholiye aur reply mat kijiye. Pehle family se poochiye, ya company ke bharose wale number pe call kijiye.",
   },
 };
 
@@ -157,11 +174,21 @@ const SIGNAL_WARNINGS: Record<WarningLanguage, Record<ScamSignal, string>> = {
     money: "इसमें पैसे या पेमेंट माँगा गया है।",
     language: "इसमें ऐसे शब्द हैं जो धोखेबाज़ अक्सर लिखते हैं, जैसे इनाम या KYC।",
   },
+  hinglish: {
+    sender: "Shayad aapko pata nahi ki ise asal mein kisne bheja hai.",
+    urgency: "Ismein jaldi karne ka dabaav ya dhamki hai.",
+    links: "Ismein link hai. Pakka hone tak ise mat kholiye.",
+    otp: "Ismein code (OTP) maanga gaya hai. Ise kabhi mat bataiye.",
+    password: "Ismein password, PIN ya card ki jaankari maangi gayi hai. Ise kabhi mat bataiye.",
+    money: "Ismein paise ya payment maanga gaya hai.",
+    language: "Ismein aise shabd hain jo scammer aksar likhte hain, jaise inaam, KYC ya \"dear customer\".",
+  },
 };
 
 const RECOMMENDATIONS: Record<WarningLanguage, Record<Floor, string>> = {
   en: { scam: "Don't reply, and don't tap anything.", careful: "Don't tap any link or reply yet." },
   hi: { scam: "जवाब न दें, और कुछ भी न दबाएँ।", careful: "अभी कोई लिंक न खोलें और जवाब न दें।" },
+  hinglish: { scam: "Reply mat kijiye, aur kuch bhi mat dabaiye.", careful: "Abhi koi link mat kholiye aur reply mat kijiye." },
 };
 
 /** Marks each clearly-seen sign as a warning, adding a finding when the model left it out. */

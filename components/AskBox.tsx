@@ -11,7 +11,9 @@ import type { AskAnswer, AskMode, ClarifyAbout } from "@/lib/ai/schemas";
 import { useT, type MessageKey } from "@/lib/i18n";
 import { isSafetyQuestion, scamCheckHref } from "@/lib/safety/safetyIntent";
 import { isSpeechSupported, startListening, type ListenError } from "@/lib/speech/speech";
+import { cancelTalkThrough, requestTalkThrough } from "@/lib/speech/talkIntent";
 import {
+  getAnswerLanguage,
   getDevices,
   getSpeakingLanguage,
   saveGuide,
@@ -48,6 +50,11 @@ export type AskOptions = { mode?: AskMode; lessonId?: string };
 export type AskBoxHandle = {
   focusQuestion: () => void;
   toggleSpeak: () => void;
+  /**
+   * "Talk me through it": listens for the question and asks it as soon as it is heard; the guide that opens
+   * then reads each step aloud and listens for "done", "repeat" and the rest. Tapping again stops listening.
+   */
+  talk: () => void;
   ask: (question: string, options?: AskOptions) => void;
 };
 
@@ -84,6 +91,8 @@ export default function AskBox({
   // Kept for a clarifying answer, which asks the same question again.
   const options = useRef<AskOptions>({});
   const listener = useRef<{ stop: () => void } | null>(null);
+  // Set by `talk`: the question is sent as soon as it is heard.
+  const sendWhenHeard = useRef(false);
   const textBox = useRef<HTMLTextAreaElement>(null);
   const [focusRequest, setFocusRequest] = useState(0);
 
@@ -116,6 +125,20 @@ export default function AskBox({
     toggleSpeak: () => {
       if (busy.current) return;
       showBox();
+      sendWhenHeard.current = false;
+      toggleMic();
+    },
+    talk: () => {
+      if (busy.current) return;
+      showBox();
+      if (mic === "listening") {
+        sendWhenHeard.current = false;
+        cancelTalkThrough();
+        listener.current?.stop();
+        return;
+      }
+      sendWhenHeard.current = true;
+      requestTalkThrough();
       toggleMic();
     },
     ask: (text, askOptions = {}) => {
@@ -147,9 +170,12 @@ export default function AskBox({
     setMic("listening");
     // Declared first: startListening can call back synchronously when it fails to start.
     let handle: { stop: () => void } | null = null;
+    let heard = "";
     handle = startListening(currentLanguage(), {
       onResult: (text) => {
-        if (listener.current === handle) setQuestion(text);
+        if (listener.current !== handle) return;
+        heard = text;
+        setQuestion(text);
       },
       onError: (error) => {
         if (listener.current === handle) setMic(error);
@@ -158,6 +184,11 @@ export default function AskBox({
         if (listener.current !== handle) return;
         listener.current = null;
         setMic((m) => (m === "listening" ? "idle" : m));
+        if (!sendWhenHeard.current) return;
+        sendWhenHeard.current = false;
+        // Nothing heard: no guide will open, so voice help must not start later by surprise.
+        if (heard.trim()) void send(heard);
+        else cancelTalkThrough();
       },
     });
     listener.current = handle;
@@ -165,6 +196,8 @@ export default function AskBox({
 
   if (!isClient) return null;
   const speakingLanguage = currentLanguage();
+  // Hinglish is heard as Indian English but answered in Hinglish; a speaking language chosen here wins.
+  const answerLanguage = language ? undefined : getAnswerLanguage();
 
   async function send(text: string, app?: string) {
     const q = text.trim();
@@ -183,6 +216,7 @@ export default function AskBox({
     const result = await askHelper({
       question: q,
       language: speakingLanguage,
+      ...(answerLanguage ? { answerLanguage } : {}),
       devices: getDevices(),
       ...(app ? { app } : {}),
       ...(mode ? { mode } : {}),
@@ -248,6 +282,7 @@ export default function AskBox({
 
   // An example question goes in the box, so the learner sees what was asked, and is sent straight away.
   function askExample(example: string) {
+    cancelTalkThrough();
     options.current = {};
     setQuestion(example);
     void send(example);
@@ -255,6 +290,7 @@ export default function AskBox({
 
   function submit(e: FormEvent) {
     e.preventDefault();
+    cancelTalkThrough();
     options.current = {};
     void send(question);
   }
@@ -320,7 +356,12 @@ export default function AskBox({
             </div>
           )}
           <p className={big ? "text-lg text-muted" : "text-xl"}>
-            {t("ask.speakingLanguage")} <span lang={speakingLanguage}>{languageName(speakingLanguage)}</span>
+            {t("ask.speakingLanguage")}{" "}
+            {answerLanguage ? (
+              <span lang={answerLanguage}>{languageName(answerLanguage)}</span>
+            ) : (
+              <span lang={speakingLanguage}>{languageName(speakingLanguage)}</span>
+            )}
           </p>
           <button type="button" className={big ? "btn-text self-start px-0" : "btn-text"} onClick={() => setChoosingLanguage(true)}>
             {t("ask.changeLanguage")}

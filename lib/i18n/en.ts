@@ -47,6 +47,11 @@ export const en = {
   "home.speakDesc": "Just say it out loud.",
   "home.pressDesc": "Send a screenshot and I'll point to what to tap.",
   "home.more": "More ways I can help",
+  "home.talk": "Talk me through it",
+  "home.talkDesc": "Say what you need. I'll read each step to you and listen.",
+  "home.tag.talk": "Voice",
+  "home.showMore": "More",
+  "home.showLess": "Show less",
 
   // Teach me
   "learn.title": "Teach me",
@@ -66,6 +71,45 @@ export const en = {
   "confidence.allLessons": "You've finished every lesson!",
   "confidence.private": "This stays on your phone.",
   "confidence.keepLearning": "Keep learning",
+  "confidence.percent": "{percent}%",
+  "confidence.ringLabel": "Your Tech Confidence is {percent}%",
+  "confidence.topics": "{learned} of {total} topics learned",
+  "confidence.next": "Next:",
+  "confidence.start": "Everyone starts somewhere. Let's learn one thing together.",
+  "confidence.growing": "You're doing really well. Every small step counts.",
+  "confidence.allTopics": "You've learned every topic. Wonderful!",
+
+  // Topics for Tech Confidence
+  "topic.whatsapp": "WhatsApp",
+  "topic.whatsapp.next": "Learn how to use WhatsApp",
+  "topic.videoCalls": "Video calls",
+  "topic.videoCalls.next": "Learn how to make a video call",
+  "topic.photos": "Sending photos",
+  "topic.photos.next": "Learn how to send a photo",
+  "topic.scams": "Spotting scams",
+  "topic.scams.next": "Learn how to identify scams",
+  "topic.screenshots": "Screenshots",
+  "topic.screenshots.next": "Learn how to take a screenshot",
+  "topic.phone": "Phone settings",
+  "topic.phone.next": "Learn how to make the text bigger",
+  "topic.wifi": "Wi‑Fi and internet",
+  "topic.wifi.next": "Learn how to connect to Wi‑Fi",
+  "topic.passwords": "Passwords",
+  "topic.passwords.next": "Learn how to make a strong password",
+  "topic.email": "Email",
+  "topic.email.next": "Learn how to send an email",
+  "topic.payments": "Safe payments",
+  "topic.payments.next": "Learn how to check a payment safely",
+  "topic.ai": "AI helpers",
+  "topic.ai.next": "Learn how to ask ChatGPT a question",
+  "topic.instagram": "Instagram",
+  "topic.instagram.next": "Learn how to post on Instagram",
+  "topic.computer": "Using a computer",
+  "topic.computer.next": "Learn the basics of a computer",
+  "topic.tv": "Smart TV",
+  "topic.tv.next": "Learn how to use your Smart TV",
+  "topic.shopping": "Online shopping",
+  "topic.shopping.next": "Learn how to shop online safely",
 
   // Help library
   "library.title": "Help library",
@@ -105,7 +149,7 @@ export const en = {
   "steps.previous": "Previous step",
   "steps.lookFor": "Look for: {text}",
   "steps.pause": "Pause",
-  "steps.play": "Play",
+  "steps.play": "Read this to me",
   "steps.replay": "Replay",
   "steps.slower": "Slower voice",
   "steps.showAgain": "Show me again",
@@ -122,7 +166,7 @@ export const en = {
   "steps.somethingElse": "Something else",
   "steps.tellWrong": "Tell me what is wrong",
   "steps.backToStep": "Back to the step",
-  "steps.playHelp": "Play this help",
+  "steps.playHelp": "Read this help to me",
   "steps.replayHelp": "Replay this help",
   "steps.simpler": "Explain more simply",
   "steps.askSpecific": "Ask something specific",
@@ -142,9 +186,21 @@ export const en = {
   "steps.screen.tryStep": "Try this step",
   "steps.screen.usingLast": "I'll also look at the last screenshot you sent.",
 
+  // Talk me through it (voice mode on the step screen)
+  "talk.start": "Talk me through it",
+  "talk.stop": "Stop voice help",
+  "talk.label": "Voice help",
+  "talk.reading": "Reading the step to you…",
+  "talk.listening": "Listening…",
+  "talk.heard": "I heard: “{words}”",
+  "talk.hint": "Say “done”, “repeat”, “I'm stuck”, “back” or “stop”.",
+  "talk.notUnderstood": "Sorry, I didn't catch that.",
+  "talk.paused": "I've stopped listening for now.",
+  "talk.listenAgain": "Listen again",
+
   // Finished
   "success.title": "You did it!",
-  "success.saved": "This guide is saved in My previous help if you want to do it again.",
+  "success.saved": "This guide is in Recent help if you want to do it again.",
   "success.goHome": "Go home",
   "success.another": "Ask another question",
   "success.learn": "Learn something else",
@@ -191,6 +247,7 @@ export const en = {
   "howTo.windows.2": "The picture is saved in Pictures, in the Screenshots folder.",
   "howTo.mac.1": "Press Shift, Command and 3 at the same time.",
   "howTo.mac.2": "The picture appears on your desktop.",
+  "howTo.tv.1": "Most TVs can't take a screenshot. Take a photo of the TV screen with your phone instead.",
   "howTo.other": "Take a picture of your screen the way you usually do.",
 
   // Picture problems
@@ -341,6 +398,12 @@ export const en = {
   "settings.speed": "Voice speed",
   "settings.normalSpeed": "Normal speed",
   "settings.slower": "Slower voice",
+  "settings.easy": "Easy Mode",
+  "settings.easyDesc": "Bigger buttons, clearer text and fewer things on the screen. I read the steps to you and explain very simply.",
+  "settings.easyOn": "Easy Mode on",
+  "settings.easyOff": "Easy Mode off",
+  "settings.easyLevel": "Easy Mode always explains very simply.",
+  "settings.myDevices": "My Devices",
   "settings.privacy":
     "Your help history and settings stay on this phone. Screenshots are sent to read them and are not saved.",
 
@@ -351,9 +414,25 @@ export const en = {
   "device.iPadOrTablet": "iPad or tablet",
   "device.windows": "Windows computer",
   "device.mac": "Mac",
+  "device.tv": "Smart TV",
+  "device.other": "Something else",
 
-  // My previous help
-  "history.heading": "My previous help",
+  // My Devices
+  "devices.title": "My Devices",
+  "devices.intro": "Tell me which devices you have. My steps will match the one you're using now.",
+  "devices.firstRun": "What are you using right now?",
+  "devices.firstRunLead": "Tap the picture, and my steps will match your screen.",
+  "devices.guess": "I think it's this one",
+  "devices.whichNow": "Which one are you using now?",
+  "devices.inUse": "Using now",
+  "devices.usingNow": "Using now: {device}",
+  "devices.remove": "Remove {device}",
+  "devices.add": "Add a device you have",
+  "devices.none": "No devices yet. Add the one you're using now.",
+  "devices.change": "Change my devices",
+
+  // Recent help
+  "history.heading": "Recent help",
   "history.empty": "Help you ask for will appear here, so you can use it again.",
   "history.today": "Today",
   "history.yesterday": "Yesterday",
@@ -362,6 +441,16 @@ export const en = {
   "history.deleteAll": "Delete all my history",
   "history.confirm": "Are you sure? This can't be undone.",
   "history.showMore": "Show more",
+  "history.savedBadge": "Saved",
+
+  // My saved guides
+  "saved.save": "Save this guide",
+  "saved.done": "Saved. You'll find it in My saved guides.",
+  "saved.heading": "My saved guides",
+  "saved.empty": "Tap “Save this guide” on any help, and it stays here for next time.",
+  "saved.remove": "Remove from saved",
+  "saved.removeItem": "Remove from saved: {question}",
+  "saved.seeAll": "See all my saved guides",
 } as const;
 
 /** Every locale's catalog has exactly these keys, each a string. */

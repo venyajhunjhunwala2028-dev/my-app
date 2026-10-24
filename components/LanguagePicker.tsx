@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/lib/i18n";
+import { isHinglishCode, useT } from "@/lib/i18n";
 
 const LANGUAGES: { code: string; name: string }[] = [
   { code: "en-IN", name: "English" },
@@ -18,8 +18,9 @@ const LANGUAGES: { code: string; name: string }[] = [
   { code: "fr-FR", name: "Français" },
 ];
 
-/** Name to show for a saved language code, e.g. the device's "en-US" reads as English. */
+/** Name to show for a saved language code, e.g. the device's "en-US" reads as English, and "hi-Latn" as Hinglish. */
 export function languageName(code: string): string {
+  if (isHinglishCode(code)) return "Hinglish";
   const base = code.split("-")[0].toLowerCase();
   return (
     LANGUAGES.find((l) => l.code === code)?.name ??

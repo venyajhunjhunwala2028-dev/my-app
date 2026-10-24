@@ -10,11 +10,11 @@ import type { StepsAnswer } from "@/components/StepPlayer";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import type { CameraAnswer } from "@/lib/ai/camera";
 import { askCamera } from "@/lib/ai/cameraClient";
-import { screenshotHowTo } from "@/lib/device";
+import { devicesForHelper, screenshotHowTo } from "@/lib/device";
 import { useT } from "@/lib/i18n";
 import type { PreparedImage } from "@/lib/image/resize";
 import { MIC_HELP, useDictation } from "@/lib/speech/useDictation";
-import { getDevices, getSpeakingLanguage, saveGuide, setCurrentGuide } from "@/lib/store/localStore";
+import { getAnswerLanguage, getDevices, getSpeakingLanguage, saveGuide, setCurrentGuide } from "@/lib/store/localStore";
 import { useIsClient } from "@/lib/useIsClient";
 
 type State =
@@ -61,8 +61,9 @@ export default function CameraHelper() {
       width: image.width,
       height: image.height,
       ...(question.trim() ? { question: question.trim() } : {}),
-      language,
-      devices: getDevices(),
+      // Hinglish answers are asked for as "hi-Latn"; the microphone still listens in the speaking language.
+      language: getAnswerLanguage() ?? language,
+      devices: devicesForHelper(getDevices()),
     });
     busy.current = false;
     if (result.type === "limit") setState({ kind: "limit" });

@@ -25,9 +25,9 @@ function subscribe(listener: () => void) {
 // The server and the first browser render are English; the saved language shows straight after.
 const serverLanguage = (): UiLanguage => "en";
 
-/** Sets <html lang> so screen readers and the browser read the page in the right language. */
+/** Sets <html lang> from the interface language ("hinglish" is "hi-Latn"), so screen readers read the page right. */
 export function applyHtmlLang(language: string): void {
-  document.documentElement.lang = language;
+  document.documentElement.lang = getLocale(language).htmlLang;
 }
 
 /**

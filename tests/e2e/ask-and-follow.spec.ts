@@ -15,7 +15,7 @@ async function askForGuide(page: Page) {
   await expect(page.getByText("Step 1 of 3")).toBeVisible();
 }
 
-test("F1: ask, follow all 3 steps, and find the question in My previous help", async ({ page }) => {
+test("F1: ask, follow all 3 steps, and find the question in Recent help", async ({ page }) => {
   await askForGuide(page);
 
   const steps = ["Open Instagram.", "Tap your picture at the top left.", "Choose a photo and tap Share."];
@@ -29,7 +29,7 @@ test("F1: ask, follow all 3 steps, and find the question in My previous help", a
   await page.getByRole("link", { name: "Home" }).click();
 
   await expect(page).toHaveURL(/\/app$/);
-  const history = page.locator("section").filter({ has: page.getByRole("heading", { name: "My previous help" }) });
+  const history = page.locator("section").filter({ has: page.getByRole("heading", { name: "Recent help" }) });
   await expect(history.getByRole("button", { name: new RegExp(`^${QUESTION}`) })).toBeVisible();
   await expect(history.getByText("Today")).toBeVisible();
 });

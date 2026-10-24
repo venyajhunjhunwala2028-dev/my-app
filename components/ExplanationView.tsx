@@ -1,16 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import AskFamilySheet from "@/components/AskFamilySheet";
 import Mascot from "@/components/Mascot";
+import ReadAloud from "@/components/ReadAloud";
 import SafetyNotice from "@/components/SafetyNotice";
+import SaveGuideButton from "@/components/SaveGuideButton";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
 import { askHelper } from "@/lib/ai/askClient";
 import type { AskAnswer, AskMode } from "@/lib/ai/schemas";
 import { guideGoal } from "@/lib/family/message";
 import { getLocale, uiLanguageFor, useLocale, useT } from "@/lib/i18n";
 import { scamCheckHref } from "@/lib/safety/safetyIntent";
+import { cancelTalkThrough, isTalkThroughRequested } from "@/lib/speech/talkIntent";
 import { getDevices, saveGuide, setCurrentGuide, setGuideStep, type SavedGuide } from "@/lib/store/localStore";
 import type { StepsAnswer } from "@/components/StepPlayer";
 
@@ -126,7 +129,7 @@ export function ExplainOtherLanguage({
       question: guide.question,
       mode,
       language: target.speechCode,
-      answerLanguage: target.speechCode,
+      answerLanguage: target.answerCode ?? target.speechCode,
       devices: getDevices(),
     });
     busy.current = false;
@@ -183,7 +186,12 @@ export default function ExplanationView({
   const t = useT();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [askFamily, setAskFamily] = useState(false);
+  // Voice help from home ("Talk me through it"): an explanation is simply read aloud once.
+  const [readNow] = useState(isTalkThroughRequested);
   const busy = useRef(false);
+  useEffect(() => {
+    if (readNow) cancelTalkThrough();
+  }, [readNow]);
 
   async function showMeHow() {
     if (busy.current) return;
@@ -215,6 +223,7 @@ export default function ExplanationView({
         <p lang={answer.language} className="text-2xl">
           {answer.text}
         </p>
+        <ReadAloud text={[answer.title, answer.text].join(". ")} language={answer.language} autoStart={readNow} />
       </section>
       {status.kind === "limit" ? (
         <SafetyNotice kind="daily_limit" />
@@ -234,6 +243,7 @@ export default function ExplanationView({
           {onReplace && <ExplainOtherLanguage guide={guide} mode="ask" onReplace={onReplace} />}
         </>
       )}
+      <SaveGuideButton id={guide.id} />
       {/* An explanation has no success screen, so asking family is offered here. */}
       <button type="button" className="btn-secondary" onClick={() => setAskFamily(true)}>
         <span aria-hidden="true" className="mr-2">

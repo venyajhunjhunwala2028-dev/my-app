@@ -1,6 +1,7 @@
 // Everything the app remembers lives on the phone, under one versioned key.
 
 import { EXPLANATION_LEVELS, type ExplanationLevel } from "@/lib/ai/schemas";
+import { normalizeDevice, normalizeDevices } from "@/lib/deviceCatalog";
 import { DEFAULT_UI_LANGUAGE, getLocale, isUiLanguage, uiLanguageFor, type UiLanguage } from "@/lib/i18n/locales";
 
 export const STORAGE_KEY = "tech-helper:v1";
@@ -17,9 +18,11 @@ export type SavedGuide<A = unknown> = {
   helpful?: boolean;
   /** Set when the guide is a "Teach me" lesson; finishing it marks that lesson complete. */
   lessonId?: string;
+  /** "Save this guide": kept in My saved guides, and never dropped to make room in Recent help. */
+  bookmarked?: boolean;
 };
 
-export type NewGuide<A = unknown> = Omit<SavedGuide<A>, "savedAt" | "step" | "helpful">;
+export type NewGuide<A = unknown> = Omit<SavedGuide<A>, "savedAt" | "step" | "helpful" | "bookmarked">;
 
 export type FamilyContact = { name: string; phone: string };
 
@@ -34,7 +37,10 @@ export const TEXT_SIZES: readonly TextSize[] = ["normal", "large", "xl"];
 type State = {
   guides: SavedGuide[];
   currentGuideId: string | null;
+  /** The devices the learner owns; the first is the one in use now, and answers are written for it. */
   devices: string[];
+  /** True once the learner picked a device themselves (not only the browser's guess). */
+  deviceChosen: boolean;
   /** A speaking language the learner chose themselves; null means it follows the interface language. */
   speakingLanguage: string | null;
   /** Interface language; null until chosen, when it follows the device language. */
@@ -47,6 +53,8 @@ type State = {
   textSize: TextSize;
   /** Ids of the "Teach me" lessons finished at least once. */
   completedLessons: string[];
+  /** Easy Mode: bigger, clearer and calmer screens, very simple answers and voice on. */
+  easyMode: boolean;
 };
 
 function today(): string {
@@ -65,6 +73,7 @@ function defaults(): State {
     guides: [],
     currentGuideId: null,
     devices: [],
+    deviceChosen: false,
     speakingLanguage: null,
     uiLanguage: null,
     level: "simple",
@@ -74,6 +83,7 @@ function defaults(): State {
     usage: { date: today(), count: 0 },
     textSize: "normal",
     completedLessons: [],
+    easyMode: false,
   };
 }
 
@@ -92,6 +102,14 @@ function isGuide(v: unknown): v is SavedGuide {
   );
 }
 
+/** Drops a malformed bookmark flag, so only `true` means saved. */
+function cleanGuide(guide: SavedGuide): SavedGuide {
+  if (guide.bookmarked === true || !("bookmarked" in guide)) return guide;
+  const { bookmarked: _drop, ...rest } = guide;
+  void _drop;
+  return rest;
+}
+
 // Keeps each valid field and falls back to its default for anything missing or malformed.
 function sanitize(raw: unknown): State {
   const base = defaults();
@@ -99,9 +117,11 @@ function sanitize(raw: unknown): State {
   const contact = raw.familyContact;
   const usage = raw.usage;
   return {
-    guides: Array.isArray(raw.guides) ? raw.guides.filter(isGuide) : base.guides,
+    guides: Array.isArray(raw.guides) ? raw.guides.filter(isGuide).map(cleanGuide) : base.guides,
     currentGuideId: isString(raw.currentGuideId) ? raw.currentGuideId : null,
-    devices: Array.isArray(raw.devices) ? raw.devices.filter(isString) : base.devices,
+    // Older saves used other names ("iPad or tablet"); they read as today's names.
+    devices: Array.isArray(raw.devices) ? normalizeDevices(raw.devices.filter(isString)) : base.devices,
+    deviceChosen: typeof raw.deviceChosen === "boolean" ? raw.deviceChosen : base.deviceChosen,
     // Older saves always held the device language here, so that value means "not chosen".
     speakingLanguage:
       isString(raw.speakingLanguage) && raw.speakingLanguage && raw.speakingLanguage !== deviceLanguage()
@@ -120,10 +140,20 @@ function sanitize(raw: unknown): State {
     completedLessons: Array.isArray(raw.completedLessons)
       ? [...new Set(raw.completedLessons.filter(isString))]
       : base.completedLessons,
+    easyMode: typeof raw.easyMode === "boolean" ? raw.easyMode : base.easyMode,
   };
 }
 
+/** How many guides Recent help keeps; saved guides ("Save this guide") do not count and are never dropped. */
 export const MAX_GUIDES = 50;
+
+/** Newest first: every saved guide, plus the newest `keep` of the others. */
+function prune(guides: SavedGuide[], keep = MAX_GUIDES): SavedGuide[] {
+  let others = 0;
+  return [...guides]
+    .sort((a, b) => b.savedAt - a.savedAt)
+    .filter((g) => g.bookmarked || others++ < keep);
+}
 
 // Used when the browser refuses storage (private mode, or full): the app keeps working, it just forgets on reload.
 // When set, it is newer than anything in localStorage, so reads prefer it.
@@ -151,9 +181,10 @@ function save(state: State): void {
   } catch {
     // Storage full: drop the oldest half of the guides and retry once.
     try {
-      if (state.guides.length === 0) throw new Error("nothing to drop");
-      const newest = [...state.guides].sort((a, b) => b.savedAt - a.savedAt);
-      state.guides = newest.slice(0, Math.ceil(newest.length / 2));
+      // Saved guides stay: the learner asked for them to be kept.
+      const others = state.guides.filter((g) => !g.bookmarked).length;
+      if (others === 0) throw new Error("nothing to drop");
+      state.guides = prune(state.guides, Math.ceil(others / 2));
       write(state);
     } catch {
       // Storage unavailable or still full: keep the in-memory copy only.
@@ -189,13 +220,32 @@ export function saveGuide<A>(guide: NewGuide<A>): SavedGuide<A> {
   const saved: SavedGuide<A> = { ...guide, savedAt: Date.now(), step: 1 };
   const question = guide.question.trim();
   update((s) => {
-    const lessonId = s.guides.find((g) => g.id === guide.id)?.lessonId;
-    if (!saved.lessonId && isString(lessonId)) saved.lessonId = lessonId;
-    s.guides = [saved, ...s.guides.filter((g) => g.id !== guide.id && g.question.trim() !== question)]
-      .sort((a, b) => b.savedAt - a.savedAt)
-      .slice(0, MAX_GUIDES);
+    const old = s.guides.find((g) => g.id === guide.id);
+    if (!saved.lessonId && isString(old?.lessonId)) saved.lessonId = old.lessonId;
+    // Saved again (say in another language): it stays in My saved guides.
+    if (old?.bookmarked) saved.bookmarked = true;
+    s.guides = prune([saved, ...s.guides.filter((g) => g.id !== guide.id && g.question.trim() !== question)]);
   });
   return saved;
+}
+
+/** "Save this guide" (true) or "Remove from saved" (false). */
+export function setGuideBookmarked(id: string, on: boolean): void {
+  update((s) => {
+    const guide = s.guides.find((g) => g.id === id);
+    if (!guide) return;
+    if (on) guide.bookmarked = true;
+    else delete guide.bookmarked;
+  });
+}
+
+export function isGuideBookmarked(id: string): boolean {
+  return getGuide(id)?.bookmarked === true;
+}
+
+/** My saved guides, newest first. */
+export function getBookmarkedGuides(): SavedGuide[] {
+  return getSavedGuides().filter((g) => g.bookmarked);
 }
 
 /** Removes one guide; if it was the current guide, there is no current guide any more. */
@@ -261,15 +311,46 @@ export function getDevices(): string[] {
 
 export function setDevices(devices: string[]): void {
   update((s) => {
-    s.devices = [...devices];
+    s.devices = normalizeDevices(devices);
   });
 }
 
-/** The learner's own device goes first, so answers are written for it. */
+/** The device in use now (the first one), or null when none is known. */
+export function getCurrentDevice(): string | null {
+  return load().devices[0] ?? null;
+}
+
+/** The learner's own device goes first, so answers are written for it. Counts as their own choice. */
 export function setPreferredDevice(device: string): void {
+  const name = normalizeDevice(device);
+  if (!name) return;
   update((s) => {
-    s.devices = [device, ...s.devices.filter((d) => d !== device)];
+    s.devices = [name, ...s.devices.filter((d) => d !== name)];
+    s.deviceChosen = true;
   });
+}
+
+/** My Devices: one more device the learner owns, after the one in use now. */
+export function addDevice(device: string): void {
+  const name = normalizeDevice(device);
+  if (!name) return;
+  update((s) => {
+    if (!s.devices.includes(name)) s.devices.push(name);
+    s.deviceChosen = true;
+  });
+}
+
+/** My Devices: removing the one in use now makes the next one current. */
+export function removeDevice(device: string): void {
+  const name = normalizeDevice(device);
+  update((s) => {
+    s.devices = s.devices.filter((d) => d !== name);
+  });
+}
+
+/** False until the learner picks a device themselves; until then home asks "What are you using right now?". */
+export function isDeviceChosen(): boolean {
+  return load().deviceChosen;
 }
 
 export function getTextSize(): TextSize {
@@ -294,9 +375,27 @@ export function setUiLanguage(language: UiLanguage): void {
   });
 }
 
-/** How simply answers are explained; sent as `level` with every question. */
+/** How simply answers are explained, as chosen in Settings. */
 export function getLevel(): ExplanationLevel {
   return load().level;
+}
+
+/** The level sent as `level` with every question: Easy Mode always asks for very simple answers. */
+export function getAskLevel(): ExplanationLevel {
+  const { easyMode, level } = load();
+  return easyMode ? "very_simple" : level;
+}
+
+export function getEasyMode(): boolean {
+  return load().easyMode;
+}
+
+/** Turning Easy Mode on also turns reading steps aloud on (it can still be turned off in Settings). */
+export function setEasyMode(on: boolean): void {
+  update((s) => {
+    s.easyMode = on;
+    if (on) s.readAloud = true;
+  });
 }
 
 export function setLevel(level: ExplanationLevel): void {
@@ -317,6 +416,17 @@ export function getSpeakingLanguage(): string {
   const device = deviceLanguage();
   if (!uiLanguage || uiLanguageFor(device) === uiLanguage) return device;
   return getLocale(uiLanguage).speechCode;
+}
+
+/**
+ * The language answers must be written in, when the interface language needs one the speaking language cannot
+ * say: Hinglish is heard as Indian English ("en-IN") but answered in Hindi written in Latin letters ("hi-Latn").
+ * Undefined when answers simply follow the speaking language, or the learner chose a speaking language themselves.
+ */
+export function getAnswerLanguage(): string | undefined {
+  const { speakingLanguage, uiLanguage } = load();
+  if (speakingLanguage || !uiLanguage) return undefined;
+  return getLocale(uiLanguage).answerCode;
 }
 
 /** null: follow the interface language again. */

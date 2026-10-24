@@ -16,7 +16,7 @@ import { useIsClient } from "@/lib/useIsClient";
 const PAGE = 10;
 
 /** "Today", "Yesterday", or a plain date like "1 October 2026". */
-function simpleDate(savedAt: number, dateLocale: string, t: T): string {
+export function simpleDate(savedAt: number, dateLocale: string, t: T): string {
   const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const saved = new Date(savedAt);
   const days = Math.round((day(new Date()) - day(saved)) / 86_400_000);
@@ -26,7 +26,7 @@ function simpleDate(savedAt: number, dateLocale: string, t: T): string {
 }
 
 /** Yes / No before anything is deleted. */
-function Confirm({ onYes, onNo, t }: { onYes: () => void; onNo: () => void; t: T }) {
+export function Confirm({ onYes, onNo, t }: { onYes: () => void; onNo: () => void; t: T }) {
   return (
     <div role="alert" className="flex flex-col gap-3 rounded-3xl border-2 border-warning bg-warning-surface p-4">
       <p className="text-xl font-semibold">{t("history.confirm")}</p>
@@ -42,26 +42,33 @@ function Confirm({ onYes, onNo, t }: { onYes: () => void; onNo: () => void; t: T
   );
 }
 
-/** "My previous help": the questions asked on this phone, newest first; tap one to do it again from step 1. */
-export default function MyGuides() {
+/** Opens a guide again from step 1, as its current guide. */
+export function useOpenGuide() {
   const router = useRouter();
+  return (id: string) => {
+    setGuideStep(id, 1);
+    setCurrentGuide(id);
+    router.push(`/guide/${id}`);
+  };
+}
+
+/**
+ * "Recent help": the questions asked on this phone, newest first; tap one to do it again from step 1.
+ * Shows `initial` at first (5 on home), then more on "Show more". Saved guides are marked.
+ */
+export default function MyGuides({ initial = PAGE }: { initial?: number } = {}) {
+  const open = useOpenGuide();
   const t = useT();
   const { speechCode } = useLocale();
   // The store lives in localStorage, so read it only after the page is running in the browser.
   const isClient = useIsClient();
-  const [shown, setShown] = useState(PAGE);
+  const [shown, setShown] = useState(initial);
   // The id being confirmed for deletion, or "all".
   const [confirming, setConfirming] = useState<string | null>(null);
   // Bumped after a delete so the list re-reads the store.
   const [, setVersion] = useState(0);
   if (!isClient) return null;
   const guides = getSavedGuides();
-
-  function open(id: string) {
-    setGuideStep(id, 1);
-    setCurrentGuide(id);
-    router.push(`/guide/${id}`);
-  }
 
   function remove(id: string | "all") {
     if (id === "all") deleteAllGuides();
@@ -74,7 +81,15 @@ export default function MyGuides() {
     <li key={g.id} className="flex flex-col gap-2">
       <button type="button" className="card-action flex-col items-start gap-1 text-left" onClick={() => open(g.id)}>
         <span className="text-xl font-bold">{g.question}</span>
-        <span className="text-lg text-muted">{simpleDate(g.savedAt, speechCode, t)}</span>
+        <span className="flex flex-wrap items-center gap-2 text-lg text-muted">
+          {simpleDate(g.savedAt, speechCode, t)}
+          {g.bookmarked && (
+            <span className="rounded-full bg-lavender px-3 py-0.5 text-base font-semibold text-primary">
+              <span aria-hidden="true">⭐ </span>
+              {t("history.savedBadge")}
+            </span>
+          )}
+        </span>
       </button>
       {confirming === g.id ? (
         <Confirm t={t} onYes={() => remove(g.id)} onNo={() => setConfirming(null)} />

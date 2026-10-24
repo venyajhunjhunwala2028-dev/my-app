@@ -23,6 +23,8 @@ function expectComplete(text: Localized) {
   for (const { code } of LOCALES) expect(text[code].trim(), JSON.stringify(text)).not.toBe("");
   // App names such as WhatsApp stay as the phone shows them; everything else is written in Devanagari.
   if (text.hi !== text.en) expect(text.hi, text.en).toMatch(DEVANAGARI);
+  // Hinglish is Hindi in Latin letters.
+  expect(text.hinglish, text.en).not.toMatch(DEVANAGARI);
 }
 
 describe("lessons", () => {
@@ -68,7 +70,7 @@ describe("help library", () => {
 });
 
 describe("all content", () => {
-  it("has English and Hindi text for every title and question", () => {
+  it("has English, Hindi and Hinglish text for every title and question", () => {
     for (const text of allTexts()) expectComplete(text);
   });
 
@@ -79,6 +81,8 @@ describe("all content", () => {
       // Otherwise the question would be refused before reaching the helper.
       expect(phraseCheck(text.en), text.en).toBeNull();
       expect(phraseCheck(text.hi), text.hi).toBeNull();
+      expect(text.hinglish).not.toMatch(SHARE_SECRET_EN);
+      expect(phraseCheck(text.hinglish), text.hinglish).toBeNull();
     }
   });
 });

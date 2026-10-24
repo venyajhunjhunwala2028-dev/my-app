@@ -82,12 +82,14 @@ describe("Home page", () => {
     expect(screen.getByRole("link", { name: "Help library" })).toHaveAttribute("href", "/app/library");
     expect(screen.getByText("🧑‍🏫")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByText("📚")).toHaveAttribute("aria-hidden", "true");
-    expect(screen.getByRole("link", { name: "My previous help" })).toHaveAttribute("href", "#my-guides");
+    expect(screen.getByRole("link", { name: "Recent help" })).toHaveAttribute("href", "#my-guides");
     expect(document.getElementById("my-guides")).toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Ways I can help" });
-    // The big cards: Ask, What do I press? and Show me with my camera (Speak is hidden here); then Is this a scam?,
-    // Show me with my camera, Teach me, Help library, Ask my family, Call my family, My previous help and Settings.
-    expect(within(nav).getAllByRole("listitem")).toHaveLength(11);
+    expect(screen.getByRole("link", { name: "My saved guides" })).toHaveAttribute("href", "/app/saved");
+    // The big cards: Ask, What do I press? and Show me with my camera (Speak and Talk me through it are hidden here);
+    // then Is this a scam?, Show me with my camera, Teach me, Help library, Ask my family, Call my family,
+    // Recent help, My saved guides and Settings.
+    expect(within(nav).getAllByRole("listitem")).toHaveLength(12);
   });
 
   it("offers goals as chips and Show me with my camera, as a big card and in More ways", () => {

@@ -8,11 +8,15 @@ import AskFamilySheet from "@/components/AskFamilySheet";
 import CallFamily from "@/components/CallFamily";
 import InstallGuide from "@/components/InstallGuide";
 import Mascot from "@/components/Mascot";
+import { FirstRunDevice, MyDevicesCard } from "@/components/MyDevices";
 import MyGuides from "@/components/MyGuides";
+import SavedGuides from "@/components/SavedGuides";
 import Settings from "@/components/Settings";
 import TechConfidence from "@/components/TechConfidence";
+import { useEasyMode } from "@/lib/easyMode";
 import { useT } from "@/lib/i18n";
 import { isSpeechSupported } from "@/lib/speech/speech";
+import { useCanTalk } from "@/lib/speech/useTalkThrough";
 import { getCurrentGuide, type SavedGuide } from "@/lib/store/localStore";
 import { noSubscribe, useIsClient } from "@/lib/useIsClient";
 
@@ -123,9 +127,19 @@ export default function Home() {
   const t = useT();
   const askBox = useRef<AskBoxHandle>(null);
   const speech = useSyncExternalStore(noSubscribe, isSpeechSupported, () => false);
+  // "Talk me through it" needs the voice as well as the microphone.
+  const canTalk = useCanTalk();
+  const easy = useEasyMode();
   const [listening, setListening] = useState(false);
+  // Which big card started the microphone, so only that one says "Listening…".
+  const [micCard, setMicCard] = useState<"speak" | "talk">("speak");
   const [askFamily, setAskFamily] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Easy Mode shows the main things only; "More" shows the rest of the home screen.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const full = !easy || moreOpen;
+  // Bumped once the first-run device question is answered, so My Devices shows the choice.
+  const [, setDeviceVersion] = useState(0);
 
   useEffect(() => {
     if (launchChecked) return;
@@ -135,6 +149,9 @@ export default function Home() {
     const guide = getCurrentGuide();
     if (guide && isUnfinished(guide)) router.push(`/guide/${guide.id}`);
   }, [router]);
+
+  const speakListening = listening && micCard === "speak";
+  const talkListening = listening && micCard === "talk";
 
   // Things people want to get done, in their own words; the last one opens the scam check.
   const examples = [t("home.example.1"), t("home.example.2"), t("home.example.3"), t("home.example.4"), t("home.example.5")];
@@ -150,6 +167,8 @@ export default function Home() {
           </Mascot>
           <p className="text-3xl leading-tight font-extrabold">{t("home.hero")}</p>
         </header>
+
+        <FirstRunDevice onChosen={() => setDeviceVersion((v) => v + 1)} />
 
         <section className="card flex flex-col gap-4 p-5 shadow-raised">
           <AskBox ref={askBox} big examples={examples} showSpeakButton={false} onListeningChange={setListening} />
@@ -182,19 +201,47 @@ export default function Home() {
                 <li>
                   <button
                     type="button"
-                    aria-pressed={listening}
+                    aria-pressed={speakListening}
                     aria-labelledby="card-speak-title"
                     aria-describedby="card-speak-desc"
-                    className={`card-action h-full flex-col gap-3 ${listening ? "border-warning! bg-warning-surface" : ""}`}
-                    onClick={() => askBox.current?.toggleSpeak()}
+                    className={`card-action h-full flex-col gap-3 ${speakListening ? "border-warning! bg-warning-surface" : ""}`}
+                    onClick={() => {
+                      setMicCard("speak");
+                      askBox.current?.toggleSpeak();
+                    }}
                   >
                     <CardBody
                       id="card-speak"
                       emoji="🎤"
                       text={{
                         tag: t("home.tag.speak"),
-                        title: listening ? t("common.listeningTapStop") : t("common.speak"),
+                        title: speakListening ? t("common.listeningTapStop") : t("common.speak"),
                         desc: t("home.speakDesc"),
+                      }}
+                    />
+                  </button>
+                </li>
+              )}
+              {canTalk && (
+                <li className="col-span-full">
+                  <button
+                    type="button"
+                    aria-pressed={talkListening}
+                    aria-labelledby="card-talk-title"
+                    aria-describedby="card-talk-desc"
+                    className={`card-action h-full flex-col gap-3 ${talkListening ? "border-warning! bg-warning-surface" : ""}`}
+                    onClick={() => {
+                      setMicCard("talk");
+                      askBox.current?.talk();
+                    }}
+                  >
+                    <CardBody
+                      id="card-talk"
+                      emoji="🎙️"
+                      text={{
+                        tag: t("home.tag.talk"),
+                        title: talkListening ? t("common.listeningTapStop") : t("home.talk"),
+                        desc: t("home.talkDesc"),
                       }}
                     />
                   </button>
@@ -215,88 +262,133 @@ export default function Home() {
                   />
                 </Link>
               </li>
-              <li className="col-span-full">
-                <Link
-                  href="/app/camera"
-                  aria-labelledby="card-camera-title"
-                  aria-describedby="card-camera-desc"
-                  className="card-action flex-col gap-3"
-                >
-                  <CardBody
-                    id="card-camera"
-                    emoji="📸"
-                    text={{ tag: t("home.tag.camera"), title: t("home.camera"), desc: t("home.cameraDesc") }}
-                  />
-                </Link>
-              </li>
+              {full && (
+                <li className="col-span-full">
+                  <Link
+                    href="/app/camera"
+                    aria-labelledby="card-camera-title"
+                    aria-describedby="card-camera-desc"
+                    className="card-action flex-col gap-3"
+                  >
+                    <CardBody
+                      id="card-camera"
+                      emoji="📸"
+                      text={{ tag: t("home.tag.camera"), title: t("home.camera"), desc: t("home.cameraDesc") }}
+                    />
+                  </Link>
+                </li>
+              )}
             </ul>
           </div>
 
-          <section aria-labelledby="more-heading" className="flex flex-col gap-4">
-            <h2 id="more-heading" className="text-2xl font-bold">
-              {t("home.more")}
-            </h2>
-            <div className="@container">
-              <ul className="grid grid-cols-1 gap-3 @[17rem]:grid-cols-2">
-                <li>
-                  <Link href="/app/scam" className={TILE}>
-                    <TileBody emoji="🔐">{t("home.scam")}</TileBody>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/app/camera" className={TILE}>
-                    <TileBody emoji="📸">{t("home.camera")}</TileBody>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/app/learn" className={TILE}>
-                    <TileBody emoji="🧑‍🏫">{t("home.learn")}</TileBody>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/app/library" className={TILE}>
-                    <TileBody emoji="📚">{t("home.library")}</TileBody>
-                  </Link>
-                </li>
-                <li>
-                  <button type="button" className={TILE} onClick={() => setAskFamily(true)}>
-                    <TileBody emoji="👨‍👩‍👧">{t("home.family")}</TileBody>
-                  </button>
-                </li>
-                <li>
-                  <a href="#call-family" className={TILE}>
-                    <TileBody emoji="📞">{t("home.callFamily")}</TileBody>
-                  </a>
-                </li>
-                <li className="col-span-full">
-                  <a href="#my-guides" className={TILE}>
-                    <TileBody emoji="🕘">{t("history.heading")}</TileBody>
-                  </a>
-                </li>
-                <li className="col-span-full">
-                  <button
-                    type="button"
-                    aria-expanded={settingsOpen}
-                    className="card-action min-h-[4.5rem] items-center gap-3"
-                    onClick={() => setSettingsOpen((o) => !o)}
-                  >
-                    <span aria-hidden="true" className="text-3xl">
-                      ⚙️
-                    </span>
-                    <span aria-hidden="true" className="font-serif text-xl font-bold text-primary">
-                      Aa
-                    </span>
-                    <span className="text-lg font-bold">{t("settings.open")}</span>
-                  </button>
-                </li>
-              </ul>
+          {full && (
+            <section id="home-more" aria-labelledby="more-heading" className="flex flex-col gap-4">
+              <h2 id="more-heading" className="text-2xl font-bold">
+                {t("home.more")}
+              </h2>
+              <div className="@container">
+                <ul className="grid grid-cols-1 gap-3 @[17rem]:grid-cols-2">
+                  <li>
+                    <Link href="/app/scam" className={TILE}>
+                      <TileBody emoji="🔐">{t("home.scam")}</TileBody>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/app/camera" className={TILE}>
+                      <TileBody emoji="📸">{t("home.camera")}</TileBody>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/app/learn" className={TILE}>
+                      <TileBody emoji="🧑‍🏫">{t("home.learn")}</TileBody>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/app/library" className={TILE}>
+                      <TileBody emoji="📚">{t("home.library")}</TileBody>
+                    </Link>
+                  </li>
+                  <li>
+                    <button type="button" className={TILE} onClick={() => setAskFamily(true)}>
+                      <TileBody emoji="👨‍👩‍👧">{t("home.family")}</TileBody>
+                    </button>
+                  </li>
+                  <li>
+                    <a href="#call-family" className={TILE}>
+                      <TileBody emoji="📞">{t("home.callFamily")}</TileBody>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#my-guides" className={TILE}>
+                      <TileBody emoji="🕘">{t("history.heading")}</TileBody>
+                    </a>
+                  </li>
+                  <li>
+                    <Link href="/app/saved" className={TILE}>
+                      <TileBody emoji="⭐">{t("saved.heading")}</TileBody>
+                    </Link>
+                  </li>
+                  <li className="col-span-full">
+                    <button
+                      type="button"
+                      aria-expanded={settingsOpen}
+                      className="card-action min-h-[4.5rem] items-center gap-3"
+                      onClick={() => setSettingsOpen((o) => !o)}
+                    >
+                      <span aria-hidden="true" className="text-3xl">
+                        ⚙️
+                      </span>
+                      <span aria-hidden="true" className="font-serif text-xl font-bold text-primary">
+                        Aa
+                      </span>
+                      <span className="text-lg font-bold">{t("settings.open")}</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </section>
+          )}
+          {easy && (
+            // Easy Mode: Settings stays one tap away (Easy Mode is turned off there), and "More" shows the rest.
+            <div className="flex flex-col gap-3">
+              {!moreOpen && (
+                <button
+                  type="button"
+                  aria-expanded={settingsOpen}
+                  className="btn-secondary min-h-[4.5rem] text-xl"
+                  onClick={() => setSettingsOpen((o) => !o)}
+                >
+                  <span aria-hidden="true" className="mr-2">
+                    ⚙️
+                  </span>
+                  {t("settings.open")}
+                </button>
+              )}
+              <button
+                type="button"
+                aria-expanded={moreOpen}
+                aria-controls="home-more"
+                className="btn-primary min-h-[4.5rem] text-xl"
+                onClick={() => setMoreOpen((o) => !o)}
+              >
+                <span aria-hidden="true" className="mr-2">
+                  {moreOpen ? "▲" : "▼"}
+                </span>
+                {moreOpen ? t("home.showLess") : t("home.showMore")}
+              </button>
             </div>
-          </section>
+          )}
         </nav>
         <Settings open={settingsOpen} onOpenChange={setSettingsOpen} />
-        <TechConfidence compact />
+        {full && (
+          <>
+            <TechConfidence compact />
+            <MyDevicesCard />
+            <SavedGuides limit={3} />
+          </>
+        )}
         <div id="my-guides" className="scroll-mt-4">
-          <MyGuides />
+          <MyGuides initial={easy ? 3 : 5} />
         </div>
         <div id="call-family" className="scroll-mt-4">
           <CallFamily />

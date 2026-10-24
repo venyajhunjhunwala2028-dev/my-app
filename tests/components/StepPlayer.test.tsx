@@ -144,10 +144,10 @@ describe("StepPlayer", () => {
     expect(getCompletedLessons()).toEqual(["screenshot"]);
   });
 
-  it("after tapping Play once, the next step is read automatically in the answer's language", async () => {
+  it("after tapping Read this to me once, the next step is read automatically in the answer's language", async () => {
     const { speak } = mockSpeech();
     render(<StepPlayer guide={seed()} />);
-    await userEvent.click(screen.getByRole("button", { name: "Play" }));
+    await userEvent.click(screen.getByRole("button", { name: "Read this to me" }));
     expect(speak).toHaveBeenLastCalledWith(expect.objectContaining({ text: "Say thing 1", lang: "hi" }));
 
     await done();
@@ -158,7 +158,7 @@ describe("StepPlayer", () => {
 
   it("hides the voice buttons when the phone cannot speak", () => {
     render(<StepPlayer guide={seed()} />);
-    expect(screen.queryByRole("button", { name: "Play" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Read this to me" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Replay" })).not.toBeInTheDocument();
   });
 
@@ -375,18 +375,18 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
     expect(screen.getByText("Step 2 of 4")).toBeInTheDocument();
   });
 
-  it("Play, Pause and Replay drive speechSynthesis", async () => {
+  it("Read this to me, Pause and Replay drive speechSynthesis", async () => {
     const { speak, pause, resume, cancel } = mockSpeech();
     render(<StepPlayer guide={seed()} />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Play" }));
+    await userEvent.click(screen.getByRole("button", { name: "Read this to me" }));
     expect(speak).toHaveBeenCalledTimes(1);
     expect(speak).toHaveBeenLastCalledWith(expect.objectContaining({ text: "Say thing 1", rate: 1 }));
 
     await userEvent.click(screen.getByRole("button", { name: "Pause" }));
     expect(pause).toHaveBeenCalledTimes(1);
 
-    await userEvent.click(screen.getByRole("button", { name: "Play" }));
+    await userEvent.click(screen.getByRole("button", { name: "Read this to me" }));
     expect(resume).toHaveBeenCalledTimes(1);
     expect(speak).toHaveBeenCalledTimes(1);
 
@@ -406,7 +406,7 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
     expect(slower).toHaveAttribute("aria-pressed", "true");
     expect(getSlowSpeech()).toBe(true);
 
-    await userEvent.click(screen.getByRole("button", { name: "Play" }));
+    await userEvent.click(screen.getByRole("button", { name: "Read this to me" }));
     expect(speak).toHaveBeenLastCalledWith(expect.objectContaining({ rate: 0.75 }));
     unmount();
 
@@ -420,7 +420,7 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
     render(<StepPlayer guide={seed()} />);
     await userEvent.click(screen.getByRole("button", { name: "Show me again" }));
     await screen.findByText("It is the blue button.");
-    await userEvent.click(screen.getByRole("button", { name: "Play this help" }));
+    await userEvent.click(screen.getByRole("button", { name: "Read this help to me" }));
     expect(speak).toHaveBeenLastCalledWith(expect.objectContaining({ text: "It is the blue button.", lang: "hi" }));
     await userEvent.click(screen.getByRole("button", { name: "Replay this help" }));
     expect(speak).toHaveBeenCalledTimes(2);

@@ -40,3 +40,14 @@ describe("warningFor", () => {
     expect(warningFor("Open Settings.", "hi")).toBeNull();
   });
 });
+
+describe("Hinglish warnings", () => {
+  it("maps hi-Latn to Hinglish warnings written in Latin letters", async () => {
+    const { warningFor, warningLanguage } = await import("@/lib/safety/stepWarnings");
+    expect(warningLanguage("hi-Latn")).toBe("hinglish");
+    expect(warningLanguage("hi-IN")).toBe("hi");
+    const w = warningFor("Apna OTP type kijiye", "hinglish");
+    expect(w).toMatch(/^⚠️ Apna OTP kabhi kisi ko mat bataiye/);
+    expect(w).not.toMatch(/[ऀ-ॿ]/);
+  });
+});

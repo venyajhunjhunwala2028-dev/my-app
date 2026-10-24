@@ -12,7 +12,7 @@ import { useT, type MessageKey } from "@/lib/i18n";
 import { MAX_SCAM_TEXT_CHARS } from "@/lib/http/limits";
 import { prepareScreenshot } from "@/lib/image/prepare";
 import type { PreparedImage } from "@/lib/image/resize";
-import { getSpeakingLanguage } from "@/lib/store/localStore";
+import { getAnswerLanguage, getSpeakingLanguage } from "@/lib/store/localStore";
 import { useIsClient } from "@/lib/useIsClient";
 
 // Each verdict has an icon and a word as well as a colour, so it never relies on colour alone.
@@ -214,7 +214,8 @@ export default function ScamChecker({ initialQuestion }: { initialQuestion?: str
       ...(message ? { text: message } : {}),
       ...(image ? { image: image.base64, mediaType: image.mediaType, width: image.width, height: image.height } : {}),
       ...(question ? { question } : {}),
-      language: getSpeakingLanguage(),
+      // Hinglish answers are asked for as "hi-Latn"; everything else follows the speaking language.
+      language: getAnswerLanguage() ?? getSpeakingLanguage(),
     });
   }
 

@@ -1,6 +1,16 @@
 // Voice input and read-aloud through the browser's Web Speech API, feature-detected.
 // The Web Speech API cannot detect the spoken language, so the caller passes the saved speaking language.
 
+import { isHinglishCode } from "@/lib/i18n/locales";
+
+/**
+ * The voice to use for a language. Browsers have no Hinglish ("hi-Latn") voice or recogniser; an Indian English
+ * voice reads Hindi in Latin letters naturally, and Indian English recognition writes it in Latin letters.
+ */
+export function speechLanguage(lang: string): string {
+  return isHinglishCode(lang) ? "en-IN" : lang;
+}
+
 export type ListenError = "denied" | "no-speech" | "failed";
 
 type RecognitionEvent = { results: ArrayLike<ArrayLike<{ transcript: string }>> };
@@ -40,7 +50,7 @@ export function startListening(lang: string, handlers: ListenHandlers): { stop: 
   const Ctor = getCtor();
   if (!Ctor) return null;
   const rec = new Ctor();
-  rec.lang = lang;
+  rec.lang = speechLanguage(lang);
   rec.continuous = false;
   rec.interimResults = false;
   rec.maxAlternatives = 1;
@@ -106,7 +116,7 @@ export function speak(text: string, lang: string, options: SpeakOptions = {}): v
   // Some browsers stay paused after cancel, so new speech would never start.
   if (window.speechSynthesis.paused) window.speechSynthesis.resume();
   const utterance = new window.SpeechSynthesisUtterance(text);
-  utterance.lang = lang;
+  utterance.lang = speechLanguage(lang);
   utterance.rate = options.rate ?? NORMAL_RATE;
   if (options.onEnd) utterance.onend = options.onEnd;
   window.speechSynthesis.speak(utterance);
