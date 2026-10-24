@@ -1,0 +1,591 @@
+@import "tailwindcss";
+
+/*
+ * Tech Helper design system: calm, warm and friendly; large text, big rounded cards and buttons.
+ * Every text/background pair below meets WCAG AA (4.5:1) at body size; most meet AAA.
+ * 20px+ base text and 56px+ buttons for older learners.
+ */
+:root {
+  /* Page and text */
+  --background: #faf9f6; /* warm off-white */
+  --foreground: #1c1b2e; /* 16:1 on background */
+  --muted: #4a4860; /* 8.6:1 on background */
+  --card: #ffffff;
+  --border: #dcd9ec;
+
+  /* One strong primary: deep indigo, 10:1 with white text */
+  --primary: #3730a3;
+  --primary-strong: #28237c; /* pressed / 3D edge */
+  --primary-foreground: #ffffff;
+
+  /* Soft lavender secondary surface (indigo text on it is 9:1) */
+  --lavender: #eeecfb;
+  --lavender-strong: #dcd8f7;
+  --surface: #f1effa;
+
+  /* Danger (soft red, muted) — kept as --warning for existing screens */
+  --warning: #a8261b; /* 6.6:1 on its surface */
+  --warning-surface: #fdeeec;
+  --danger: var(--warning);
+  --danger-surface: var(--warning-surface);
+  /* Scam check results: always shown with an icon and a word too, never colour alone. */
+  --safe: #1d6b3a; /* soft green; 6:1 on its surface */
+  --safe-surface: #e8f5ec;
+  --caution: #8a4a06; /* warm yellow/amber; 6:1 on its surface */
+  --caution-surface: #fff5d6;
+  --caution-accent: #f5c54a; /* decorative only, never text */
+
+  --shadow-color: 40 36 110;
+  --shadow-card: 0 1px 2px rgb(var(--shadow-color) / 0.06), 0 8px 28px rgb(var(--shadow-color) / 0.08);
+  --shadow-raised: 0 2px 4px rgb(var(--shadow-color) / 0.08), 0 16px 40px rgb(var(--shadow-color) / 0.14);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-lavender: var(--lavender);
+  --color-lavender-strong: var(--lavender-strong);
+  --color-surface: var(--surface);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+  --color-safe: var(--safe);
+  --color-safe-surface: var(--safe-surface);
+  --color-caution: var(--caution);
+  --color-caution-surface: var(--caution-surface);
+  --color-caution-accent: var(--caution-accent);
+  --shadow-card: var(--shadow-card);
+  --shadow-raised: var(--shadow-raised);
+  /* Friendly, rounded system fonts first; no web font download. */
+  --font-sans:
+    ui-rounded, "SF Pro Rounded", "Nunito", "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system,
+    Roboto, "Noto Sans", "Noto Sans Devanagari", sans-serif;
+}
+
+html {
+  font-size: 20px;
+  scroll-behavior: smooth;
+}
+
+/* Text size from Settings; every size in the app is in rem, so buttons and spacing grow with it. */
+html[data-text-size="large"] {
+  font-size: 24px;
+}
+
+html[data-text-size="xl"] {
+  font-size: 28px;
+}
+
+/*
+ * Easy Mode (Settings): at least the "Large" text size, darker text and borders, a stronger primary,
+ * no grey text, and visible edges on every card and button. Set on <html> before the first paint.
+ * Components also show fewer things in Easy Mode (see useEasyMode).
+ */
+html[data-easy="on"] {
+  font-size: 24px;
+  --foreground: #0f0e1f; /* 19:1 on background */
+  --muted: #1f1d33; /* no grey text: as dark as body text */
+  --border: #5a5680;
+  --primary: #2a2391; /* 12:1 with white text */
+  --primary-strong: #1b1666;
+  --lavender: #e6e3fa;
+  --lavender-strong: #b9b3ee;
+  --card-edge: #5a5680;
+  --soft-edge: #2a2391;
+  --chip-edge: #2a2391;
+  --btn-min-height: 4rem;
+  --soft-font-size: 1.125rem;
+}
+
+html[data-easy="on"][data-text-size="xl"] {
+  font-size: 28px;
+}
+
+html[data-easy="on"] body {
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  /* Long words and pasted links wrap instead of making the page wider than the phone. */
+  overflow-wrap: anywhere;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+:focus-visible {
+  outline: 4px solid var(--primary);
+  outline-offset: 3px;
+}
+
+/* ---------- Cards ---------- */
+
+@utility card {
+  border-radius: 1.5rem;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+  padding: 1.5rem;
+  /* Only Easy Mode gives cards an edge. */
+  border: 2px solid var(--card-edge, transparent);
+}
+
+@utility card-lavender {
+  border-radius: 1.5rem;
+  background: var(--lavender);
+  padding: 1.5rem;
+}
+
+/* ---------- Buttons: very large, rounded, soft shadow, pressed state ---------- */
+
+@utility btn {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.25rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  /* Easy Mode buttons are a little taller, on top of the bigger text. */
+  min-height: var(--btn-min-height, 3.5rem);
+  line-height: 1.3;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background-color 120ms ease;
+  &:focus-visible {
+    outline: 4px solid var(--primary);
+    outline-offset: 3px;
+  }
+  &:active:not(:disabled) {
+    transform: translateY(2px);
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+@utility btn-primary {
+  @apply btn bg-primary text-primary-foreground;
+  box-shadow:
+    0 4px 0 var(--primary-strong),
+    0 8px 20px rgb(var(--shadow-color) / 0.18);
+  &:hover:not(:disabled) {
+    background-color: #312a96;
+  }
+  &:active:not(:disabled) {
+    box-shadow:
+      0 1px 0 var(--primary-strong),
+      0 3px 8px rgb(var(--shadow-color) / 0.18);
+  }
+}
+
+@utility btn-secondary {
+  @apply btn border-2 border-primary bg-card text-primary;
+  box-shadow:
+    0 3px 0 var(--lavender-strong),
+    0 6px 16px rgb(var(--shadow-color) / 0.06);
+  &:hover:not(:disabled) {
+    background-color: var(--lavender);
+  }
+  &:active:not(:disabled) {
+    box-shadow: 0 1px 0 var(--lavender-strong);
+  }
+}
+
+@utility btn-text {
+  @apply inline-flex min-h-14 items-center justify-center rounded-xl px-4 text-lg font-semibold text-primary underline underline-offset-4;
+}
+
+/* A quieter, still large button for secondary actions (lavender, no border). */
+@utility btn-soft {
+  @apply btn bg-lavender text-primary;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: var(--soft-font-size, 1rem);
+  min-height: var(--btn-min-height, 3.5rem);
+  border: 2px solid var(--soft-edge, transparent);
+  &:hover:not(:disabled) {
+    background-color: var(--lavender-strong);
+  }
+}
+
+/* A big tappable card (home actions, topics, lessons). */
+@utility card-action {
+  display: flex;
+  width: 100%;
+  min-height: 4.5rem;
+  border-radius: 1.5rem;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+  padding: 1rem 1.25rem;
+  color: var(--foreground);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  border: 2px solid var(--card-edge, transparent);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    border-color 120ms ease;
+  &:hover {
+    border-color: var(--lavender-strong);
+    box-shadow: var(--shadow-raised);
+  }
+  &:active {
+    transform: translateY(2px);
+  }
+  &:focus-visible {
+    outline: 4px solid var(--primary);
+    outline-offset: 3px;
+  }
+}
+
+/* Text inputs: big, rounded, clear border. */
+@utility field {
+  width: 100%;
+  border-radius: 1.25rem;
+  border: 2px solid var(--muted);
+  background: var(--card);
+  padding: 1rem;
+  font-size: 1.25rem;
+  &:focus-visible {
+    outline: 4px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+
+/* A rounded "Try asking" chip; still at least 3rem tall for easy tapping. */
+@utility chip {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 2px solid var(--chip-edge, var(--lavender-strong));
+  background: var(--card);
+  padding: 0.5rem 1.125rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary);
+  box-shadow: 0 2px 6px rgb(var(--shadow-color) / 0.06);
+  transition:
+    background-color 120ms ease,
+    transform 120ms ease;
+  &:hover {
+    background: var(--lavender);
+  }
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+/* ---------- Tiny motion, all switched off under prefers-reduced-motion ---------- */
+
+@keyframes th-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes th-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes th-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(55 48 163 / 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 0.6rem rgb(55 48 163 / 0);
+  }
+}
+
+@keyframes th-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4%);
+  }
+}
+
+@keyframes th-scan {
+  from {
+    top: 0%;
+  }
+  to {
+    top: 100%;
+  }
+}
+
+@utility animate-fade-in {
+  animation: th-fade-in 400ms ease-out both;
+}
+
+@utility animate-scale-in {
+  animation: th-scale-in 300ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+@utility animate-pulse-ring {
+  animation: th-pulse 1.8s ease-in-out infinite;
+}
+
+@utility animate-float {
+  animation: th-float 4s ease-in-out infinite;
+}
+
+/* A thin glowing line that sweeps down its positioned parent. */
+@utility scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0.25rem;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, transparent, #7c74ff, transparent);
+  box-shadow: 0 0 1rem 0.25rem rgb(124 116 255 / 0.45);
+  animation: th-scan 1.6s ease-in-out infinite alternate;
+}
+
+/* Waiting: three dots taking turns. */
+@keyframes th-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-0.2rem);
+  }
+}
+
+@utility waiting-dot {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  animation: th-dot 1.2s ease-in-out infinite;
+}
+
+/* Magic lens: 📷 → 🔎 → ✨ → ✓ light up in turn (4 × 0.6s). */
+@keyframes th-lens-step {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  12%,
+  30% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@utility lens-step {
+  animation: th-lens-step 2.4s ease-in-out infinite;
+}
+
+/* The found spot. `spotlight` dims the rest of the picture (its parent clips the shadow);
+   `lens-ring` is a soft glowing ring that breathes gently. */
+@utility spotlight {
+  border-radius: 9999px;
+  box-shadow: 0 0 0 9999px rgb(28 27 46 / 0.42);
+}
+
+@keyframes th-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0.3rem rgb(124 116 255 / 0.5),
+      0 0 1.4rem 0.5rem rgb(124 116 255 / 0.7);
+  }
+  50% {
+    box-shadow:
+      0 0 0 0.55rem rgb(124 116 255 / 0.3),
+      0 0 2rem 0.8rem rgb(124 116 255 / 0.55);
+  }
+}
+
+@utility lens-ring {
+  border-radius: 9999px;
+  border: 0.25rem solid #fff;
+  outline: 0.2rem solid #6d64f0;
+  box-shadow:
+    0 0 0 0.3rem rgb(124 116 255 / 0.5),
+    0 0 1.4rem 0.5rem rgb(124 116 255 / 0.7);
+  animation: th-glow 2s ease-in-out infinite;
+}
+
+/* "You did it!": a short, one-off burst of confetti from the middle. Hidden under reduced motion. */
+@keyframes th-confetti {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(1);
+  }
+}
+
+@utility confetti-piece {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.6rem;
+  height: 0.9rem;
+  border-radius: 0.15rem;
+  opacity: 0;
+  animation: th-confetti 1.4s cubic-bezier(0.15, 0.7, 0.3, 1) both;
+}
+
+@keyframes th-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility animate-pop {
+  animation: th-pop 500ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+/* ---------- Landing page "magic lens" demo (a gentle 9s loop) ---------- */
+
+@keyframes lens-shot {
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  8%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lens-scanning {
+  0%,
+  10% {
+    opacity: 0;
+  }
+  14%,
+  48% {
+    opacity: 1;
+  }
+  52%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes lens-found {
+  0%,
+  50% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  58% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  64%,
+  94% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes lens-dim {
+  0%,
+  50% {
+    opacity: 0;
+  }
+  58%,
+  94% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Without animation (reduced motion) these show the final frame: lens on the button, "Tap here". */
+@utility lens-shot {
+  animation: lens-shot 9s ease-out infinite;
+}
+@utility lens-scanning {
+  opacity: 0;
+  animation: lens-scanning 9s ease-in-out infinite;
+}
+@utility lens-found {
+  animation: lens-found 9s ease-out infinite;
+}
+@utility lens-dim {
+  animation: lens-dim 9s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .scan-line,
+  .confetti-piece {
+    display: none;
+  }
+}
