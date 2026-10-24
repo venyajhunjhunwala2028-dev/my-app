@@ -3,11 +3,10 @@ import Link from "next/link";
 import Mascot from "@/components/Mascot";
 import { OlderPersonPhone } from "@/components/illustrations";
 
-/** Things people want to get done, in their own words. "Is this message safe?" opens the scam check. */
 export const TRY_ASKING = [
-  "I want to send a photo to my daughter",
-  "I want to post something on Instagram",
-  "Is this message safe?",
+  "How do I post on Instagram?",
+  "How do I send a photo on WhatsApp?",
+  "Why isn't my Wi-Fi working?",
 ] as const;
 
 export const askHref = (q: string) => `/app?q=${encodeURIComponent(q)}`;
@@ -29,11 +28,8 @@ export default function Hero() {
         {/* A real GET form: /app?q=… asks the question straight away (works without JavaScript too). */}
         <Form action="/app" className="card flex flex-col gap-3 p-4 sm:p-5">
           <label htmlFor="landing-question" className="text-xl font-bold">
-            <span aria-hidden="true">💬 </span>What would you like to do?
+            <span aria-hidden="true">💬 </span>What would you like help with?
           </label>
-          <p id="landing-question-hint" className="text-lg text-muted">
-            Say it in your own words. There are no silly questions.
-          </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
               id="landing-question"
@@ -42,9 +38,8 @@ export default function Hero() {
               required
               maxLength={500}
               autoComplete="off"
-              aria-describedby="landing-question-hint"
               enterKeyHint="go"
-              placeholder="e.g. send a photo to my daughter"
+              placeholder="e.g. send a photo"
               className="min-h-16 w-full flex-1 rounded-2xl border-2 border-border bg-background px-5 text-xl placeholder:text-muted/80 focus:border-primary"
             />
             <button type="submit" className="btn-primary min-h-16 px-8 text-xl sm:w-auto">
