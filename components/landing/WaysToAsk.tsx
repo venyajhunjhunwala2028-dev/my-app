@@ -1,45 +1,49 @@
 import Link from "next/link";
+import { Arrow, CONTAINER, SectionHeader } from "./ui";
 
 const WAYS = [
-  { id: "ask", verb: "Ask", emoji: "💬", text: "Type your question", href: "/app?start=ask" },
-  { id: "speak", verb: "Speak", emoji: "🎙️", text: "Tell me what you need", href: "/app?start=speak" },
-  { id: "show", verb: "Show", emoji: "📷", text: "Upload a screenshot", href: "/app/press" },
+  { id: "ask", n: "01", verb: "Ask", text: "Type your question", more: "In your own words, as if you were asking a friend.", href: "/app?start=ask" },
+  { id: "speak", n: "02", verb: "Speak", text: "Tell me what you need", more: "Tap the microphone and just say it. No typing.", href: "/app?start=speak" },
+  { id: "show", n: "03", verb: "Show", text: "Upload a screenshot", more: "I'll point to exactly what to tap.", href: "/app/press" },
 ] as const;
 
-/** Ask / Speak / Show. Show is the most prominent: it is the thing other helpers can't do. */
+/** Ask / Speak / Show as an editorial row of three. Show is emphasised: it is what other helpers can't do. */
 export default function WaysToAsk() {
   return (
-    <section aria-labelledby="ways-title" className="mx-auto w-full max-w-6xl px-4 py-12">
-      <h2 id="ways-title" className="mb-8 text-3xl font-extrabold sm:text-4xl">
-        Three easy ways to get help
-      </h2>
-      <ul className="grid gap-5 md:grid-cols-3 md:items-stretch">
+    <section id="ways" aria-labelledby="ways-title" className={`${CONTAINER} scroll-mt-24 py-20 sm:py-28`}>
+      <SectionHeader label="How to ask" id="ways-title" title="Three ways to ask." />
+      <ul className="mt-12 grid grid-cols-1 gap-4 md:mt-16 md:grid-cols-3 md:gap-5">
         {WAYS.map((w) => {
           const show = w.id === "show";
           return (
-            <li key={w.id} className={show ? "md:-my-3" : ""}>
+            <li key={w.id}>
               <Link
                 href={w.href}
                 aria-label={`${w.verb}: ${w.text}`}
-                className={`group flex h-full flex-col gap-3 rounded-[1.5rem] p-6 transition-transform hover:-translate-y-1 active:translate-y-0 ${
+                className={`group flex h-full min-h-[19rem] flex-col gap-4 rounded-[1.2rem] p-6 transition-colors sm:p-8 ${
                   show
-                    ? "bg-primary text-primary-foreground shadow-raised"
-                    : "bg-card text-foreground shadow-card"
+                    ? "blue-field text-white"
+                    : "border border-border bg-card text-foreground hover:border-foreground"
                 }`}
               >
+                <span className="flex items-baseline justify-between">
+                  <span aria-hidden="true" className={`font-display text-6xl font-medium tracking-[-0.04em] ${show ? "text-white" : "text-primary"}`}>
+                    {w.n}
+                  </span>
+                  {show && (
+                    <span className="rounded-full bg-white/15 px-3 py-1 text-sm font-semibold text-white">Most helpful</span>
+                  )}
+                </span>
+                <span className="mt-auto flex flex-col gap-2">
+                  <span className={`text-base font-semibold ${show ? "text-on-blue-muted" : "text-muted"}`}>{w.verb}</span>
+                  <span className="font-display text-3xl leading-tight font-medium tracking-[-0.02em]">{w.text}</span>
+                  <span className={`text-lg ${show ? "text-on-blue-muted" : "text-muted"}`}>{w.more}</span>
+                </span>
                 <span
                   aria-hidden="true"
-                  className={`flex h-16 w-16 items-center justify-center rounded-2xl text-4xl ${show ? "bg-white/15" : "bg-lavender"}`}
+                  className="text-lg font-semibold underline decoration-2 underline-offset-[6px]"
                 >
-                  {w.emoji}
-                </span>
-                <span className={`text-sm font-extrabold tracking-[0.15em] uppercase ${show ? "text-white/85" : "text-primary"}`}>
-                  {w.verb}
-                </span>
-                <span className="text-2xl font-bold">{w.text}</span>
-                {show && <span className="text-lg text-white/90">I&apos;ll point to exactly what to tap.</span>}
-                <span aria-hidden="true" className="mt-auto pt-2 text-lg font-bold">
-                  Start →
+                  Start <Arrow />
                 </span>
               </Link>
             </li>

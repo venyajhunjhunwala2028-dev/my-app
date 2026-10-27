@@ -4,11 +4,12 @@ export type MascotMood = "ready" | "thinking" | "success" | "warning" | "celebra
 
 export const MASCOT_MOODS: readonly MascotMood[] = ["ready", "thinking", "success", "warning", "celebrate"];
 
-const INK = "#1c1b2e";
-const BODY = "#5a50d8";
-const BODY_SHADE = "#463cc0";
-const FACE = "#f4f2ff";
-const CHEEK = "#f6b7c4";
+// Flat and minimal: one electric-blue shape with white features, no shading or blush.
+const INK = "#0a0a0a";
+const BODY = "#3d33f0";
+const FEATURE = "#ffffff";
+const GREEN = "#1d6b3a";
+const AMBER = "#f5c54a";
 
 function Eyes({ mood }: { mood: MascotMood }) {
   switch (mood) {
@@ -16,60 +17,56 @@ function Eyes({ mood }: { mood: MascotMood }) {
     case "celebrate":
       // Happy, closed "smiling" eyes.
       return (
-        <g fill="none" stroke={INK} strokeWidth="4.5" strokeLinecap="round">
-          <path d="M37 55 q6 -7 12 0" />
-          <path d="M71 55 q6 -7 12 0" />
+        <g fill="none" stroke={FEATURE} strokeWidth="5" strokeLinecap="round">
+          <path d="M38 57 q6 -7 12 0" />
+          <path d="M78 57 q6 -7 12 0" />
         </g>
       );
     case "thinking":
       // Looking up and to the side.
       return (
-        <g fill={INK}>
-          <circle cx="45" cy="52" r="5.5" />
-          <circle cx="79" cy="52" r="5.5" />
-          <circle cx="46.5" cy="50" r="1.8" fill="#fff" />
-          <circle cx="80.5" cy="50" r="1.8" fill="#fff" />
+        <g fill={FEATURE}>
+          <circle cx="49" cy="51" r="6" />
+          <circle cx="85" cy="51" r="6" />
         </g>
       );
     case "warning":
       // Worried: round eyes under slanted brows.
       return (
         <g>
-          <g fill="none" stroke={INK} strokeWidth="3.5" strokeLinecap="round">
-            <path d="M35 44 l12 -4" />
-            <path d="M85 44 l-12 -4" />
+          <g fill="none" stroke={FEATURE} strokeWidth="4" strokeLinecap="round">
+            <path d="M36 45 l12 -4" />
+            <path d="M92 45 l-12 -4" />
           </g>
-          <g fill={INK}>
-            <circle cx="43" cy="55" r="5.5" />
-            <circle cx="77" cy="55" r="5.5" />
+          <g fill={FEATURE}>
+            <circle cx="44" cy="56" r="6" />
+            <circle cx="84" cy="56" r="6" />
           </g>
         </g>
       );
     default:
       return (
-        <g fill={INK}>
-          <ellipse cx="43" cy="55" rx="5.5" ry="6.5" />
-          <ellipse cx="77" cy="55" rx="5.5" ry="6.5" />
-          <circle cx="44.8" cy="52.6" r="1.9" fill="#fff" />
-          <circle cx="78.8" cy="52.6" r="1.9" fill="#fff" />
+        <g fill={FEATURE}>
+          <ellipse cx="44" cy="55" rx="6" ry="7.5" />
+          <ellipse cx="84" cy="55" rx="6" ry="7.5" />
         </g>
       );
   }
 }
 
 function Mouth({ mood }: { mood: MascotMood }) {
-  const stroke = { fill: "none", stroke: INK, strokeWidth: 4, strokeLinecap: "round" as const };
+  const stroke = { fill: "none", stroke: FEATURE, strokeWidth: 5, strokeLinecap: "round" as const };
   switch (mood) {
     case "thinking":
-      return <path d="M52 73 q5 -2 14 1" {...stroke} />;
+      return <path d="M56 76 q5 -2 14 1" {...stroke} />;
     case "warning":
-      return <path d="M50 76 q10 -7 20 0" {...stroke} />;
+      return <path d="M54 79 q10 -7 20 0" {...stroke} />;
     case "success":
-      return <path d="M46 69 q14 12 28 0" {...stroke} />;
+      return <path d="M50 72 q14 12 28 0" {...stroke} />;
     case "celebrate":
-      return <path d="M45 68 q15 0 30 0 q-2 13 -15 13 q-13 0 -15 -13z" fill={INK} />;
+      return <path d="M49 71 q15 0 30 0 q-2 13 -15 13 q-13 0 -15 -13z" fill={FEATURE} />;
     default:
-      return <path d="M49 70 q11 9 22 0" {...stroke} />;
+      return <path d="M53 73 q11 9 22 0" {...stroke} />;
   }
 }
 
@@ -88,27 +85,27 @@ function Accessory({ mood }: { mood: MascotMood }) {
       // A green check badge (the thumbs-up moment).
       return (
         <g>
-          <circle cx="104" cy="88" r="13" fill="#2e8a50" stroke="#fff" strokeWidth="3" />
-          <path d="M98 88 l4.5 4.5 l8 -9" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="106" cy="92" r="13" fill={GREEN} stroke="#fff" strokeWidth="3" />
+          <path d="M100 92 l4.5 4.5 l8 -9" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
         </g>
       );
     case "warning":
       return (
         <g>
-          <circle cx="106" cy="22" r="12" fill="#f5c54a" stroke="#fff" strokeWidth="3" />
-          <path d="M106 15 v8" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
-          <circle cx="106" cy="28.5" r="2" fill={INK} />
+          <circle cx="108" cy="22" r="12" fill={AMBER} stroke="#fff" strokeWidth="3" />
+          <path d="M108 15 v8" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
+          <circle cx="108" cy="28.5" r="2" fill={INK} />
         </g>
       );
     case "celebrate":
       return (
         <g>
-          <rect x="8" y="14" width="7" height="7" rx="1.5" fill="#f5c54a" transform="rotate(20 11 17)" />
-          <rect x="104" y="8" width="7" height="7" rx="1.5" fill="#2e8a50" transform="rotate(-15 107 11)" />
-          <circle cx="114" cy="36" r="4" fill="#e7798f" />
-          <circle cx="6" cy="44" r="3.5" fill="#7c74ff" />
-          <path d="M20 4 l3 6" stroke="#e7798f" strokeWidth="3" strokeLinecap="round" />
-          <path d="M96 0 l-2 6" stroke="#f5c54a" strokeWidth="3" strokeLinecap="round" />
+          <rect x="8" y="14" width="7" height="7" rx="1.5" fill={AMBER} transform="rotate(20 11 17)" />
+          <rect x="106" y="8" width="7" height="7" rx="1.5" fill={INK} transform="rotate(-15 109 11)" />
+          <circle cx="116" cy="36" r="4" fill={BODY} />
+          <circle cx="6" cy="44" r="3.5" fill={INK} />
+          <path d="M20 4 l3 6" stroke={BODY} strokeWidth="3" strokeLinecap="round" />
+          <path d="M98 0 l-2 6" stroke={AMBER} strokeWidth="3" strokeLinecap="round" />
         </g>
       );
     default:
@@ -117,7 +114,7 @@ function Accessory({ mood }: { mood: MascotMood }) {
 }
 
 /**
- * Tech Helper's friendly companion: a soft indigo shape with a kind face.
+ * Tech Helper's friendly companion: a flat electric-blue shape with a simple white face.
  * Decorative (aria-hidden) unless `label` is given. Optional speech bubble as children.
  */
 export default function Mascot({
@@ -132,7 +129,7 @@ export default function Mascot({
   /** Width in rem, so it grows with the text size setting. */
   size?: number;
   label?: string;
-  /** Gentle idle bob; always off under prefers-reduced-motion. */
+  /** A barely-there idle breath; always off under prefers-reduced-motion. */
   animate?: boolean;
   /** A speech bubble, e.g. "Hi! I'm your Tech Helper 👋". */
   children?: ReactNode;
@@ -152,22 +149,10 @@ export default function Mascot({
     >
       {label && <title>{label}</title>}
       {/* Antenna: a little "digital" touch. */}
-      <path d="M64 16 v-8" stroke={BODY_SHADE} strokeWidth="4" strokeLinecap="round" />
-      <circle cx="64" cy="7" r="5" fill="#f5c54a" />
-      {/* Body: a soft rounded squircle. */}
-      <path
-        d="M64 16 C100 16 112 30 112 62 C112 96 98 112 64 112 C30 112 16 96 16 62 C16 30 28 16 64 16Z"
-        fill={BODY}
-      />
-      <path
-        d="M24 82 C30 102 44 112 64 112 C84 112 98 102 104 82 C96 96 82 102 64 102 C46 102 32 96 24 82Z"
-        fill={BODY_SHADE}
-        opacity="0.6"
-      />
-      {/* Face plate */}
-      <rect x="27" y="34" width="74" height="56" rx="26" fill={FACE} />
-      <ellipse cx="35" cy="70" rx="5.5" ry="3.5" fill={CHEEK} opacity={mood === "warning" ? 0 : 0.9} />
-      <ellipse cx="93" cy="70" rx="5.5" ry="3.5" fill={CHEEK} opacity={mood === "warning" ? 0 : 0.9} />
+      <path d="M64 18 v-9" stroke={BODY} strokeWidth="5" strokeLinecap="round" />
+      <circle cx="64" cy="7" r="5.5" fill={BODY} />
+      {/* Body: one flat, soft squircle. */}
+      <path d="M64 18 C104 18 116 32 116 64 C116 98 102 114 64 114 C26 114 12 98 12 64 C12 32 24 18 64 18Z" fill={BODY} />
       <Eyes mood={mood} />
       <Mouth mood={mood} />
       <Accessory mood={mood} />
@@ -178,7 +163,7 @@ export default function Mascot({
   return (
     <div className={`flex items-end gap-3 ${className}`}>
       {figure}
-      <p className="relative mb-6 rounded-3xl rounded-bl-md bg-card px-5 py-3 text-lg font-semibold shadow-card">
+      <p className="relative mb-6 rounded-3xl rounded-bl-md border border-border bg-card px-5 py-3 text-lg font-semibold">
         {children}
       </p>
     </div>

@@ -1,57 +1,89 @@
 @import "tailwindcss";
 
 /*
- * Tech Helper design system: calm, warm and friendly; large text, big rounded cards and buttons.
- * Every text/background pair below meets WCAG AA (4.5:1) at body size; most meet AAA.
- * 20px+ base text and 56px+ buttons for older learners.
+ * Tech Helper design system: editorial and calm. A pure white canvas, black ink, one electric blue,
+ * huge grotesk headlines, pill buttons and hairline cards. Large text (20px+ base) and 56px+ buttons
+ * for older learners.
+ *
+ * Contrast (WCAG 2.x):
+ *   ink #0A0A0A on white 19.8:1 · muted #525252 on white 7.8:1 (on #F4F4F1 7.1:1)
+ *   white on blue #3D33F0 7.17:1 (AAA) · blue text on white 7.17:1 · blue on lavender #EEEDFE 6.2:1
+ *   white on night #0B0B12 19.6:1 · night-muted #A1A1B5 on night 7.7:1 · on-blue-muted #E6E4FF on blue 5.8:1
+ *   safe/caution/danger text on their surfaces 5.8–6.3:1, and on white 6.5–7.1:1.
  */
 :root {
-  /* Page and text */
-  --background: #faf9f6; /* warm off-white */
-  --foreground: #1c1b2e; /* 16:1 on background */
-  --muted: #4a4860; /* 8.6:1 on background */
+  /* Canvas and ink */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --muted: #525252;
   --card: #ffffff;
-  --border: #dcd9ec;
+  /* Hairlines are decorative; anything that must be seen to be used (inputs) uses --input-border. */
+  --border: #e5e5e5;
+  --border-strong: #d4d4d4;
+  --input-border: #737373; /* 4.7:1 on white */
+  --surface: #f4f4f1; /* light warm grey: alternate sections */
 
-  /* One strong primary: deep indigo, 10:1 with white text */
-  --primary: #3730a3;
-  --primary-strong: #28237c; /* pressed / 3D edge */
+  /* Electric blue: the one strong colour */
+  --primary: #3d33f0;
+  --primary-strong: #2a21c9; /* hover / pressed, 9.7:1 with white */
   --primary-foreground: #ffffff;
 
-  /* Soft lavender secondary surface (indigo text on it is 9:1) */
-  --lavender: #eeecfb;
-  --lavender-strong: #dcd8f7;
-  --surface: #f1effa;
+  /* A very light blue tint (the old "lavender" name is kept so every screen keeps working) */
+  --lavender: #eeedfe;
+  --lavender-strong: #d9d6fc;
 
-  /* Danger (soft red, muted) — kept as --warning for existing screens */
-  --warning: #a8261b; /* 6.6:1 on its surface */
+  /* Deep night surface for dark sections */
+  --night: #0b0b12;
+  --night-muted: #a1a1b5;
+  --night-line: #26263a;
+  --on-blue-muted: #e6e4ff;
+
+  /* Danger (muted red) — kept as --warning for existing screens */
+  --warning: #a8261b;
   --warning-surface: #fdeeec;
   --danger: var(--warning);
   --danger-surface: var(--warning-surface);
   /* Scam check results: always shown with an icon and a word too, never colour alone. */
-  --safe: #1d6b3a; /* soft green; 6:1 on its surface */
+  --safe: #1d6b3a;
   --safe-surface: #e8f5ec;
-  --caution: #8a4a06; /* warm yellow/amber; 6:1 on its surface */
+  --caution: #8a4a06;
   --caution-surface: #fff5d6;
   --caution-accent: #f5c54a; /* decorative only, never text */
 
-  --shadow-color: 40 36 110;
-  --shadow-card: 0 1px 2px rgb(var(--shadow-color) / 0.06), 0 8px 28px rgb(var(--shadow-color) / 0.08);
-  --shadow-raised: 0 2px 4px rgb(var(--shadow-color) / 0.08), 0 16px 40px rgb(var(--shadow-color) / 0.14);
+  /* Shadows: barely there. Edges come from hairlines, not drop shadows, so both tokens carry a 1px ring
+     (anything on the white canvas that used a soft shadow still gets a visible edge). */
+  --shadow-color: 10 10 30;
+  --shadow-card: 0 0 0 1px rgb(var(--shadow-color) / 0.08), 0 1px 2px rgb(var(--shadow-color) / 0.04);
+  --shadow-raised: 0 0 0 1px rgb(var(--shadow-color) / 0.07), 0 12px 32px rgb(var(--shadow-color) / 0.08);
+
+  /* Fonts: next/font sets --nf-* on <html> (app/layout.tsx); the rest are fallbacks, Devanagari included. */
+  --font-text-stack:
+    var(--nf-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans",
+    "Noto Sans Devanagari", sans-serif;
+  --font-display-stack:
+    var(--nf-inter-tight, "Inter Tight"), var(--nf-inter, "Inter"), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", sans-serif;
+  --font-brand-stack: var(--nf-brand, "Fredoka"), ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-ink: var(--foreground);
   --color-muted: var(--muted);
   --color-card: var(--card);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-surface: var(--surface);
   --color-primary: var(--primary);
   --color-primary-strong: var(--primary-strong);
   --color-primary-foreground: var(--primary-foreground);
   --color-lavender: var(--lavender);
   --color-lavender-strong: var(--lavender-strong);
-  --color-surface: var(--surface);
+  --color-night: var(--night);
+  --color-night-muted: var(--night-muted);
+  --color-night-line: var(--night-line);
+  --color-on-blue-muted: var(--on-blue-muted);
   --color-warning: var(--warning);
   --color-warning-surface: var(--warning-surface);
   --color-danger: var(--danger);
@@ -63,10 +95,9 @@
   --color-caution-accent: var(--caution-accent);
   --shadow-card: var(--shadow-card);
   --shadow-raised: var(--shadow-raised);
-  /* Friendly, rounded system fonts first; no web font download. */
-  --font-sans:
-    ui-rounded, "SF Pro Rounded", "Nunito", "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system,
-    Roboto, "Noto Sans", "Noto Sans Devanagari", sans-serif;
+  --font-sans: var(--font-text-stack);
+  --font-display: var(--font-display-stack);
+  --font-brand: var(--font-brand-stack);
 }
 
 html {
@@ -84,22 +115,25 @@ html[data-text-size="xl"] {
 }
 
 /*
- * Easy Mode (Settings): at least the "Large" text size, darker text and borders, a stronger primary,
- * no grey text, and visible edges on every card and button. Set on <html> before the first paint.
+ * Easy Mode (Settings): at least the "Large" text size, pure black text, no grey text, thicker
+ * borders on every card and button, and a stronger blue. Set on <html> before the first paint.
  * Components also show fewer things in Easy Mode (see useEasyMode).
  */
 html[data-easy="on"] {
   font-size: 24px;
-  --foreground: #0f0e1f; /* 19:1 on background */
-  --muted: #1f1d33; /* no grey text: as dark as body text */
-  --border: #5a5680;
-  --primary: #2a2391; /* 12:1 with white text */
-  --primary-strong: #1b1666;
-  --lavender: #e6e3fa;
-  --lavender-strong: #b9b3ee;
-  --card-edge: #5a5680;
-  --soft-edge: #2a2391;
-  --chip-edge: #2a2391;
+  --foreground: #000000; /* 21:1 */
+  --muted: #1a1a1a; /* no grey text: nearly as dark as body text */
+  --border: #404040;
+  --border-strong: #262626;
+  --input-border: #000000;
+  --primary: #2a20d8; /* 9.1:1 with white */
+  --primary-strong: #1d15a8;
+  --lavender: #e8e6fe;
+  --lavender-strong: #b8b3f7;
+  --card-edge: #404040;
+  --soft-edge: #2a20d8;
+  --chip-edge: #2a20d8;
+  --edge-width: 2px;
   --btn-min-height: 4rem;
   --soft-font-size: 1.125rem;
 }
@@ -116,7 +150,7 @@ html[data-easy="on"] body {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans);
+  font-family: var(--font-text-stack);
   line-height: 1.5;
   /* Long words and pasted links wrap instead of making the page wider than the phone. */
   overflow-wrap: anywhere;
@@ -125,7 +159,8 @@ body {
 h1,
 h2,
 h3 {
-  letter-spacing: -0.01em;
+  font-family: var(--font-display-stack);
+  letter-spacing: -0.02em;
   text-wrap: balance;
 }
 
@@ -134,98 +169,184 @@ h3 {
   outline-offset: 3px;
 }
 
-/* ---------- Cards ---------- */
+/* ---------- Editorial type ---------- */
+
+/* Huge, tight display headline (the landing hero). Shrinks with the screen so long words never overflow. */
+@utility display-xl {
+  font-family: var(--font-display-stack);
+  font-size: min(max(2.75rem, 8vw), 15vw, 8rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  overflow-wrap: normal;
+}
+
+/* Section headlines. */
+@utility display-lg {
+  font-family: var(--font-display-stack);
+  font-size: min(max(2.25rem, 5vw), 12vw, 5rem);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  overflow-wrap: normal;
+}
+
+@utility display-md {
+  font-family: var(--font-display-stack);
+  font-size: min(max(1.75rem, 3vw), 10vw, 3rem);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
+/* Small editorial label, Metabrand style: "(Review)". */
+@utility label-paren {
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+/* ---------- Cards: white, 24px corners, hairline edge ---------- */
 
 @utility card {
-  border-radius: 1.5rem;
+  border-radius: 1.2rem;
   background: var(--card);
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 1px 2px rgb(var(--shadow-color) / 0.04);
   padding: 1.5rem;
-  /* Only Easy Mode gives cards an edge. */
-  border: 2px solid var(--card-edge, transparent);
+  /* Easy Mode makes the edge darker and thicker. */
+  border: var(--edge-width, 1px) solid var(--card-edge, var(--border));
 }
 
 @utility card-lavender {
-  border-radius: 1.5rem;
+  border-radius: 1.2rem;
   background: var(--lavender);
   padding: 1.5rem;
 }
 
-/* ---------- Buttons: very large, rounded, soft shadow, pressed state ---------- */
+/* Images, mockups and colour fields: 24px corners, nothing else. */
+@utility media-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.2rem;
+}
+
+/* The electric-blue field behind phone mockups, with a soft glow in the middle. */
+@utility blue-field {
+  background-color: var(--primary);
+  background-image:
+    radial-gradient(60% 55% at 50% 45%, rgb(120 112 255 / 0.55), transparent 70%),
+    radial-gradient(90% 70% at 50% 110%, rgb(20 12 140 / 0.45), transparent 70%);
+  color: #ffffff;
+}
+
+/* The deep night surface for dark sections, with an optional blue glow. */
+@utility night-field {
+  background-color: var(--night);
+  background-image: radial-gradient(70% 60% at 85% 0%, rgb(61 51 240 / 0.28), transparent 65%);
+  color: #ffffff;
+}
+
+/* ---------- Buttons: pills, solid or outlined, no fake 3D ---------- */
 
 @utility btn {
   display: inline-flex;
   width: 100%;
   align-items: center;
   justify-content: center;
-  border-radius: 1.25rem;
-  padding: 0.75rem 1.25rem;
+  /* A full pill for any one-line button (all are 5rem tall or less); a soft rounded box if text wraps. */
+  border-radius: 2.5rem;
+  padding: 0.75rem 1.5rem;
   font-size: 1.125rem;
-  font-weight: 700;
+  font-weight: 600;
   /* Easy Mode buttons are a little taller, on top of the bigger text. */
   min-height: var(--btn-min-height, 3.5rem);
-  line-height: 1.3;
+  line-height: 1.25;
+  text-align: center;
   text-decoration: none;
   cursor: pointer;
   transition:
     transform 120ms ease,
-    box-shadow 120ms ease,
-    background-color 120ms ease;
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
   &:focus-visible {
     outline: 4px solid var(--primary);
     outline-offset: 3px;
   }
   &:active:not(:disabled) {
-    transform: translateY(2px);
+    transform: scale(0.98);
   }
   &:disabled {
-    opacity: 0.6;
+    opacity: 0.55;
     cursor: default;
   }
 }
 
 @utility btn-primary {
   @apply btn bg-primary text-primary-foreground;
-  box-shadow:
-    0 4px 0 var(--primary-strong),
-    0 8px 20px rgb(var(--shadow-color) / 0.18);
   &:hover:not(:disabled) {
-    background-color: #312a96;
-  }
-  &:active:not(:disabled) {
-    box-shadow:
-      0 1px 0 var(--primary-strong),
-      0 3px 8px rgb(var(--shadow-color) / 0.18);
+    background-color: var(--primary-strong);
   }
 }
 
 @utility btn-secondary {
-  @apply btn border-2 border-primary bg-card text-primary;
-  box-shadow:
-    0 3px 0 var(--lavender-strong),
-    0 6px 16px rgb(var(--shadow-color) / 0.06);
+  @apply btn border-2 border-foreground bg-card text-foreground;
+  &:hover:not(:disabled) {
+    background-color: var(--surface);
+  }
+}
+
+/* A white pill for dark or blue backgrounds. */
+@utility btn-light {
+  @apply btn bg-white text-foreground;
   &:hover:not(:disabled) {
     background-color: var(--lavender);
   }
-  &:active:not(:disabled) {
-    box-shadow: 0 1px 0 var(--lavender-strong);
+  &:focus-visible {
+    outline-color: #ffffff;
   }
 }
 
 @utility btn-text {
-  @apply inline-flex min-h-14 items-center justify-center rounded-xl px-4 text-lg font-semibold text-primary underline underline-offset-4;
+  @apply inline-flex min-h-14 items-center justify-center rounded-full px-4 text-lg font-semibold text-primary underline decoration-2 underline-offset-4;
 }
 
-/* A quieter, still large button for secondary actions (lavender, no border). */
+/* Editorial text CTA: ink, a thick underline and an arrow ("Open the app →"). */
+@utility link-cta {
+  display: inline-block;
+  min-height: 3rem;
+  padding-block: 0.6rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: inherit;
+  white-space: nowrap;
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+  border-radius: 0.25rem;
+  /* The arrow is an inline-block, so the underline runs under the words only. */
+  & > [aria-hidden="true"] {
+    display: inline-block;
+    margin-left: 0.35em;
+    transition: transform 150ms ease;
+  }
+  &:hover > [aria-hidden="true"] {
+    transform: translateX(0.25rem);
+  }
+}
+
+/* A quieter, still large button for secondary actions (light blue tint, no border). */
 @utility btn-soft {
   @apply btn bg-lavender text-primary;
   justify-content: flex-start;
   gap: 0.25rem;
-  padding: 0.75rem 1rem;
+  border-radius: 1.2rem;
+  padding: 0.75rem 1.25rem;
   text-align: left;
   font-size: var(--soft-font-size, 1rem);
   min-height: var(--btn-min-height, 3.5rem);
-  border: 2px solid var(--soft-edge, transparent);
+  border: var(--edge-width, 2px) solid var(--soft-edge, transparent);
   &:hover:not(:disabled) {
     background-color: var(--lavender-strong);
   }
@@ -236,25 +357,24 @@ h3 {
   display: flex;
   width: 100%;
   min-height: 4.5rem;
-  border-radius: 1.5rem;
+  border-radius: 1.2rem;
   background: var(--card);
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 1px 2px rgb(var(--shadow-color) / 0.04);
   padding: 1rem 1.25rem;
   color: var(--foreground);
   text-align: left;
   text-decoration: none;
   cursor: pointer;
-  border: 2px solid var(--card-edge, transparent);
+  border: var(--edge-width, 1px) solid var(--card-edge, var(--border));
   transition:
     transform 120ms ease,
-    box-shadow 120ms ease,
-    border-color 120ms ease;
+    box-shadow 150ms ease,
+    border-color 150ms ease;
   &:hover {
-    border-color: var(--lavender-strong);
-    box-shadow: var(--shadow-raised);
+    border-color: var(--foreground);
   }
   &:active {
-    transform: translateY(2px);
+    transform: scale(0.99);
   }
   &:focus-visible {
     outline: 4px solid var(--primary);
@@ -262,42 +382,43 @@ h3 {
   }
 }
 
-/* Text inputs: big, rounded, clear border. */
+/* Text inputs: big, rounded, clear border (4.7:1, so the box is easy to see). */
 @utility field {
   width: 100%;
-  border-radius: 1.25rem;
-  border: 2px solid var(--muted);
+  border-radius: 1rem;
+  border: 2px solid var(--input-border);
   background: var(--card);
-  padding: 1rem;
+  padding: 1rem 1.25rem;
   font-size: 1.25rem;
   &:focus-visible {
+    border-color: var(--primary);
     outline: 4px solid var(--primary);
     outline-offset: 2px;
   }
 }
 
-/* A rounded "Try asking" chip; still at least 3rem tall for easy tapping. */
+/* A pill "Try asking" chip with a hairline edge; still at least 3rem tall for easy tapping. */
 @utility chip {
   display: inline-flex;
   min-height: 3rem;
   align-items: center;
   gap: 0.5rem;
   border-radius: 9999px;
-  border: 2px solid var(--chip-edge, var(--lavender-strong));
+  border: var(--edge-width, 1.5px) solid var(--chip-edge, var(--border-strong));
   background: var(--card);
   padding: 0.5rem 1.125rem;
   font-size: 1rem;
-  font-weight: 600;
-  color: var(--primary);
-  box-shadow: 0 2px 6px rgb(var(--shadow-color) / 0.06);
+  font-weight: 500;
+  color: var(--foreground);
   transition:
-    background-color 120ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
     transform 120ms ease;
   &:hover {
-    background: var(--lavender);
+    border-color: var(--foreground);
   }
   &:active {
-    transform: translateY(1px);
+    transform: scale(0.98);
   }
 }
 
@@ -328,20 +449,21 @@ h3 {
 @keyframes th-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgb(55 48 163 / 0.45);
+    box-shadow: 0 0 0 0 rgb(61 51 240 / 0.45);
   }
   50% {
-    box-shadow: 0 0 0 0.6rem rgb(55 48 163 / 0);
+    box-shadow: 0 0 0 0.6rem rgb(61 51 240 / 0);
   }
 }
 
+/* The mascot's idle motion: a barely-there breath, not a cartoon bounce. */
 @keyframes th-float {
   0%,
   100% {
-    transform: translateY(0);
+    transform: scale(1);
   }
   50% {
-    transform: translateY(-4%);
+    transform: scale(1.025);
   }
 }
 
@@ -367,7 +489,8 @@ h3 {
 }
 
 @utility animate-float {
-  animation: th-float 4s ease-in-out infinite;
+  animation: th-float 5s ease-in-out infinite;
+  transform-origin: 50% 100%;
 }
 
 /* A thin glowing line that sweeps down its positioned parent. */
@@ -377,8 +500,8 @@ h3 {
   right: 0;
   height: 0.25rem;
   border-radius: 9999px;
-  background: linear-gradient(90deg, transparent, #7c74ff, transparent);
-  box-shadow: 0 0 1rem 0.25rem rgb(124 116 255 / 0.45);
+  background: linear-gradient(90deg, transparent, #5b52ff, transparent);
+  box-shadow: 0 0 1rem 0.25rem rgb(61 51 240 / 0.5);
   animation: th-scan 1.6s ease-in-out infinite alternate;
 }
 
@@ -427,30 +550,30 @@ h3 {
    `lens-ring` is a soft glowing ring that breathes gently. */
 @utility spotlight {
   border-radius: 9999px;
-  box-shadow: 0 0 0 9999px rgb(28 27 46 / 0.42);
+  box-shadow: 0 0 0 9999px rgb(10 10 20 / 0.5);
 }
 
 @keyframes th-glow {
   0%,
   100% {
     box-shadow:
-      0 0 0 0.3rem rgb(124 116 255 / 0.5),
-      0 0 1.4rem 0.5rem rgb(124 116 255 / 0.7);
+      0 0 0 0.3rem rgb(61 51 240 / 0.45),
+      0 0 1.4rem 0.5rem rgb(61 51 240 / 0.6);
   }
   50% {
     box-shadow:
-      0 0 0 0.55rem rgb(124 116 255 / 0.3),
-      0 0 2rem 0.8rem rgb(124 116 255 / 0.55);
+      0 0 0 0.55rem rgb(61 51 240 / 0.28),
+      0 0 2rem 0.8rem rgb(61 51 240 / 0.5);
   }
 }
 
 @utility lens-ring {
   border-radius: 9999px;
   border: 0.25rem solid #fff;
-  outline: 0.2rem solid #6d64f0;
+  outline: 0.2rem solid #3d33f0;
   box-shadow:
-    0 0 0 0.3rem rgb(124 116 255 / 0.5),
-    0 0 1.4rem 0.5rem rgb(124 116 255 / 0.7);
+    0 0 0 0.3rem rgb(61 51 240 / 0.45),
+    0 0 1.4rem 0.5rem rgb(61 51 240 / 0.6);
   animation: th-glow 2s ease-in-out infinite;
 }
 

@@ -1,23 +1,23 @@
 import type { ReactNode } from "react";
 
-/** Shared editorial palette: flat, muted, one line weight. */
+/** Shared palette: flat, electric blue and ink, one line weight (matches globals.css). */
 export const P = {
-  ink: "#2b2850",
+  ink: "#0a0a0a",
   line: 3,
-  indigo: "#5a50d8",
-  indigoDark: "#3730a3",
-  lavender: "#e4e1fa",
-  lavenderDeep: "#cbc6f3",
+  indigo: "#3d33f0",
+  indigoDark: "#2a21c9",
+  lavender: "#eeedfe",
+  lavenderDeep: "#d9d6fc",
   skin: "#f0c7a6",
   skinShade: "#dba889",
-  hairGrey: "#d9d6e0",
+  hairGrey: "#e5e5e5",
   hairDark: "#5b4a42",
-  green: "#cfe8d6",
-  greenDeep: "#2e8a50",
-  yellow: "#fbe7ad",
+  green: "#e8f5ec",
+  greenDeep: "#1d6b3a",
+  yellow: "#f4f4f1",
   yellowDeep: "#f5c54a",
-  red: "#f8d3cd",
-  redDeep: "#c2412f",
+  red: "#fdeeec",
+  redDeep: "#a8261b",
   white: "#ffffff",
 } as const;
 
