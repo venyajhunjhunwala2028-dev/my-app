@@ -18,6 +18,7 @@ export const en = {
   "common.thinking": "Thinking, one moment…",
   "common.iUnderstand": "I understand",
   "common.thankYou": "Thank you.",
+  "common.close": "Close",
 
   // Home
   "home.title": "Tech Helper",
@@ -182,6 +183,8 @@ export const en = {
 
   // Guide page
   "guide.notFound": "I couldn't find that guide",
+  "guide.explanationLabel": "Explained simply",
+  "success.label": "All done",
   "answer.anotherWay": "Another way",
   "answer.showMeHow": "Show me how",
   /** Names the language in `LocaleInfo.otherLanguage`: Hindi for English, English for every other locale. */
@@ -302,6 +305,7 @@ export const en = {
 
   // Is this a scam?
   "scam.title": "Is this a scam?",
+  "scam.label": "Safety",
   "scam.lead": "Not sure about a message? Send it to me. I'll help you check.",
   "scam.upload": "Upload screenshot",
   "scam.paste": "Paste message",

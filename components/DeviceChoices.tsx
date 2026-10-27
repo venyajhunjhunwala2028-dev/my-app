@@ -35,17 +35,17 @@ export default function DeviceChoices({
                 type="button"
                 aria-pressed={on}
                 aria-describedby={device === suggested ? guessId : undefined}
-                className={`card-action h-full min-h-[7rem] flex-col items-center justify-center gap-1 px-3 text-center ${
-                  on ? "border-primary! bg-lavender" : ""
+                className={`card-action h-full min-h-[7.5rem] flex-col items-center justify-center gap-1.5 px-3 text-center ${
+                  on ? "border-primary! bg-primary! text-primary-foreground!" : ""
                 }`}
                 onClick={() => onChoose(device)}
               >
-                <span aria-hidden="true" className="text-5xl leading-none">
+                <span aria-hidden="true" className="text-[2.75rem] leading-none">
                   {devicePicture(device)}
                 </span>
-                <span className="text-xl leading-tight font-extrabold [overflow-wrap:normal]">
+                <span className="font-display text-xl leading-tight font-medium tracking-[-0.01em] [overflow-wrap:normal]">
                   {on && (
-                    <span aria-hidden="true" className="mr-1 text-primary">
+                    <span aria-hidden="true" className="mr-1">
                       ✓
                     </span>
                   )}
@@ -53,7 +53,7 @@ export default function DeviceChoices({
                 </span>
                 {/* Read as the button's description, not its name. */}
                 {device === suggested && (
-                  <span id={guessId} aria-hidden="true" className="text-base font-semibold text-primary">
+                  <span id={guessId} aria-hidden="true" className={`text-base font-semibold ${on ? "text-on-blue-muted" : "text-primary"}`}>
                     {t("devices.guess")}
                   </span>
                 )}

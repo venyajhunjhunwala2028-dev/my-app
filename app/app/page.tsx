@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
+import { Suspense, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import AskBox, { type AskBoxHandle } from "@/components/AskBox";
+import { AppHeader, Paren, RowContent } from "@/components/app/AppShell";
 import AskFamilySheet from "@/components/AskFamilySheet";
 import CallFamily from "@/components/CallFamily";
 import InstallGuide from "@/components/InstallGuide";
@@ -11,8 +12,8 @@ import Mascot from "@/components/Mascot";
 import { FirstRunDevice, MyDevicesCard } from "@/components/MyDevices";
 import MyGuides from "@/components/MyGuides";
 import SavedGuides from "@/components/SavedGuides";
-import Settings from "@/components/Settings";
 import TechConfidence from "@/components/TechConfidence";
+import { CONTAINER } from "@/components/landing/ui";
 import { useEasyMode } from "@/lib/easyMode";
 import { useT } from "@/lib/i18n";
 import { isSpeechSupported } from "@/lib/speech/speech";
@@ -64,63 +65,46 @@ function hasStartParams(): boolean {
 type CardText = { tag: string; title: string; desc: string };
 
 /**
- * The inside of a big home card. The card is named by its title and described by the line under it,
- * so screen readers hear a short name; the emoji and the small tag are decoration.
+ * The inside of a numbered "way to ask" card: a big number, the title and a line under it (the blue Show card
+ * also ends with its small tag as a call to action).
+ * The card is named by its title and described by the line, so screen readers hear a short name; the number,
+ * emoji and tag are decoration.
  */
-function CardBody({ id, emoji, text, prominent = false }: { id: string; emoji: string; text: CardText; prominent?: boolean }) {
-  const icon = (
-    <span
-      aria-hidden="true"
-      className={`flex shrink-0 items-center justify-center rounded-2xl ${
-        prominent ? "h-16 w-16 bg-white text-4xl" : "h-12 w-12 bg-lavender text-3xl"
-      }`}
-    >
-      {emoji}
-    </span>
-  );
+function WayBody({ id, n, emoji, text, blue = false }: { id: string; n: number; emoji: string; text: CardText; blue?: boolean }) {
   return (
     <>
-      {prominent ? (
-        <span className="flex w-full items-center justify-between">
-          {icon}
-          <span aria-hidden="true" className="text-4xl font-bold">
-            →
-          </span>
-        </span>
-      ) : (
-        icon
-      )}
-      <span className="flex min-w-0 flex-col gap-1">
-        <span
-          aria-hidden="true"
-          className={`text-sm font-extrabold tracking-[0.15em] uppercase ${prominent ? "text-white/85" : "text-primary"}`}
-        >
-          {text.tag}
-        </span>
-        <span id={`${id}-title`} className={`font-extrabold leading-tight ${prominent ? "text-2xl" : "text-xl"}`}>
-          {text.title}
-        </span>
-        <span id={`${id}-desc`} className={`leading-snug ${prominent ? "text-lg text-white/90" : "text-base text-muted"}`}>
-          {text.desc}
-        </span>
+      <span
+        aria-hidden="true"
+        className={`display-num shrink-0 text-[2.75rem] whitespace-nowrap @[40rem]:text-[3.5rem] ${blue ? "text-white" : "text-primary"}`}
+      >
+        {String(n).padStart(2, "0")}
       </span>
-    </>
-  );
-}
-
-/** A smaller card in the "More ways I can help" grid. */
-function TileBody({ emoji, children }: { emoji: string; children: ReactNode }) {
-  return (
-    <>
-      <span aria-hidden="true" className="text-3xl">
+      <span
+        aria-hidden="true"
+        className={`absolute top-4 right-4 flex h-11 w-11 items-center justify-center rounded-full text-xl sm:top-5 sm:right-5 ${blue ? "bg-white" : "bg-surface"}`}
+      >
         {emoji}
       </span>
-      <span className="text-lg leading-tight font-bold">{children}</span>
+      <span className="flex w-full min-w-0 flex-1 flex-col gap-1 @[40rem]:mt-auto">
+        <span id={`${id}-title`} className="font-display text-[1.5rem] leading-[1.1] font-medium tracking-[-0.02em] [overflow-wrap:normal]">
+          {text.title}
+        </span>
+        <span id={`${id}-desc`} className={`text-base leading-snug ${blue ? "text-on-blue-muted" : "text-muted"}`}>
+          {text.desc}
+        </span>
+        {blue && (
+          <span aria-hidden="true" className="mt-2 text-lg font-semibold underline decoration-2 underline-offset-[6px]">
+            {text.tag} <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+          </span>
+        )}
+      </span>
     </>
   );
 }
 
-const TILE = "card-action h-full min-h-[6.5rem] flex-col items-start justify-between gap-2";
+const WAY = "card-action group relative h-full flex-col items-start gap-3 p-5 @[40rem]:min-h-[13rem] sm:p-6";
+const WAY_LISTENING = "border-warning! bg-warning-surface!";
+const LG_COLS: Record<number, string> = { 2: "lg:grid-cols-2", 3: "lg:grid-cols-3", 4: "lg:grid-cols-4" };
 
 export default function Home() {
   const router = useRouter();
@@ -134,7 +118,6 @@ export default function Home() {
   // Which big card started the microphone, so only that one says "Listening…".
   const [micCard, setMicCard] = useState<"speak" | "talk">("speak");
   const [askFamily, setAskFamily] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   // Easy Mode shows the main things only; "More" shows the rest of the home screen.
   const [moreOpen, setMoreOpen] = useState(false);
   const full = !easy || moreOpen;
@@ -157,55 +140,63 @@ export default function Home() {
   const allExamples = [t("home.example.1"), t("home.example.2"), t("home.example.3"), t("home.example.4"), t("home.example.5")];
   const examples = easy ? allExamples.slice(0, 3) : allExamples;
 
+  // Ask, Speak, Talk me through it and Show, numbered in the order they show.
+  const ways = 2 + (speech ? 1 : 0) + (canTalk ? 1 : 0);
+  let n = 0;
+
   return (
     <InstallGuide>
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-10 px-4 pt-6 pb-12">
-        <header className="flex flex-col gap-5">
-          <h1 className="text-xl font-extrabold text-primary">{t("home.title")}</h1>
-          <Mascot mood="ready" size={4.5}>
-            {t("home.greeting")}
-            <span aria-hidden="true"> 👋</span>
-          </Mascot>
-          <p className="text-3xl leading-tight font-extrabold">{t("home.hero")}</p>
-        </header>
-
-        <FirstRunDevice onChosen={() => setDeviceVersion((v) => v + 1)} />
-
-        {/* "Help me do this" (a task, guided on the learner's own phone) is kept apart from "Teach me how this works". */}
-        <section aria-labelledby="help-me-heading" className="card flex flex-col gap-4 p-5 shadow-raised">
-          <div className="flex flex-col gap-1">
-            <h2 id="help-me-heading" className="text-sm font-extrabold tracking-[0.15em] text-primary uppercase">
-              <span aria-hidden="true" className="mr-1">
-                🛠️
+      <AppHeader />
+      <main className={`${CONTAINER} flex flex-1 flex-col gap-16 pt-4 pb-24 lg:gap-24 lg:pt-8`}>
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-10">
+          <header className="flex flex-col gap-6 lg:col-span-5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <h1 className="label-paren text-base">
+                <Paren>{t("home.title")}</Paren>
+              </h1>
+              <span className="flex items-center gap-2">
+                <Mascot mood="ready" size={2.4} />
+                <span className="text-lg font-medium">
+                  {t("home.greeting")}
+                  <span aria-hidden="true" className="whitespace-nowrap"> 👋</span>
+                </span>
               </span>
-              {t("home.helpMe")}
-            </h2>
-            <p className="text-lg text-muted">{t("home.helpMeDesc")}</p>
+            </div>
+            <p className="display-md lg:display-lg max-w-[17ch]">{t("home.hero")}</p>
+          </header>
+
+          <div className="flex flex-col gap-8 lg:col-span-7 lg:pt-2">
+            <FirstRunDevice onChosen={() => setDeviceVersion((v) => v + 1)} />
+            {/* "Help me do this" (a task, guided on the learner's own phone) is kept apart from "Teach me how this works". */}
+            <section aria-labelledby="help-me-heading" className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1">
+                <h2 id="help-me-heading" className="label-paren text-base">
+                  <Paren>{t("home.helpMe")}</Paren>
+                </h2>
+                <p className="text-lg text-muted">{t("home.helpMeDesc")}</p>
+              </div>
+              <AskBox ref={askBox} big examples={examples} showSpeakButton={false} onListeningChange={setListening} />
+            </section>
           </div>
-          <AskBox ref={askBox} big examples={examples} showSpeakButton={false} onListeningChange={setListening} />
-        </section>
+        </div>
         {/* Search params are only known per request, so they are read inside Suspense (Cache Components). */}
         <Suspense fallback={null}>
           <StartFromUrl askBox={askBox} />
         </Suspense>
 
-        <nav aria-label={t("home.navLabel")} className="flex flex-col gap-8">
-          {/* Two columns only when there is room at the chosen text size. */}
+        <nav aria-label={t("home.navLabel")} className="flex flex-col gap-16 lg:gap-24">
+          {/* Ask · Speak · Talk · Show as an editorial numbered row; Show, the one other helpers can't do, is blue. */}
           <div className="@container">
-            <ul className="grid grid-cols-1 gap-4 @[17rem]:grid-cols-2">
-              <li className={speech ? undefined : "col-span-full"}>
+            <ul className={`grid grid-cols-1 gap-3 @[40rem]:grid-cols-2 lg:gap-4 ${LG_COLS[ways]}`}>
+              <li className={speech ? undefined : "col-span-full lg:col-span-1"}>
                 <button
                   type="button"
                   aria-labelledby="card-ask-title"
                   aria-describedby="card-ask-desc"
-                  className="card-action h-full flex-col gap-3"
+                  className={WAY}
                   onClick={() => askBox.current?.focusQuestion()}
                 >
-                  <CardBody
-                    id="card-ask"
-                    emoji="💬"
-                    text={{ tag: t("home.tag.ask"), title: t("home.ask"), desc: t("home.askDesc") }}
-                  />
+                  <WayBody id="card-ask" n={++n} emoji="💬" text={{ tag: t("home.tag.ask"), title: t("home.ask"), desc: t("home.askDesc") }} />
                 </button>
               </li>
               {speech && (
@@ -215,14 +206,15 @@ export default function Home() {
                     aria-pressed={speakListening}
                     aria-labelledby="card-speak-title"
                     aria-describedby="card-speak-desc"
-                    className={`card-action h-full flex-col gap-3 ${speakListening ? "border-warning! bg-warning-surface" : ""}`}
+                    className={`${WAY} ${speakListening ? WAY_LISTENING : ""}`}
                     onClick={() => {
                       setMicCard("speak");
                       askBox.current?.toggleSpeak();
                     }}
                   >
-                    <CardBody
+                    <WayBody
                       id="card-speak"
+                      n={++n}
                       emoji="🎤"
                       text={{
                         tag: t("home.tag.speak"),
@@ -234,20 +226,21 @@ export default function Home() {
                 </li>
               )}
               {canTalk && (
-                <li className="col-span-full">
+                <li className="col-span-full lg:col-span-1">
                   <button
                     type="button"
                     aria-pressed={talkListening}
                     aria-labelledby="card-talk-title"
                     aria-describedby="card-talk-desc"
-                    className={`card-action h-full flex-col gap-3 ${talkListening ? "border-warning! bg-warning-surface" : ""}`}
+                    className={`${WAY} ${talkListening ? WAY_LISTENING : ""}`}
                     onClick={() => {
                       setMicCard("talk");
                       askBox.current?.talk();
                     }}
                   >
-                    <CardBody
+                    <WayBody
                       id="card-talk"
+                      n={++n}
                       emoji="🎙️"
                       text={{
                         tag: t("home.tag.talk"),
@@ -258,164 +251,146 @@ export default function Home() {
                   </button>
                 </li>
               )}
-              <li className="col-span-full">
+              <li className="col-span-full lg:col-span-1">
                 <Link
                   href="/app/press"
                   aria-labelledby="card-show-title"
                   aria-describedby="card-show-desc"
-                  className="card-action flex-col gap-3 bg-primary! p-5 text-primary-foreground! shadow-raised"
+                  className="blue-field group relative flex h-full w-full flex-col items-start gap-3 rounded-[1.2rem] p-5 text-left transition-transform active:scale-[0.99] @[40rem]:min-h-[13rem] sm:p-6"
                 >
-                  <CardBody
+                  <WayBody
                     id="card-show"
+                    n={++n}
                     emoji="📷"
-                    prominent
+                    blue
                     text={{ tag: t("home.tag.show"), title: t("home.press"), desc: t("home.pressDesc") }}
                   />
                 </Link>
               </li>
-              {full && (
-                <li className="col-span-full">
-                  <Link
-                    href="/app/learn"
-                    aria-labelledby="card-learn-title"
-                    aria-describedby="card-learn-desc"
-                    className="card-action flex-col gap-3 border-lavender-strong! bg-lavender!"
-                  >
-                    <CardBody
-                      id="card-learn"
-                      emoji="🧑‍🏫"
-                      text={{ tag: t("home.tag.learn"), title: t("home.learn"), desc: t("home.learnDesc") }}
-                    />
-                  </Link>
-                </li>
-              )}
-              {full && (
-                <li className="col-span-full">
-                  <Link
-                    href="/app/camera"
-                    aria-labelledby="card-camera-title"
-                    aria-describedby="card-camera-desc"
-                    className="card-action flex-col gap-3"
-                  >
-                    <CardBody
-                      id="card-camera"
-                      emoji="📸"
-                      text={{ tag: t("home.tag.camera"), title: t("home.camera"), desc: t("home.cameraDesc") }}
-                    />
-                  </Link>
-                </li>
-              )}
             </ul>
           </div>
 
           {full && (
-            <section id="home-more" aria-labelledby="more-heading" className="flex flex-col gap-4">
-              <h2 id="more-heading" className="text-2xl font-bold">
-                {t("home.more")}
-              </h2>
-              <div className="@container">
-                <ul className="grid grid-cols-1 gap-3 @[17rem]:grid-cols-2">
+            <div className="grid grid-cols-1 gap-16 lg:grid-cols-12 lg:gap-10">
+              {/* The two bigger ways to learn, as large hairline rows. */}
+              <ul className="hairline-list lg:col-span-4">
+                <li>
+                  <Link
+                    href="/app/learn"
+                    aria-labelledby="card-learn-title"
+                    aria-describedby="card-learn-desc"
+                    className="row-action group min-h-[6.5rem] py-5"
+                  >
+                    <RowContent
+                      icon="🧑‍🏫"
+                      title={t("home.learn")}
+                      desc={t("home.learnDesc")}
+                      titleId="card-learn-title"
+                      descId="card-learn-desc"
+                      titleClassName="font-display text-[1.6rem] font-medium tracking-[-0.02em]"
+                    />
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/app/camera"
+                    aria-labelledby="card-camera-title"
+                    aria-describedby="card-camera-desc"
+                    className="row-action group min-h-[6.5rem] py-5"
+                  >
+                    <RowContent
+                      icon="📸"
+                      title={t("home.camera")}
+                      desc={t("home.cameraDesc")}
+                      titleId="card-camera-title"
+                      descId="card-camera-desc"
+                      titleClassName="font-display text-[1.6rem] font-medium tracking-[-0.02em]"
+                    />
+                  </Link>
+                </li>
+              </ul>
+
+              <section id="home-more" aria-labelledby="more-heading" className="flex flex-col gap-5 lg:col-span-8">
+                <h2 id="more-heading" className="display-md">
+                  {t("home.more")}
+                </h2>
+                <ul className="hairline-list md:grid md:grid-cols-2 md:gap-x-8">
                   <li>
-                    <Link href="/app/scam" className={TILE}>
-                      <TileBody emoji="🔐">{t("home.scam")}</TileBody>
+                    <Link href="/app/scam" className="row-action group">
+                      <RowContent icon="🔐" title={t("home.scam")} />
                     </Link>
                   </li>
                   <li>
-                    <Link href="/app/camera" className={TILE}>
-                      <TileBody emoji="📸">{t("home.camera")}</TileBody>
+                    <Link href="/app/camera" className="row-action group">
+                      <RowContent icon="📸" title={t("home.camera")} />
                     </Link>
                   </li>
                   <li>
-                    <Link href="/app/practice" className={TILE}>
-                      <TileBody emoji="🎯">{t("home.practice")}</TileBody>
+                    <Link href="/app/practice" className="row-action group">
+                      <RowContent icon="🎯" title={t("home.practice")} />
                     </Link>
                   </li>
                   <li>
-                    <Link href="/app/library" className={TILE}>
-                      <TileBody emoji="📚">{t("home.library")}</TileBody>
+                    <Link href="/app/library" className="row-action group">
+                      <RowContent icon="📚" title={t("home.library")} />
                     </Link>
                   </li>
                   <li>
-                    <button type="button" className={TILE} onClick={() => setAskFamily(true)}>
-                      <TileBody emoji="👨‍👩‍👧">{t("home.family")}</TileBody>
+                    <button type="button" className="row-action group" onClick={() => setAskFamily(true)}>
+                      <RowContent icon="👨‍👩‍👧" title={t("home.family")} />
                     </button>
                   </li>
                   <li>
-                    <a href="#call-family" className={TILE}>
-                      <TileBody emoji="📞">{t("home.callFamily")}</TileBody>
+                    <a href="#call-family" className="row-action group">
+                      <RowContent icon="📞" title={t("home.callFamily")} arrow="↓" />
                     </a>
                   </li>
                   <li>
-                    <a href="#my-guides" className={TILE}>
-                      <TileBody emoji="🕘">{t("history.heading")}</TileBody>
+                    <a href="#my-guides" className="row-action group">
+                      <RowContent icon="🕘" title={t("history.heading")} arrow="↓" />
                     </a>
                   </li>
                   <li>
-                    <Link href="/app/saved" className={TILE}>
-                      <TileBody emoji="⭐">{t("saved.heading")}</TileBody>
+                    <Link href="/app/saved" className="row-action group">
+                      <RowContent icon="⭐" title={t("saved.heading")} />
                     </Link>
-                  </li>
-                  <li className="col-span-full">
-                    <button
-                      type="button"
-                      aria-expanded={settingsOpen}
-                      className="card-action min-h-[4.5rem] items-center gap-3"
-                      onClick={() => setSettingsOpen((o) => !o)}
-                    >
-                      <span aria-hidden="true" className="text-3xl">
-                        ⚙️
-                      </span>
-                      <span aria-hidden="true" className="font-serif text-xl font-bold text-primary">
-                        Aa
-                      </span>
-                      <span className="text-lg font-bold">{t("settings.open")}</span>
-                    </button>
                   </li>
                 </ul>
-              </div>
-            </section>
+              </section>
+            </div>
           )}
           {easy && (
-            // Easy Mode: Settings stays one tap away (Easy Mode is turned off there), and "More" shows the rest.
-            <div className="flex flex-col gap-3">
-              {!moreOpen && (
-                <button
-                  type="button"
-                  aria-expanded={settingsOpen}
-                  className="btn-secondary min-h-[4.5rem] text-xl"
-                  onClick={() => setSettingsOpen((o) => !o)}
-                >
-                  <span aria-hidden="true" className="mr-2">
-                    ⚙️
-                  </span>
-                  {t("settings.open")}
-                </button>
-              )}
-              <button
-                type="button"
-                aria-expanded={moreOpen}
-                aria-controls="home-more"
-                className="btn-primary min-h-[4.5rem] text-xl"
-                onClick={() => setMoreOpen((o) => !o)}
-              >
+            // Easy Mode: one More button shows the rest; Settings stays one tap away at the top.
+            <button
+              type="button"
+              aria-expanded={moreOpen}
+              aria-controls="home-more"
+              className="btn-secondary min-h-[4.5rem] text-xl"
+              onClick={() => setMoreOpen((o) => !o)}
+            >
+              <span>
                 <span aria-hidden="true" className="mr-2">
                   {moreOpen ? "▲" : "▼"}
                 </span>
                 {moreOpen ? t("home.showLess") : t("home.showMore")}
-              </button>
-            </div>
+              </span>
+            </button>
           )}
         </nav>
-        <Settings open={settingsOpen} onOpenChange={setSettingsOpen} />
-        {full && (
-          <>
-            <TechConfidence compact />
-            <MyDevicesCard />
-            <SavedGuides limit={3} />
-          </>
-        )}
-        <div id="my-guides" className="scroll-mt-4">
-          <MyGuides initial={easy ? 3 : 5} />
+
+        <div className="grid grid-cols-1 gap-16 lg:grid-cols-12 lg:gap-10">
+          {full && (
+            <div className="flex flex-col gap-16 lg:col-span-5">
+              <TechConfidence compact />
+              <MyDevicesCard />
+            </div>
+          )}
+          <div className={`flex flex-col gap-16 ${full ? "lg:col-span-7" : "lg:col-span-12"}`}>
+            {full && <SavedGuides limit={3} />}
+            <div id="my-guides" className="scroll-mt-4">
+              <MyGuides initial={easy ? 3 : 5} />
+            </div>
+          </div>
         </div>
         <div id="call-family" className="scroll-mt-4">
           {/* Easy Mode keeps the setup form behind one button until it is wanted. */}

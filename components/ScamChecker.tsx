@@ -56,8 +56,10 @@ type State =
 function NeverShare() {
   const t = useT();
   return (
-    <p className="flex gap-3 rounded-3xl bg-lavender p-4 text-xl font-semibold">
-      <span aria-hidden="true">🔒</span>
+    <p className="rounded-[1.2rem] bg-lavender p-5 text-xl leading-snug font-semibold">
+      <span aria-hidden="true" className="mr-2">
+        🔒
+      </span>
       <span>{t("scam.neverShare")}</span>
     </p>
   );
@@ -69,50 +71,55 @@ function Result({ answer, question }: { answer: ScamAnswer; question: string | n
   // Answers from before findings existed have none.
   const findings = answer.findings ?? [];
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-10">
       {question && (
         <p className="text-xl text-muted">
           {t("scam.verify.yourQuestion")} <span className="font-semibold text-foreground">{question}</span>
         </p>
       )}
+      {/* The verdict as one big editorial block: colour, an icon and a word, never colour alone. */}
       <section
         role="status"
-        className={`flex animate-scale-in flex-col gap-3 rounded-[2rem] border-4 p-5 shadow-card ${verdict.className}`}
+        className={`flex animate-scale-in flex-col gap-5 rounded-[1.2rem] border-l-[6px] p-5 sm:p-8 ${verdict.className}`}
       >
-        <div className="flex items-center gap-4">
-          <Mascot mood={verdict.mood} size={4} />
-          <h2 className="min-w-0 text-[1.65rem] leading-tight font-extrabold [overflow-wrap:normal]">
-            <span aria-hidden="true" className="mr-2">
+        <div className="flex items-start justify-between gap-4">
+          <h2 className="display-lg min-w-0 [overflow-wrap:normal]">
+            <span aria-hidden="true" className="mr-3 inline-block align-[0.05em] text-[0.8em]">
               {verdict.icon}
             </span>
             {t(verdict.word)}
           </h2>
+          <Mascot mood={verdict.mood} size={3.75} />
         </div>
         {answer.recommendation && (
-          <p data-testid="scam-recommendation" lang={answer.language} className="rounded-2xl bg-card p-4 text-2xl font-extrabold text-foreground">
+          <p
+            data-testid="scam-recommendation"
+            lang={answer.language}
+            className="rounded-[1rem] bg-card p-5 font-display text-[1.6rem] leading-tight font-medium tracking-[-0.02em] text-foreground"
+          >
             {answer.recommendation}
           </p>
         )}
       </section>
       {findings.length > 0 && (
-        <section aria-labelledby="scam-findings" className="card flex flex-col gap-3">
-          <h3 id="scam-findings" className="text-2xl font-bold">
+        <section aria-labelledby="scam-findings" className="flex flex-col gap-4">
+          <h3 id="scam-findings" className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
             {t("scam.findings")}
           </h3>
-          <ul className="flex flex-col gap-3">
+          <ul className="hairline-list">
             {findings.map((f) => (
-              <li key={f.signal} data-testid="scam-finding" data-ok={f.ok} className="flex items-start gap-3 text-xl">
+              <li key={f.signal} data-testid="scam-finding" data-ok={f.ok} className="flex items-start gap-4 py-4 text-xl leading-snug">
                 <span
                   aria-hidden="true"
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-black ${
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-black ${
                     f.ok ? "bg-safe-surface text-safe" : "bg-warning-surface text-warning"
                   }`}
                 >
                   {f.ok ? "✓" : "⚠"}
                 </span>
-                <span>
+                <span className="pt-0.5">
                   <span className="sr-only">{t(f.ok ? "scam.finding.ok" : "scam.finding.warn")} </span>
-                  <span className="font-bold">{t(SIGNAL_LABELS[f.signal])}: </span>
+                  <span className="font-semibold">{t(SIGNAL_LABELS[f.signal])}: </span>
                   <span lang={answer.language}>{f.text}</span>
                 </span>
               </li>
@@ -120,17 +127,22 @@ function Result({ answer, question }: { answer: ScamAnswer; question: string | n
           </ul>
         </section>
       )}
-      <section aria-labelledby="scam-why" className="card flex flex-col gap-4">
-        <h3 id="scam-why" className="text-2xl font-bold">
+      <section aria-labelledby="scam-why" className="flex flex-col gap-4">
+        <h3 id="scam-why" className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
           {t("scam.why")}
         </h3>
-        <ul lang={answer.language} className="flex list-disc flex-col gap-2 pl-8 text-xl">
+        <ul lang={answer.language} className="hairline-list">
           {answer.reasons.map((reason) => (
-            <li key={reason}>{reason}</li>
+            <li key={reason} className="flex gap-4 py-4 text-xl leading-snug">
+              <span aria-hidden="true" className="text-muted">
+                —
+              </span>
+              <span>{reason}</span>
+            </li>
           ))}
         </ul>
-        <h3 className="text-2xl font-bold">{t("scam.whatToDo")}</h3>
-        <p lang={answer.language} className="rounded-2xl bg-lavender p-4 text-xl font-semibold">
+        <h3 className="mt-4 font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">{t("scam.whatToDo")}</h3>
+        <p lang={answer.language} className="rounded-[1.2rem] bg-lavender p-5 text-xl leading-snug font-semibold">
           {answer.advice}
         </p>
       </section>
@@ -246,11 +258,11 @@ export default function ScamChecker({ initialQuestion }: { initialQuestion?: str
   if (state.kind === "answer") {
     const { verdict } = state.answer;
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-8">
         <Result answer={state.answer} question={state.question} />
         <NeverShare />
         {verdict !== "safe" && <CallFamily />}
-        <button type="button" className="btn-secondary" onClick={startAgain}>
+        <button type="button" className="btn-primary min-h-16 text-xl" onClick={startAgain}>
           {t("scam.checkElse")}
         </button>
       </div>
@@ -260,12 +272,11 @@ export default function ScamChecker({ initialQuestion }: { initialQuestion?: str
   const waiting = state.kind === "waiting";
 
   return (
-    <div className="flex flex-col gap-6">
-      <form className="flex flex-col gap-6" onSubmit={submit}>
+    <div className="flex flex-col gap-8">
+      <form className="flex flex-col gap-8" onSubmit={submit}>
         {/* First the learner's question, then the thing to check, then Check it. */}
-        <section aria-labelledby="verify-heading" className="card flex flex-col gap-4">
-          <h2 id="verify-heading" className="flex items-center gap-2 text-2xl font-extrabold">
-            <span aria-hidden="true">✅</span>
+        <section aria-labelledby="verify-heading" className="flex flex-col gap-4">
+          <h2 id="verify-heading" className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
             {t("scam.verify.heading")}
           </h2>
           <p className="text-xl text-muted">{t("scam.verify.lead")}</p>
@@ -290,44 +301,48 @@ export default function ScamChecker({ initialQuestion }: { initialQuestion?: str
             })}
           </ul>
           {question && !VERIFY_QUESTIONS.some((key) => t(key) === question) && (
-            <p className="rounded-2xl bg-lavender p-4 text-xl">
+            <p className="rounded-[1.2rem] bg-lavender p-5 text-xl">
               {t("scam.verify.yourQuestion")} <span className="font-semibold">{question}</span>
             </p>
           )}
         </section>
         {/* Its own card: the promise and the two big ways to send something. */}
-        <section className="flex flex-col gap-5 rounded-[2rem] border-2 border-safe/25 bg-safe-surface p-5 shadow-card">
-          <span aria-hidden="true" className="flex h-14 w-14 items-center justify-center rounded-2xl bg-card text-3xl shadow-card">
+        <section className="flex flex-col gap-5 rounded-[1.2rem] bg-surface p-5 sm:p-8">
+          <span aria-hidden="true" className="row-icon h-14 w-14 bg-card text-2xl">
             🔐
           </span>
-          <p className="text-2xl leading-snug font-extrabold">{t("scam.lead")}</p>
+          <p className="display-md max-w-[18ch]">{t("scam.lead")}</p>
           <div className="@container">
             <div className="grid grid-cols-1 gap-3 @[17rem]:grid-cols-2">
               <button
                 type="button"
                 aria-expanded={uploading}
                 aria-controls="scam-upload"
-                className="btn-secondary min-h-20 text-xl"
+                className="btn-secondary min-h-20 bg-card text-xl"
                 onClick={openUpload}
                 disabled={waiting}
               >
-                <span aria-hidden="true" className="mr-2">
-                  📷
+                <span>
+                  <span aria-hidden="true" className="mr-2">
+                    📷
+                  </span>
+                  {t("scam.upload")}
                 </span>
-                {t("scam.upload")}
               </button>
               <button
                 type="button"
                 aria-expanded={pasting}
                 aria-controls="scam-paste"
-                className="btn-secondary min-h-20 text-xl"
+                className="btn-secondary min-h-20 bg-card text-xl"
                 onClick={openPaste}
                 disabled={waiting}
               >
-                <span aria-hidden="true" className="mr-2">
-                  📋
+                <span>
+                  <span aria-hidden="true" className="mr-2">
+                    📋
+                  </span>
+                  {t("scam.paste")}
                 </span>
-                {t("scam.paste")}
               </button>
             </div>
           </div>
@@ -335,8 +350,8 @@ export default function ScamChecker({ initialQuestion }: { initialQuestion?: str
         <NeverShare />
 
         {pasting && (
-          <section id="scam-paste" className="card flex animate-fade-in flex-col gap-3">
-            <label htmlFor="scam-text" className="text-2xl font-bold">
+          <section id="scam-paste" className="flex animate-fade-in flex-col gap-3 border-t border-foreground pt-6">
+            <label htmlFor="scam-text" className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
               {t("scam.pasteLabel")}
             </label>
             <p className="text-xl text-muted">{t("scam.pasteHint")}</p>
@@ -351,18 +366,20 @@ export default function ScamChecker({ initialQuestion }: { initialQuestion?: str
             />
             {canReadClipboard && (
               <button type="button" className="btn-soft" onClick={() => void pasteFromClipboard()}>
-                <span aria-hidden="true" className="mr-2">
-                  📋
+                <span>
+                  <span aria-hidden="true" className="mr-2">
+                    📋
+                  </span>
+                  {t("scam.pasteClipboard")}
                 </span>
-                {t("scam.pasteClipboard")}
               </button>
             )}
           </section>
         )}
 
         {uploading && (
-          <section id="scam-upload" ref={uploadArea} className="card flex scroll-mt-4 animate-fade-in flex-col gap-3">
-            <h2 className="text-2xl font-bold">{t("scam.orScreenshot")}</h2>
+          <section id="scam-upload" ref={uploadArea} className="flex scroll-mt-4 animate-fade-in flex-col gap-4 border-t border-foreground pt-6">
+            <h2 className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">{t("scam.orScreenshot")}</h2>
             <PrivacyReminder understood={understood} onUnderstand={() => setUnderstood(true)} message={t("scam.privacy")} />
             {image ? (
               <div className="flex flex-col gap-3">
@@ -371,13 +388,13 @@ export default function ScamChecker({ initialQuestion }: { initialQuestion?: str
                 <img
                   src={`data:${image.mediaType};base64,${image.base64}`}
                   alt={t("show.yourScreenshot")}
-                  className="mx-auto block max-h-64 w-auto rounded-2xl border-2 border-lavender-strong"
+                  className="mx-auto block max-h-64 w-auto rounded-[0.9rem] border border-border"
                 />
                 <p className="text-xl font-semibold text-safe">
                   <span aria-hidden="true">✓ </span>
                   {t("scam.added")}
                 </p>
-                <button type="button" className="btn-text" onClick={() => setImage(null)}>
+                <button type="button" className="btn-text self-start px-0" onClick={() => setImage(null)}>
                   {t("scam.remove")}
                 </button>
               </div>
@@ -403,7 +420,7 @@ export default function ScamChecker({ initialQuestion }: { initialQuestion?: str
               onChange={(e) => void choose(e)}
             />
             {picture && (
-              <p role="alert" className="rounded-2xl border-2 border-warning bg-warning-surface p-4 text-xl">
+              <p role="alert" className="rounded-[1.2rem] border-l-4 border-warning bg-warning-surface p-4 text-xl">
                 {t(picture)}
               </p>
             )}
@@ -411,7 +428,7 @@ export default function ScamChecker({ initialQuestion }: { initialQuestion?: str
         )}
 
         {state.kind === "idle" && state.problem && (
-          <p role="alert" className="rounded-2xl border-2 border-warning bg-warning-surface p-4 text-xl">
+          <p role="alert" className="rounded-[1.2rem] border-l-4 border-warning bg-warning-surface p-4 text-xl">
             {t(state.problem)}
           </p>
         )}

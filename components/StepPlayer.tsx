@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, 
 import Link from "next/link";
 import AskBox, { type AskBoxHandle } from "@/components/AskBox";
 import AskFamilySheet from "@/components/AskFamilySheet";
+import { BackLink, Label as MetaLabel, Paren, RowContent } from "@/components/app/AppShell";
 import { AnswerBody, ExplainOtherLanguage } from "@/components/ExplanationView";
 import Mascot, { type MascotMood } from "@/components/Mascot";
 import PicturePicker from "@/components/PicturePicker";
@@ -133,13 +134,14 @@ function Confetti() {
 
 /** A big step button: the emoji is decoration, so screen readers hear only the words. */
 function Label({ emoji, children }: { emoji: string; children: ReactNode }) {
+  // One inline run, so a long label wraps as text instead of splitting from its emoji.
   return (
-    <>
+    <span>
       <span aria-hidden="true" className="mr-3">
         {emoji}
       </span>
       {children}
-    </>
+    </span>
   );
 }
 
@@ -167,7 +169,7 @@ function TalkPanel({
       aria-label={t("talk.label")}
       data-testid="talk-panel"
       data-phase={phase}
-      className="flex animate-fade-in flex-col gap-3 rounded-3xl border-4 border-primary bg-lavender p-4"
+      className="flex animate-fade-in flex-col gap-3 rounded-[1.2rem] border-2 border-primary bg-lavender p-5"
     >
       <p role="status" className="flex items-center gap-4 text-2xl leading-tight font-extrabold">
         <span
@@ -651,58 +653,84 @@ export default function StepPlayer({
 
   if (finished) {
     return (
-      <div className="flex flex-col items-center gap-6 text-center">
-        <div className="relative flex w-full justify-center py-8">
+      <div className="flex flex-col gap-12">
+        {/* The electric-blue moment: a huge white "You did it!" and the mascot cheering. */}
+        <section className="media-card blue-field relative flex flex-col gap-6 px-6 pt-7 pb-8 sm:px-10 sm:pt-10 sm:pb-12">
           <Confetti />
-          <span
-            data-testid="success-tick"
-            aria-hidden="true"
-            className="relative flex h-24 w-24 animate-pop items-center justify-center rounded-full bg-safe text-5xl font-black text-white shadow-raised"
-          >
-            ✓
-          </span>
-        </div>
-        <h1 className="animate-fade-in text-4xl font-extrabold">
-          <span aria-hidden="true">🎉 </span>
-          {t("success.title")}
-        </h1>
-        <div className="flex items-end gap-3 text-left">
-          <Mascot mood="celebrate" size={5} />
+          <div className="relative flex items-start justify-between gap-4">
+            <span className="flex items-center gap-3">
+              <span
+                data-testid="success-tick"
+                aria-hidden="true"
+                className="flex h-14 w-14 animate-pop items-center justify-center rounded-full bg-white text-3xl font-black text-primary"
+              >
+                ✓
+              </span>
+              <span className="text-base font-medium whitespace-nowrap text-on-blue-muted">
+                <Paren>{t("success.label")}</Paren>
+              </span>
+            </span>
+            <Mascot mood="celebrate" size={5} tone="white" />
+          </div>
+          <h1 className="display-xl relative animate-fade-in text-white">{t("success.title")}</h1>
           <p
             lang={answer.language}
-            className="mb-6 rounded-3xl rounded-bl-md bg-card px-5 py-3 text-xl font-semibold shadow-card"
+            className="relative self-start rounded-3xl rounded-tl-md bg-white px-5 py-3 text-xl font-semibold text-foreground"
           >
             {answer.title}
           </p>
-        </div>
-        <p className="text-xl text-muted">{t("success.saved")}</p>
-        <div className="flex w-full flex-col gap-3">
-          <Link href="/app" className="btn-primary min-h-20 text-2xl">
+          <p className="relative max-w-[34ch] text-xl text-on-blue-muted">{t("success.saved")}</p>
+          <Link href="/app" className="btn-light relative min-h-20 text-2xl sm:w-auto sm:self-start sm:px-14">
             {t("success.goHome")}
+            <span aria-hidden="true" className="ml-3">
+              →
+            </span>
           </Link>
-          <SaveGuideButton id={id} />
-          <button type="button" className="btn-secondary" onClick={teach}>
-            <Label emoji="🧑‍🏫">{t("success.teach")}</Label>
-          </button>
-          {/* Asks the teach-style question and opens the new guide, as Teach me does. */}
-          <AskBox ref={teachBox} showForm={false} />
-          <Link href="/app#question" className="btn-secondary">
-            {t("success.another")}
-          </Link>
-          <Link href="/app/learn" className="btn-secondary">
-            {t("success.learn")}
-          </Link>
-        </div>
-        <section aria-labelledby="helpful-heading" className="card flex w-full flex-col gap-4">
-          <h2 id="helpful-heading" className="text-2xl font-bold">
+        </section>
+
+        <ul className="hairline-list">
+          <li>
+            <SaveGuideButton id={id} row />
+          </li>
+          <li>
+            <button type="button" className="row-action group" onClick={teach}>
+              <RowContent icon="🧑‍🏫" title={t("success.teach")} />
+            </button>
+          </li>
+          <li>
+            <Link href="/app#question" className="row-action group">
+              <RowContent icon="💬" title={t("success.another")} />
+            </Link>
+          </li>
+          <li>
+            <Link href="/app/learn" className="row-action group">
+              <RowContent icon="📚" title={t("success.learn")} />
+            </Link>
+          </li>
+        </ul>
+        {/* Asks the teach-style question and opens the new guide, as Teach me does. */}
+        <AskBox ref={teachBox} showForm={false} />
+
+        <section aria-labelledby="helpful-heading" className="flex flex-col gap-4 rounded-[1.2rem] bg-surface p-5 sm:p-8">
+          <h2 id="helpful-heading" className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
             {t("success.helpful")}
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            <button type="button" className="btn-secondary" aria-pressed={helpful === true} onClick={() => answerHelpful(true)}>
+            <button
+              type="button"
+              className={helpful === true ? "btn-primary" : "btn-secondary bg-card"}
+              aria-pressed={helpful === true}
+              onClick={() => answerHelpful(true)}
+            >
               <span aria-hidden="true">👍&nbsp;</span>
               {t("common.yes")}
             </button>
-            <button type="button" className="btn-secondary" aria-pressed={helpful === false} onClick={() => answerHelpful(false)}>
+            <button
+              type="button"
+              className={helpful === false ? "btn-primary" : "btn-secondary bg-card"}
+              aria-pressed={helpful === false}
+              onClick={() => answerHelpful(false)}
+            >
               <span aria-hidden="true">👎&nbsp;</span>
               {t("common.no")}
             </button>
@@ -720,10 +748,17 @@ export default function StepPlayer({
   if (showMe) {
     return (
       <div className="flex flex-col gap-6">
-        <section aria-labelledby="show-me-heading" className="flex flex-col gap-4">
-          <h1 id="show-me-heading" className="text-3xl font-bold">
-            {t("steps.showOnScreen")}
-          </h1>
+        <BackLink onClick={() => setShowMe(false)}>{t("steps.backToMyStep")}</BackLink>
+        <section aria-labelledby="show-me-heading" className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            <MetaLabel>{t("steps.progress", { step, total })}</MetaLabel>
+            <h1 id="show-me-heading" className="display-lg max-w-[16ch]">
+              {t("steps.showOnScreen")}
+            </h1>
+            <p lang={answer.language} className="text-xl leading-snug text-muted">
+              {current.instruction}
+            </p>
+          </div>
           <ShowMeOnScreen
             instruction={current.instruction}
             lookFor={current.lookFor}
@@ -733,12 +768,6 @@ export default function StepPlayer({
             onImage={keepShot}
           />
         </section>
-        <button type="button" className="btn-secondary" onClick={() => setShowMe(false)}>
-          <span aria-hidden="true" className="mr-2">
-            ←
-          </span>
-          {t("steps.backToMyStep")}
-        </button>
       </div>
     );
   }
@@ -758,7 +787,7 @@ export default function StepPlayer({
   const waitingShot = help.kind === "waiting" ? help.shot : undefined;
 
   const backToStep = (
-    <button type="button" className="btn-secondary" onClick={closeHelp}>
+    <button type="button" className="btn-secondary bg-card" onClick={closeHelp}>
       {t("steps.backToStep")}
     </button>
   );
@@ -776,7 +805,7 @@ export default function StepPlayer({
     help.kind !== "limit" &&
     (STUCK_MODES.includes(helpMode) || (screenHelp !== null && !screenHelp.onTrack));
   const familyOffer = (
-    <div className="flex flex-col gap-3 rounded-2xl border-2 border-primary/30 bg-card p-4">
+    <div className="flex flex-col gap-3 rounded-[1.2rem] bg-card p-5">
       <p className="text-xl font-semibold">{t("askFamily.stuckLead")}</p>
       <button type="button" className="btn-primary" onClick={openFamily}>
         <Label emoji="👨‍👩‍👧">{t("askFamily.stuckOpen")}</Label>
@@ -788,33 +817,24 @@ export default function StepPlayer({
   const dot = (i: number) => (i + 1 < step ? "done" : i + 1 === step ? "current" : "todo");
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link href="/app" className="btn-text">
-          {t("common.home")}
-        </Link>
-        {step > 1 && (
-          <button type="button" className="btn-text" onClick={() => goTo(step - 1)}>
-            {t("steps.previous")}
-          </button>
-        )}
+    <div className="flex flex-1 flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-4">
+        <BackLink href="/app">{t("common.home")}</BackLink>
+        {step > 1 && <BackLink onClick={() => goTo(step - 1)}>{t("steps.previous")}</BackLink>}
       </div>
 
       <div data-testid="step-mascot" data-mood={mood} className="flex min-h-16 items-end gap-3">
-        <Mascot mood={mood} size={3.5} />
+        <Mascot mood={mood} size={3.25} />
         {cheer ? (
           <p
             role="status"
             lang={answer.language}
-            className="mb-4 animate-fade-in rounded-3xl rounded-bl-md bg-card px-5 py-3 text-xl font-semibold shadow-card"
+            className="mb-4 animate-fade-in rounded-3xl rounded-bl-md bg-lavender px-5 py-3 text-xl font-medium"
           >
             {cheer}
           </p>
         ) : (
-          <p
-            data-testid="reassurance"
-            className="mb-4 rounded-3xl rounded-bl-md bg-card px-5 py-3 text-xl font-semibold shadow-card"
-          >
+          <p data-testid="reassurance" className="mb-4 rounded-3xl rounded-bl-md bg-lavender px-5 py-3 text-xl font-medium">
             {t(REASSURANCE[(step - 1) % REASSURANCE.length])}
           </p>
         )}
@@ -824,7 +844,7 @@ export default function StepPlayer({
         <section
           role="note"
           aria-label={t("steps.safetyLabel")}
-          className="flex items-start gap-3 rounded-3xl border-2 border-warning bg-warning-surface p-4"
+          className="flex items-start gap-4 rounded-[1.2rem] border-l-4 border-warning bg-warning-surface p-5"
         >
           <Mascot mood="warning" size={3} animate={false} />
           <div className="flex flex-col gap-2">
@@ -837,74 +857,91 @@ export default function StepPlayer({
         </section>
       )}
 
-      <section aria-labelledby="step-instruction" className="card flex flex-col gap-5 p-5 shadow-raised">
-        <p lang={answer.language} className="text-lg leading-snug font-bold text-primary">
-          {answer.title}
-        </p>
-        <div className="flex flex-col gap-2">
-          {/* The dots are the progress bar's picture; screen readers hear "Step 3 of 5" from its value. */}
-          <div
-            role="progressbar"
-            aria-labelledby="step-progress"
-            aria-valuemin={0}
-            aria-valuemax={total}
-            aria-valuenow={step}
-            aria-valuetext={t("steps.progress", { step, total })}
-            className="flex flex-wrap items-center gap-3"
-          >
-            {steps.map((_, i) => (
-              <span
-                key={i}
-                data-testid="progress-dot"
-                data-state={dot(i)}
-                className={`block rounded-full ${
-                  dot(i) === "current"
-                    ? "h-7 w-7 bg-primary ring-4 ring-lavender-strong"
-                    : dot(i) === "done"
-                      ? "h-6 w-6 bg-primary"
-                      : "h-6 w-6 border-[3px] border-primary bg-transparent"
-                }`}
-              />
-            ))}
-          </div>
-          <p id="step-progress" className="text-xl font-semibold text-muted">
-            {t("steps.progress", { step, total })}
+      {/* The step: one large white card, the instruction in display type and one main action. */}
+      <section aria-labelledby="step-instruction" className="card flex flex-col gap-6 rounded-[1.6rem] p-4 sm:p-8">
+        <div className="flex flex-col gap-3">
+          <p lang={answer.language} className="label-paren text-base">
+            {answer.title}
           </p>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <p id="step-progress" className="text-lg font-semibold text-primary">
+              <Paren>{t("steps.progress", { step, total })}</Paren>
+            </p>
+            {/* The dots are the progress bar's picture; screen readers hear "Step 3 of 5" from its value. */}
+            <div
+              role="progressbar"
+              aria-labelledby="step-progress"
+              aria-valuemin={0}
+              aria-valuemax={total}
+              aria-valuenow={step}
+              aria-valuetext={t("steps.progress", { step, total })}
+              className="flex flex-wrap items-center gap-2"
+            >
+              {steps.map((_, i) => (
+                <span
+                  key={i}
+                  data-testid="progress-dot"
+                  data-state={dot(i)}
+                  className={`block h-3.5 rounded-full ${
+                    dot(i) === "current"
+                      ? "w-9 bg-primary"
+                      : dot(i) === "done"
+                        ? "w-3.5 bg-primary"
+                        : "w-3.5 border-2 border-primary bg-transparent"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
-        <h1 id="step-instruction" lang={answer.language} className="text-3xl leading-snug font-extrabold">
+        <h1 id="step-instruction" lang={answer.language} className="display-step">
           {current.instruction}
         </h1>
-        <p lang={answer.language} className="rounded-2xl bg-lavender p-4 text-xl">
-          {t("steps.lookFor", { text: current.lookFor })}
+        <p lang={answer.language} className="flex gap-3 rounded-[1.2rem] bg-lavender p-5 text-xl leading-snug">
+          <span aria-hidden="true">👀</span>
+          <span>{t("steps.lookFor", { text: current.lookFor })}</span>
         </p>
         <div className="flex flex-col gap-3">
           <button type="button" className="btn-primary min-h-20 text-2xl" onClick={() => goTo(step + 1)}>
             <Label emoji="✓">{t("steps.next")}</Label>
           </button>
-          <button type="button" className="btn-secondary min-h-16 text-xl" onClick={openShowMe}>
+          <button type="button" className="btn-secondary min-h-16 px-4 text-xl" onClick={openShowMe}>
             <Label emoji="📱">{t("steps.showWhere")}</Label>
           </button>
-          <button type="button" className="btn-secondary min-h-16 text-xl" onClick={openTrouble}>
-            <Label emoji="❓">{t("steps.stuck")}</Label>
-          </button>
-          <button type="button" className="btn-secondary min-h-16 text-xl" onClick={() => openScreen("notWhatISee")}>
-            <Label emoji="🖼️">{t("steps.notWhatISee")}</Label>
-          </button>
+          <div className="@container">
+            <div className="grid grid-cols-1 gap-3 @[30rem]:grid-cols-2">
+              <button type="button" className="btn-secondary min-h-16 px-4 text-xl" onClick={openTrouble}>
+                <Label emoji="❓">{t("steps.stuck")}</Label>
+              </button>
+              <button type="button" className="btn-secondary min-h-16 px-4 text-xl" onClick={() => openScreen("notWhatISee")}>
+                <Label emoji="🖼️">{t("steps.notWhatISee")}</Label>
+              </button>
+            </div>
+          </div>
         </div>
         {(canSpeak || talk.supported) && (
-          <div className="flex flex-col gap-3 border-t-2 border-lavender-strong pt-4">
-            {canSpeak &&
-              !talk.active &&
-              (voice === "playing" ? (
-                <button type="button" className="btn-soft min-h-16 justify-center text-xl" onClick={pause}>
-                  <Label emoji="⏸">{t("steps.pause")}</Label>
-                </button>
-              ) : (
-                <button type="button" className="btn-soft min-h-16 justify-center text-xl" onClick={play}>
-                  <Label emoji="🔊">{t("steps.play")}</Label>
-                </button>
-              ))}
-            {talk.active ? (
+          <div className="flex flex-col gap-3 border-t border-border pt-5">
+            <div className="@container">
+              <div className="grid grid-cols-1 gap-3 @[30rem]:grid-cols-2">
+                {canSpeak &&
+                  !talk.active &&
+                  (voice === "playing" ? (
+                    <button type="button" className="btn-soft min-h-16 px-4 text-lg sm:text-xl" onClick={pause}>
+                      <Label emoji="⏸">{t("steps.pause")}</Label>
+                    </button>
+                  ) : (
+                    <button type="button" className="btn-soft min-h-16 px-4 text-lg sm:text-xl" onClick={play}>
+                      <Label emoji="🔊">{t("steps.play")}</Label>
+                    </button>
+                  ))}
+                {!talk.active && talk.supported && (
+                  <button type="button" className="btn-soft min-h-16 px-4 text-lg sm:text-xl" onClick={startTalk}>
+                    <Label emoji="🎙️">{t("talk.start")}</Label>
+                  </button>
+                )}
+              </div>
+            </div>
+            {talk.active && (
               <TalkPanel
                 phase={talk.phase as Exclude<TalkPhase, "off">}
                 heard={talk.heard}
@@ -912,12 +949,6 @@ export default function StepPlayer({
                 onListenAgain={talk.listenAgain}
                 onStop={talk.stop}
               />
-            ) : (
-              talk.supported && (
-                <button type="button" className="btn-soft min-h-16 justify-center text-xl" onClick={startTalk}>
-                  <Label emoji="🎙️">{t("talk.start")}</Label>
-                </button>
-              )
             )}
             {talk.error && !talk.active && (
               <p role="status" className="text-xl">
@@ -929,20 +960,20 @@ export default function StepPlayer({
       </section>
 
       {(panel === "trouble" || panel === "troubleText") && (
-        <section aria-label={t("steps.helpLabel")} className="card-lavender flex animate-fade-in flex-col gap-4">
-          <p className="text-xl font-semibold">
+        <section aria-label={t("steps.helpLabel")} className="card-lavender flex animate-fade-in flex-col gap-4 sm:p-8">
+          <p className="text-xl font-medium">
             {t("steps.reassure.okay")} {t("steps.reassure.time")}
           </p>
-          <h2 className="text-2xl font-bold">{t("steps.troubleHeading")}</h2>
+          <h2 className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">{t("steps.troubleHeading")}</h2>
           {hasShot && <p className="text-lg text-muted">{t("steps.screen.usingLast")}</p>}
           {panel === "trouble" ? (
             <>
               {TROUBLES.map((key) => (
-                <button key={key} type="button" className="btn-secondary" onClick={() => chooseTrouble(key)}>
+                <button key={key} type="button" className="btn-secondary bg-card" onClick={() => chooseTrouble(key)}>
                   {t(key)}
                 </button>
               ))}
-              <button type="button" className="btn-secondary" onClick={() => setPanel("troubleText")}>
+              <button type="button" className="btn-secondary bg-card" onClick={() => setPanel("troubleText")}>
                 {t("steps.somethingElse")}
               </button>
             </>
@@ -970,8 +1001,8 @@ export default function StepPlayer({
       )}
 
       {panel === "screen" && (
-        <section aria-label={t("steps.helpLabel")} className="card-lavender flex animate-fade-in flex-col gap-4">
-          <h2 className="text-2xl font-bold">
+        <section aria-label={t("steps.helpLabel")} className="card-lavender flex animate-fade-in flex-col gap-4 sm:p-8">
+          <h2 className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
             <span aria-hidden="true" className="mr-2">
               {screenMode === "notWhatISee" ? "🖼️" : "📸"}
             </span>
@@ -996,7 +1027,7 @@ export default function StepPlayer({
       )}
 
       {panel === "help" && help.kind !== "idle" && (
-        <section aria-label={t("steps.helpLabel")} className="card-lavender flex animate-fade-in flex-col gap-4">
+        <section aria-label={t("steps.helpLabel")} className="card-lavender flex animate-fade-in flex-col gap-4 sm:p-8">
           {help.kind === "limit" ? (
             <SafetyNotice kind="daily_limit" />
           ) : (
@@ -1014,7 +1045,7 @@ export default function StepPlayer({
                 helpAnswer && <AnswerBody answer={helpAnswer} />
               )}
               {canSpeak && helpAnswer && helpSpeech && (
-                <button type="button" className="btn-secondary" onClick={() => playHelp(helpSpeech, helpAnswer.language)}>
+                <button type="button" className="btn-secondary bg-card" onClick={() => playHelp(helpSpeech, helpAnswer.language)}>
                   {helpPlayed ? t("steps.replayHelp") : t("steps.playHelp")}
                 </button>
               )}
@@ -1026,10 +1057,10 @@ export default function StepPlayer({
               {stillStuck && familyOffer}
               {helpAnswer && !screenHelp && (
                 <>
-                  <button type="button" className="btn-secondary" onClick={explainSimpler}>
+                  <button type="button" className="btn-secondary bg-card" onClick={explainSimpler}>
                     {t("steps.simpler")}
                   </button>
-                  <button type="button" className="btn-secondary" onClick={openShowMe}>
+                  <button type="button" className="btn-secondary bg-card" onClick={openShowMe}>
                     <Label emoji="📱">{t("steps.showWhere")}</Label>
                   </button>
                   <form className="flex flex-col gap-3" onSubmit={submitSpecific}>
@@ -1056,7 +1087,7 @@ export default function StepPlayer({
         </section>
       )}
 
-      <section aria-labelledby="more-help-heading" className="flex flex-col gap-3">
+      <section aria-labelledby="more-help-heading" className="flex flex-col gap-4 pt-2">
         {easy ? (
           <h2 id="more-help-heading">
             {/* Easy Mode: one button opens the rest of the help, so the step screen stays simple. */}
@@ -1067,55 +1098,76 @@ export default function StepPlayer({
               className="btn-secondary"
               onClick={() => setMoreOpen((o) => !o)}
             >
-              <span aria-hidden="true" className="mr-2">
-                {moreOpen ? "▲" : "▼"}
+              <span>
+                <span aria-hidden="true" className="mr-2">
+                  {moreOpen ? "▲" : "▼"}
+                </span>
+                {t("steps.moreHelp")}
               </span>
-              {t("steps.moreHelp")}
             </button>
           </h2>
         ) : (
-          <h2 id="more-help-heading" className="text-lg font-bold text-muted">
+          <h2 id="more-help-heading" className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
             {t("steps.moreHelp")}
           </h2>
         )}
         {(!easy || moreOpen) && (
-          <div id="more-help-content" className="flex flex-col gap-3">
-            {/* Two columns only when there is room at the chosen text size. */}
-            <div className="@container">
-              <div className="grid grid-cols-1 gap-3 @[17rem]:grid-cols-2">
-                <button type="button" className="btn-soft" onClick={showAgain} disabled={help.kind === "waiting"}>
-                  <Label emoji="🔁">{t("steps.showAgain")}</Label>
-                </button>
-                <button
-                  type="button"
-                  className="btn-soft"
-                  onClick={() => openScreen("checkScreen")}
-                  disabled={help.kind === "waiting"}
-                >
-                  <Label emoji="📸">{t("steps.checkScreen")}</Label>
-                </button>
-                <button type="button" className="btn-soft" onClick={openFamily}>
-                  <Label emoji="👨‍👩‍👧">{t("askFamily.open")}</Label>
-                </button>
-                <div className="col-span-full flex flex-col gap-3">
-                  <SaveGuideButton id={id} className="btn-soft" />
-                </div>
-                {canSpeak && (
-                  <>
-                    <button type="button" className="btn-soft" onClick={replay}>
-                      <Label emoji="↺">{t("steps.replay")}</Label>
-                    </button>
-                    <button type="button" className="btn-soft col-span-full" aria-pressed={slow} onClick={toggleSlow}>
-                      {/* The tick shows the setting is on without relying on colour; aria-pressed tells screen readers. */}
-                      <span aria-hidden="true">{slow ? "✓\u00a0" : "🐢\u00a0"}</span>
-                      {t("steps.slower")}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-            {onReplace && <ExplainOtherLanguage guide={guide} mode="showMeHow" step={step} onReplace={onReplace} />}
-          </div>
+          <ul id="more-help-content" className="hairline-list">
+            <li>
+              <button type="button" className="row-action group" onClick={showAgain} disabled={help.kind === "waiting"}>
+                <RowContent icon="🔁" title={t("steps.showAgain")} />
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                className="row-action group"
+                onClick={() => openScreen("checkScreen")}
+                disabled={help.kind === "waiting"}
+              >
+                <RowContent icon="📸" title={t("steps.checkScreen")} />
+              </button>
+            </li>
+            <li>
+              <button type="button" className="row-action group" onClick={openFamily}>
+                <RowContent icon="👨‍👩‍👧" title={t("askFamily.open")} />
+              </button>
+            </li>
+            <li>
+              <SaveGuideButton id={id} row />
+            </li>
+            {canSpeak && (
+              <>
+                <li>
+                  <button type="button" className="row-action group" onClick={replay}>
+                    <RowContent icon="↺" title={t("steps.replay")} arrow={null} />
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="row-action group" aria-pressed={slow} onClick={toggleSlow}>
+                    {/* The tick shows the setting is on without relying on colour; aria-pressed tells screen readers. */}
+                    <RowContent
+                      icon={slow ? "✓" : "🐢"}
+                      title={t("steps.slower")}
+                      arrow={null}
+                      extra={
+                        slow ? (
+                          <span aria-hidden="true" className="tag bg-lavender text-primary">
+                            ✓
+                          </span>
+                        ) : undefined
+                      }
+                    />
+                  </button>
+                </li>
+              </>
+            )}
+            {onReplace && (
+              <li>
+                <ExplainOtherLanguage guide={guide} mode="showMeHow" step={step} onReplace={onReplace} row />
+              </li>
+            )}
+          </ul>
         )}
       </section>
 

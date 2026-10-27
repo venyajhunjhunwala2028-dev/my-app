@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { AppPage, BackLink, PageIntro, Paren } from "@/components/app/AppShell";
 import PracticePlayer from "@/components/practice/PracticePlayer";
 import { ALL_LESSONS } from "@/lib/content/lessons";
 import { PRACTICE, type PracticeExercise } from "@/lib/content/practice";
@@ -30,89 +31,87 @@ export default function PracticePage() {
   if (open) {
     const lesson = ALL_LESSONS.find((l) => l.practiceId === open.id);
     return (
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-4 py-6">
-        <button type="button" className="btn-text self-start" onClick={() => setOpen(null)}>
-          <span aria-hidden="true" className="mr-2">
-            ←
-          </span>
-          {t("practice.all")}
-        </button>
-        <h1 className="text-3xl font-extrabold">
-          <span aria-hidden="true">{open.emoji} </span>
-          {open.title[language]}
-        </h1>
+      <AppPage back={<BackLink onClick={() => setOpen(null)}>{t("practice.all")}</BackLink>} className="gap-6!">
+        <div className="flex flex-col gap-3">
+          <p className="label-paren text-base">
+            <Paren>{t("practice.title")}</Paren>
+          </p>
+          <h1 className="display-md max-w-[18ch]">{open.title[language]}</h1>
+        </div>
         <PracticePlayer
           key={`${open.id}:${round}`}
           exercise={open}
           doneActions={
             <>
               <button type="button" className="btn-secondary" onClick={() => start(open)}>
-                <span aria-hidden="true" className="mr-2">
-                  🔁
+                <span>
+                  <span aria-hidden="true" className="mr-2">
+                    🔁
+                  </span>
+                  {t("practice.again")}
                 </span>
-                {t("practice.again")}
               </button>
               {lesson && (
                 <Link href={lessonHref(lesson.id)} className="btn-secondary">
-                  <span aria-hidden="true" className="mr-2">
-                    🧑‍🏫
+                  <span>
+                    <span aria-hidden="true" className="mr-2">
+                      🧑‍🏫
+                    </span>
+                    {t("practice.learnMore")}
                   </span>
-                  {t("practice.learnMore")}
                 </Link>
               )}
-              <button type="button" className="btn-secondary" onClick={() => setOpen(null)}>
+              <button type="button" className="btn-text self-center" onClick={() => setOpen(null)}>
                 {t("practice.all")}
               </button>
             </>
           }
         />
-      </main>
+      </AppPage>
     );
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-6">
-      <Link href="/app" className="btn-text self-start">
-        {t("common.backHome")}
-      </Link>
-      <h1 className="text-3xl font-extrabold">
-        <span aria-hidden="true">🎯 </span>
-        {t("practice.title")}
-      </h1>
-      <p className="text-xl">{t("practice.intro")}</p>
-      <p className="self-start rounded-2xl border-2 border-caution/40 bg-caution-surface px-4 py-1.5 text-base font-bold text-caution">
-        <span aria-hidden="true">🧪 </span>
-        {t("practice.label")}
-      </p>
-      <ul className="flex flex-col gap-3">
+    <AppPage back={<BackLink href="/app">{t("common.backHome")}</BackLink>}>
+      <div className="flex flex-col gap-5">
+        <PageIntro label={t("home.tag.learn")} title={t("practice.title")} lead={t("practice.intro")} />
+        <p className="tag self-start bg-caution-surface px-4 py-2 text-base whitespace-normal text-caution">
+          <span aria-hidden="true">🧪 </span>
+          {t("practice.label")}
+        </p>
+      </div>
+      <ul className="hairline-list">
         {PRACTICE.map((exercise) => (
           <li key={exercise.id}>
             <button
               type="button"
               aria-describedby={`practice-${exercise.id}-desc`}
-              className="card-action items-center gap-4"
+              className="row-action group py-5"
               onClick={() => start(exercise)}
             >
-              <span aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-lavender text-3xl">
+              <span aria-hidden="true" className="row-icon">
                 {exercise.emoji}
               </span>
               <span className="flex min-w-0 flex-1 flex-col gap-1">
-                <span className="text-xl leading-tight font-extrabold">{exercise.title[language]}</span>
+                <span className="font-display text-[1.5rem] leading-tight font-medium tracking-[-0.02em]">{exercise.title[language]}</span>
                 {/* Heard as the button's description, not its name. */}
-                <span id={`practice-${exercise.id}-desc`} aria-hidden="true" className="text-base text-muted">
+                <span id={`practice-${exercise.id}-desc`} aria-hidden="true" className="text-base leading-snug text-muted">
                   {exercise.intro[language]}
                 </span>
               </span>
               {completed.has(exercise.id) && (
-                <span className="shrink-0 rounded-full bg-safe-surface px-3 py-1 text-lg text-safe">
+                <span className="tag shrink-0 bg-safe-surface text-lg text-safe">
                   <span aria-hidden="true">✓&nbsp;</span>
                   <span>{t("common.done")}</span>
                 </span>
               )}
+              <span aria-hidden="true" className="row-arrow">
+                →
+              </span>
             </button>
           </li>
         ))}
       </ul>
-    </main>
+    </AppPage>
   );
 }

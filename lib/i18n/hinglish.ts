@@ -21,6 +21,7 @@ export const hinglish: Messages = {
   "common.thinking": "Soch raha hoon, ek second…",
   "common.iUnderstand": "Theek hai, samajh gaya",
   "common.thankYou": "Shukriya.",
+  "common.close": "Band kijiye",
 
   // Home
   "home.title": "Tech Helper",
@@ -185,6 +186,8 @@ export const hinglish: Messages = {
 
   // Guide page
   "guide.notFound": "Mujhe woh guide nahi mili",
+  "guide.explanationLabel": "Aasaan shabdon mein",
+  "success.label": "Sab ho gaya",
   "answer.anotherWay": "Ek aur tareeka",
   "answer.showMeHow": "Mujhe karke dikhaiye",
   "answer.explainOther": "Isse English mein samjhaiye",
@@ -305,6 +308,7 @@ export const hinglish: Messages = {
 
   // Is this a scam?
   "scam.title": "Kya yeh scam hai?",
+  "scam.label": "Suraksha",
   "scam.lead": "Kisi message pe shak hai? Mujhe bhejiye. Main check karne mein madad karunga.",
   "scam.upload": "Screenshot upload kijiye",
   "scam.paste": "Message paste kijiye",

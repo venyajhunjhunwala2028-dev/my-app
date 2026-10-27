@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import CallFamily from "@/components/CallFamily";
+import Wordmark from "@/components/brand/Wordmark";
+import { CONTAINER } from "@/components/landing/ui";
 import PrivacyReminder from "@/components/PrivacyReminder";
 import { detectDevice } from "@/lib/device";
 import {
@@ -83,8 +85,8 @@ function CallMe({ callMe, onChange }: { callMe: string | null; onChange: (name: 
     );
   }
   return (
-    <form className="card-lavender flex flex-col gap-3" onSubmit={submit}>
-      <label htmlFor={`${id}-call-me`} className="text-2xl font-bold">
+    <form className="card-lavender flex flex-col gap-3 sm:p-8" onSubmit={submit}>
+      <label htmlFor={`${id}-call-me`} className="font-display text-[1.6rem] leading-tight font-medium tracking-[-0.02em]">
         {t("askFamily.callMe.label")}
       </label>
       <p id={`${id}-call-me-hint`} className="text-lg">
@@ -102,7 +104,7 @@ function CallMe({ callMe, onChange }: { callMe: string | null; onChange: (name: 
       <button type="submit" className="btn-primary">
         {t("askFamily.callMe.save")}
       </button>
-      <button type="button" className="btn-secondary" onClick={() => save("")}>
+      <button type="button" className="btn-secondary bg-card" onClick={() => save("")}>
         {t("askFamily.callMe.skip")}
       </button>
     </form>
@@ -202,21 +204,28 @@ export default function AskFamilySheet({
       role="dialog"
       aria-modal="true"
       aria-labelledby="ask-family-heading"
-      className="fixed inset-0 z-50 overflow-y-auto bg-background"
+      className="sheet animate-fade-in"
     >
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-6">
-        <button type="button" className="btn-text self-start" onClick={onClose}>
-          {t("askFamily.close")}
-        </button>
-        <h2 id="ask-family-heading" ref={heading} tabIndex={-1} className="text-3xl font-extrabold outline-none">
-          <span aria-hidden="true">👨‍👩‍👧 </span>
+      <div className={`${CONTAINER} sticky top-0 z-10 flex min-h-[4.5rem] items-center justify-between gap-4 bg-background pt-1`}>
+        <Wordmark size="min(1.5rem, 6.8vw)" />
+        <button
+            type="button"
+            className="inline-flex min-h-14 items-center gap-2 rounded-full px-1 text-lg font-semibold text-foreground in-data-[easy=on]:border-2 in-data-[easy=on]:border-foreground in-data-[easy=on]:px-5"
+            onClick={onClose}
+          >
+            <span aria-hidden="true">✕</span>
+            <span className="underline decoration-2 underline-offset-[6px]">{t("askFamily.close")}</span>
+          </button>
+      </div>
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-4 pt-4 pb-16 sm:px-8">
+        <h2 id="ask-family-heading" ref={heading} tabIndex={-1} className="display-lg outline-none">
           {t("askFamily.title")}
         </h2>
 
         <CallMe key={String(callMe)} callMe={callMe} onChange={setCallMe} />
 
         <section aria-labelledby={`${id}-problem`} className="flex flex-col gap-3">
-          <h3 id={`${id}-problem`} className="text-2xl font-bold">
+          <h3 id={`${id}-problem`} className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
             {t("askFamily.problemHeading")}
           </h3>
           <p className="text-lg text-muted">{t("askFamily.problemHint")}</p>
@@ -230,10 +239,12 @@ export default function AskFamilySheet({
                   aria-pressed={whatWrong === t(key)}
                   onClick={() => chooseProblem(key)}
                 >
-                  <span aria-hidden="true" className="mr-2">
-                    {whatWrong === t(key) ? "✓" : "○"}
+                  <span>
+                    <span aria-hidden="true" className="mr-2">
+                      {whatWrong === t(key) ? "✓" : "○"}
+                    </span>
+                    {t(key)}
                   </span>
-                  {t(key)}
                 </button>
               ))}
             </div>
@@ -243,33 +254,44 @@ export default function AskFamilySheet({
           </label>
           <textarea id={`${id}-note`} rows={2} value={note} onChange={(e) => setNote(e.target.value)} className="field" />
           {notePrivate && (
-            <p role="status" className="rounded-2xl border-2 border-warning bg-warning-surface p-4 text-xl">
+            <p role="status" className="rounded-[1.2rem] border-l-4 border-warning bg-warning-surface p-4 text-xl">
               <span aria-hidden="true">🔒 </span>
               {t("askFamily.notePrivate")}
             </p>
           )}
         </section>
 
-        <section className="flex flex-col gap-3">
-          <p className="text-2xl font-semibold">
+        <section className="flex flex-col gap-4">
+          <p className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
             {contact ? t("askFamily.willSend", { name: contact.name }) : t("askFamily.chooseWho")}
           </p>
-          <div
-            data-testid="family-message"
-            aria-live="polite"
-            className="flex flex-col gap-3 rounded-3xl rounded-bl-md bg-card p-5 shadow-card"
-          >
-            {message.lines.map((line, i) => (
-              <p key={i} className={i === message.lines.length - 1 ? "text-xl text-muted" : "text-2xl"}>
-                {line}
+          {/* The message as it will look in a chat: a white bubble on the electric-blue field. */}
+          <div className="media-card blue-field flex flex-col gap-3 px-4 py-7 sm:px-8 sm:py-10">
+            {contact && (
+              <p aria-hidden="true" className="flex items-center gap-3 text-base font-semibold text-on-blue-muted">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-lg text-primary">
+                  {contact.name.trim().slice(0, 1).toUpperCase()}
+                </span>
+                {contact.name}
               </p>
-            ))}
+            )}
+            <div
+              data-testid="family-message"
+              aria-live="polite"
+              className="flex max-w-[34rem] flex-col gap-3 self-end rounded-[1.6rem] rounded-br-md bg-white p-5 text-foreground shadow-[0_18px_40px_-18px_rgb(5_3_60/0.6)]"
+            >
+              {message.lines.map((line, i) => (
+                <p key={i} className={i === message.lines.length - 1 ? "text-lg text-muted" : "text-2xl leading-snug"}>
+                  {line}
+                </p>
+              ))}
+            </div>
           </div>
         </section>
 
         {screenshot && shareFiles && (
           <section className="flex flex-col gap-3">
-            <label className="flex min-h-14 cursor-pointer items-center gap-4 rounded-2xl border-2 border-primary bg-card p-4 text-xl font-bold text-primary">
+            <label className="flex min-h-14 cursor-pointer items-center gap-4 rounded-[1.2rem] border-2 border-primary bg-card p-4 text-xl font-semibold text-primary">
               <input
                 type="checkbox"
                 checked={includeShot}
@@ -285,9 +307,9 @@ export default function AskFamilySheet({
                 <img
                   src={`data:${shot.mediaType};base64,${shot.base64}`}
                   alt={t("show.yourScreenshot")}
-                  className="mx-auto block max-h-64 w-auto rounded-2xl border-2 border-muted"
+                  className="mx-auto block max-h-64 w-auto rounded-[0.9rem] border border-border"
                 />
-                <p className="flex gap-3 rounded-2xl border-2 border-caution/40 bg-caution-surface p-4 text-lg">
+                <p className="flex gap-3 rounded-[1.2rem] bg-caution-surface p-4 text-lg">
                   <span aria-hidden="true">🔒</span>
                   <span>{t("askFamily.privacy")}</span>
                 </p>
@@ -304,7 +326,7 @@ export default function AskFamilySheet({
             <img
               src={picture.url}
               alt={t("show.chosenScreenshot")}
-              className="mx-auto block max-h-64 w-auto rounded-2xl border-2 border-muted"
+              className="mx-auto block max-h-64 w-auto rounded-[0.9rem] border border-border"
             />
             <p className="text-xl">{t("askFamily.pictureAdded")}</p>
           </section>
@@ -331,7 +353,7 @@ export default function AskFamilySheet({
             </>
           )}
           {problem && (
-            <p role="alert" className="rounded-2xl border-2 border-warning bg-warning-surface p-4 text-xl">
+            <p role="alert" className="rounded-[1.2rem] border-l-4 border-warning bg-warning-surface p-4 text-xl">
               {t(problem)}
             </p>
           )}

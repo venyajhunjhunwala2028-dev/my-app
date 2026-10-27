@@ -263,6 +263,8 @@ h3 {
   min-height: var(--btn-min-height, 3.5rem);
   line-height: 1.25;
   text-align: center;
+  /* A label that wraps splits evenly, never leaving one word alone on the last line. */
+  text-wrap: balance;
   text-decoration: none;
   cursor: pointer;
   transition:
@@ -308,8 +310,12 @@ h3 {
   }
 }
 
+/* A quiet text action: ink, a thick underline, still a 3.5rem tap target. */
 @utility btn-text {
-  @apply inline-flex min-h-14 items-center justify-center rounded-full px-4 text-lg font-semibold text-primary underline decoration-2 underline-offset-4;
+  @apply inline-flex min-h-14 items-center justify-center rounded-lg px-2 text-lg font-semibold text-foreground underline decoration-2 underline-offset-[6px];
+  &:hover {
+    text-decoration-color: var(--primary);
+  }
 }
 
 /* Editorial text CTA: ink, a thick underline and an arrow ("Open the app →"). */
@@ -339,12 +345,9 @@ h3 {
 /* A quieter, still large button for secondary actions (light blue tint, no border). */
 @utility btn-soft {
   @apply btn bg-lavender text-primary;
-  justify-content: flex-start;
   gap: 0.25rem;
-  border-radius: 1.2rem;
   padding: 0.75rem 1.25rem;
-  text-align: left;
-  font-size: var(--soft-font-size, 1rem);
+  font-size: var(--soft-font-size, 1.125rem);
   min-height: var(--btn-min-height, 3.5rem);
   border: var(--edge-width, 2px) solid var(--soft-edge, transparent);
   &:hover:not(:disabled) {
@@ -420,6 +423,157 @@ h3 {
   &:active {
     transform: scale(0.98);
   }
+}
+
+/* ---------- App shell: hairline lists, back links, sheets ---------- */
+
+/* "← Back to home": the editorial back link, ink with an underline on the words only. */
+@utility back-link {
+  display: inline-flex;
+  min-height: 3.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--foreground);
+  text-decoration: none;
+  & > span:not([aria-hidden="true"]) {
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 6px;
+    text-decoration-color: var(--border-strong);
+  }
+  &:hover > span:not([aria-hidden="true"]) {
+    text-decoration-color: currentColor;
+  }
+  & > [aria-hidden="true"] {
+    transition: transform 150ms ease;
+  }
+  &:hover > [aria-hidden="true"] {
+    transform: translateX(-0.2rem);
+  }
+}
+
+/* A hairline list: a strong rule on top, a light rule under every row (Easy Mode darkens both). */
+@utility hairline-list {
+  display: flex;
+  flex-direction: column;
+  border-top: var(--edge-width, 1px) solid var(--foreground);
+  & > li {
+    border-bottom: var(--edge-width, 1px) solid var(--border);
+  }
+}
+
+/* One tappable row of a hairline list: icon, words, arrow. At least 4.5rem tall. */
+@utility row-action {
+  display: flex;
+  width: 100%;
+  min-height: 4.5rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 0.25rem;
+  text-align: left;
+  color: var(--foreground);
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: background-color 150ms ease;
+  /* Hover only where there is a mouse, so a tapped row does not stay grey on a phone. */
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background-color: var(--surface);
+    }
+    &:hover:not(:disabled) .row-arrow {
+      transform: translateX(0.25rem);
+    }
+  }
+  &:focus-visible {
+    outline: 4px solid var(--primary);
+    outline-offset: 2px;
+  }
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+/* The round icon at the start of a row. */
+@utility row-icon {
+  display: flex;
+  height: 3rem;
+  width: 3rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--surface);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+@utility row-arrow {
+  flex-shrink: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  transition: transform 150ms ease;
+}
+
+/* A full-screen sheet (Settings, Ask my family): white, scrolls on its own. */
+@utility sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--background);
+}
+
+/* A big editorial number ("01", "72%"). */
+@utility display-num {
+  font-family: var(--font-display-stack);
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+/* The step instruction and other screen headlines: large, tight, never overflowing a phone. */
+@utility display-step {
+  font-family: var(--font-display-stack);
+  font-size: min(max(2rem, 3.2vw), 11vw, 3rem);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  overflow-wrap: break-word;
+}
+
+/* The pill-shaped question box from the landing page: a thick ink edge around a field and a blue button. */
+@utility pill-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: 1.6rem;
+  border: 2px solid var(--input-border);
+  background: var(--card);
+  padding: 0.5rem;
+  &:focus-within {
+    border-color: var(--foreground);
+    outline: 4px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+
+/* A small status tag inside a tinted panel ("✓ Done", "Saved"). */
+@utility tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 /* ---------- Tiny motion, all switched off under prefers-reduced-motion ---------- */

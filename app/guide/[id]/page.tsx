@@ -4,6 +4,7 @@ import { Suspense, use, useState } from "react";
 import Link from "next/link";
 import ExplanationView, { type ExplanationAnswer } from "@/components/ExplanationView";
 import Mascot from "@/components/Mascot";
+import { AppHeader, BackLink, PAGE_COLUMN } from "@/components/app/AppShell";
 import StepPlayer, { type StepsAnswer } from "@/components/StepPlayer";
 import { useT } from "@/lib/i18n";
 import { getGuide, type SavedGuide } from "@/lib/store/localStore";
@@ -12,11 +13,14 @@ import { useIsClient } from "@/lib/useIsClient";
 export default function GuidePage({ params }: { params: Promise<{ id: string }> }) {
   // The id is only known per request, so it is read inside Suspense (Cache Components).
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col gap-6 px-4 py-6">
-      <Suspense fallback={null}>
-        <Guide params={params} />
-      </Suspense>
-    </main>
+    <>
+      <AppHeader />
+      <main className={`${PAGE_COLUMN} flex flex-1 flex-col gap-6 pt-2 pb-20`}>
+        <Suspense fallback={null}>
+          <Guide params={params} />
+        </Suspense>
+      </main>
+    </>
   );
 }
 
@@ -44,9 +48,7 @@ function Guide({ params }: { params: Promise<{ id: string }> }) {
   if (guide && kind === "explanation") {
     return (
       <>
-        <Link href="/app" className="btn-text self-start">
-          {t("common.home")}
-        </Link>
+        <BackLink href="/app">{t("common.home")}</BackLink>
         <ExplanationView
           key={guide.savedAt}
           guide={guide as SavedGuide<ExplanationAnswer>}
@@ -58,9 +60,9 @@ function Guide({ params }: { params: Promise<{ id: string }> }) {
   }
   return (
     <>
-      <div className="card flex items-center gap-4">
-        <Mascot mood="thinking" size={4} />
-        <h1 className="text-3xl font-bold">{t("guide.notFound")}</h1>
+      <div className="flex flex-col items-start gap-6 pt-6">
+        <Mascot mood="thinking" size={4.5} />
+        <h1 className="display-lg max-w-[16ch]">{t("guide.notFound")}</h1>
       </div>
       <Link href="/app" className="btn-primary">
         {t("common.goHome")}

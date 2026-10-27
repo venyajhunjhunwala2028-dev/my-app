@@ -15,10 +15,12 @@ export default function PrivacyReminder({
 }) {
   const t = useT();
   return (
-    <section className="flex flex-col gap-3 rounded-3xl border-2 border-caution/40 bg-caution-surface p-5">
-      <p className="flex gap-3 text-xl">
-        <span aria-hidden="true">🔒</span>
-        <span>{message ?? t("privacy.screenshot")}</span>
+    <section className="flex flex-col gap-4 rounded-[1.2rem] bg-caution-surface p-5 sm:p-6">
+      <p className="text-xl leading-snug">
+        <span aria-hidden="true" className="mr-2">
+          🔒
+        </span>
+        {message ?? t("privacy.screenshot")}
       </p>
       {understood ? (
         <p className="text-xl font-semibold text-safe">
@@ -26,7 +28,7 @@ export default function PrivacyReminder({
           {t("common.thankYou")}
         </p>
       ) : (
-        <button type="button" className="btn-secondary" onClick={onUnderstand}>
+        <button type="button" className="btn-secondary bg-card" onClick={onUnderstand}>
           {t("common.iUnderstand")}
         </button>
       )}

@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import Link from "next/link";
+import { Paren } from "@/components/app/AppShell";
 import DeviceChoices from "@/components/DeviceChoices";
 import { DEVICE_CHOICES, detectThisDevice, deviceLabel, devicePicture } from "@/lib/device";
 import { useT } from "@/lib/i18n";
@@ -35,11 +36,8 @@ export function FirstRunDevice({ onChosen }: { onChosen?: () => void }) {
   }
 
   return (
-    <section aria-labelledby={headingId} className="card flex animate-fade-in flex-col gap-4 p-5 shadow-raised">
-      <h2 id={headingId} className="text-2xl leading-tight font-extrabold">
-        <span aria-hidden="true" className="mr-2">
-          📱
-        </span>
+    <section aria-labelledby={headingId} className="flex animate-fade-in flex-col gap-4 rounded-[1.2rem] bg-surface p-5 sm:p-6">
+      <h2 id={headingId} className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
         {t("devices.firstRun")}
       </h2>
       <p className="text-lg text-muted">{t("devices.firstRunLead")}</p>
@@ -56,29 +54,26 @@ export function MyDevicesCard() {
   if (!isClient) return null;
   const current = getCurrentDevice();
   return (
-    <section aria-labelledby={headingId} className="card flex flex-col gap-3">
-      <h2 id={headingId} className="text-lg font-bold text-muted">
-        <span aria-hidden="true" className="mr-2">
-          📱
-        </span>
-        {t("devices.title")}
+    <section aria-labelledby={headingId} className="flex flex-col gap-5">
+      <h2 id={headingId} className="label-paren text-base">
+        <Paren>{t("devices.title")}</Paren>
       </h2>
-      {current ? (
-        <p className="flex items-center gap-3 text-2xl font-extrabold">
-          <span aria-hidden="true" className="text-4xl">
-            {devicePicture(current)}
-          </span>
-          {t("devices.usingNow", { device: deviceLabel(current, t) })}
-        </p>
-      ) : (
-        <p className="text-xl">{t("devices.none")}</p>
-      )}
-      <Link href="/app/devices" className="btn-soft justify-center">
-        {t("devices.change")}
-        <span aria-hidden="true" className="ml-2">
-          →
-        </span>
-      </Link>
+      <div className="flex flex-col gap-3 border-t border-foreground pt-5">
+        {current ? (
+          <p className="flex items-center gap-4 font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
+            <span aria-hidden="true" className="row-icon h-14 w-14 text-3xl">
+              {devicePicture(current)}
+            </span>
+            {t("devices.usingNow", { device: deviceLabel(current, t) })}
+          </p>
+        ) : (
+          <p className="text-xl">{t("devices.none")}</p>
+        )}
+        <Link href="/app/devices" className="link-cta self-start text-lg">
+          {t("devices.change")}
+          <span aria-hidden="true">→</span>
+        </Link>
+      </div>
     </section>
   );
 }
@@ -103,9 +98,9 @@ export function MyDevicesManager() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <section aria-labelledby={nowId} className="card flex flex-col gap-4">
-        <h2 id={nowId} className="text-2xl font-bold">
+    <div className="flex flex-col gap-12">
+      <section aria-labelledby={nowId} className="flex flex-col gap-4">
+        <h2 id={nowId} className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
           {t("devices.whichNow")}
         </h2>
         {owned.length === 0 ? (
@@ -118,13 +113,13 @@ export function MyDevicesManager() {
               labelledBy={nowId}
               onChoose={(d) => change(() => setPreferredDevice(d))}
             />
-            <ul className="flex flex-col gap-1">
+            <ul className="hairline-list mt-2">
               {owned.map((d) => (
-                <li key={d} className="flex flex-wrap items-center justify-between gap-x-3">
-                  <span className="flex min-w-[8rem] flex-1 flex-wrap items-center gap-2 text-lg [overflow-wrap:normal]">
+                <li key={d} className="flex flex-wrap items-center justify-between gap-x-3 py-1">
+                  <span className="flex min-w-[8rem] flex-1 flex-wrap items-center gap-2 text-xl [overflow-wrap:normal]">
                     {deviceLabel(d, t)}
                     {d === current && (
-                      <span className="rounded-full bg-safe-surface px-3 py-1 text-base font-semibold text-safe">
+                      <span className="tag bg-safe-surface text-safe">
                         {t("devices.inUse")}
                       </span>
                     )}
@@ -143,11 +138,8 @@ export function MyDevicesManager() {
         )}
       </section>
       {others.length > 0 && (
-        <section aria-labelledby={addId} className="flex flex-col gap-4">
-          <h2 id={addId} className="text-2xl font-bold">
-            <span aria-hidden="true" className="mr-2">
-              ➕
-            </span>
+        <section aria-labelledby={addId} className="flex flex-col gap-4 border-t border-foreground pt-8">
+          <h2 id={addId} className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
             {t("devices.add")}
           </h2>
           <DeviceChoices options={others} labelledBy={addId} onChoose={(d) => change(() => addDevice(d))} />

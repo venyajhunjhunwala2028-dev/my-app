@@ -49,7 +49,7 @@ export default function PracticePlayer({
   }
 
   const label = (
-    <p className="self-center rounded-2xl border-2 border-caution/40 bg-caution-surface px-4 py-1.5 text-center text-base font-bold text-caution">
+    <p className="tag self-start bg-caution-surface px-4 py-2 text-base whitespace-normal text-caution">
       <span aria-hidden="true">🧪 </span>
       {t("practice.label")}
     </p>
@@ -57,53 +57,56 @@ export default function PracticePlayer({
 
   if (state.done || !step) {
     return (
-      <div className="flex flex-col items-center gap-5 text-center">
-        <span
-          aria-hidden="true"
-          className="flex h-20 w-20 animate-pop items-center justify-center rounded-full bg-safe text-4xl font-black text-white shadow-raised"
-        >
-          ✓
-        </span>
-        <h2 ref={finishedHeading} tabIndex={-1} className="text-3xl font-extrabold outline-none">
-          <span aria-hidden="true">🎉 </span>
-          {t("success.title")}
-        </h2>
-        <div className="flex items-end gap-3 text-left">
-          <Mascot mood="celebrate" size={4} />
-          <p role="status" className="mb-4 rounded-3xl rounded-bl-md bg-card px-5 py-3 text-xl shadow-card">
+      <div className="flex flex-col gap-6">
+        <section className="media-card blue-field flex flex-col gap-5 px-6 py-8 sm:px-10 sm:py-12">
+          <div className="flex items-start justify-between gap-4">
+            <span
+              aria-hidden="true"
+              className="flex h-14 w-14 animate-pop items-center justify-center rounded-full bg-white text-3xl font-black text-primary"
+            >
+              ✓
+            </span>
+            <Mascot mood="celebrate" size={4.5} tone="white" />
+          </div>
+          <h2 ref={finishedHeading} tabIndex={-1} className="display-lg text-white outline-none">
+            {t("success.title")}
+          </h2>
+          <p role="status" className="self-start rounded-3xl rounded-tl-md bg-white px-5 py-3 text-xl font-medium text-foreground">
             {exercise.done[language]}
           </p>
-        </div>
-        <p className="text-lg text-muted">
-          <span aria-hidden="true">🌱 </span>
-          {t("practice.counted")}
-        </p>
-        <div className="flex w-full flex-col gap-3">
+          <p className="text-lg text-on-blue-muted">
+            <span aria-hidden="true">🌱 </span>
+            {t("practice.counted")}
+          </p>
           {onComplete && (
-            <button type="button" className="btn-primary min-h-20 text-2xl" onClick={onComplete}>
+            <button type="button" className="btn-light min-h-20 text-2xl" onClick={onComplete}>
               {t("practice.continue")}
               <span aria-hidden="true" className="ml-2">
                 →
               </span>
             </button>
           )}
-          {doneActions}
-        </div>
+        </section>
+        {doneActions && <div className="flex w-full flex-col gap-3">{doneActions}</div>}
       </div>
     );
   }
 
   const total = exercise.steps.length;
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {label}
       {total > 1 && (
-        <p className="text-lg font-semibold text-muted">{t("practice.stepProgress", { step: state.step + 1, total })}</p>
+        <p className="text-lg font-semibold text-primary">
+          <span aria-hidden="true">(</span>
+          {t("practice.stepProgress", { step: state.step + 1, total })}
+          <span aria-hidden="true">)</span>
+        </p>
       )}
       <div aria-live="polite" className="flex flex-col gap-3 empty:hidden">
         {state.feedback === "correct" && praised && (
-          <p data-testid="practice-feedback" data-kind="correct" className="animate-fade-in rounded-2xl bg-safe-surface p-4 text-xl text-safe">
-            <span className="font-extrabold">
+          <p data-testid="practice-feedback" data-kind="correct" className="animate-fade-in rounded-[1.2rem] bg-safe-surface p-5 text-xl text-safe">
+            <span className="font-bold">
               <span aria-hidden="true">✓ </span>
               {t("practice.correct")}
             </span>{" "}
@@ -114,7 +117,7 @@ export default function PracticePlayer({
           <p
             data-testid="practice-feedback"
             data-kind="wrong"
-            className="animate-fade-in rounded-2xl border-2 border-caution/40 bg-caution-surface p-4 text-xl"
+            className="animate-fade-in rounded-[1.2rem] bg-caution-surface p-5 text-xl"
           >
             <span aria-hidden="true">💡 </span>
             {step.hint[language]}
@@ -126,11 +129,14 @@ export default function PracticePlayer({
         ref={instruction}
         tabIndex={-1}
         data-testid="practice-instruction"
-        className="scroll-mt-4 text-2xl leading-snug font-extrabold outline-none"
+        className="scroll-mt-4 font-display text-[1.75rem] leading-[1.12] font-medium tracking-[-0.02em] outline-none sm:text-[2.25rem]"
       >
         {step.instruction[language]}
       </h2>
-      <PracticeScreen key={step.id} screen={step.screen} look={exercise.look} reveal={reveal ? step.target : null} onTap={tap} />
+      {/* The pretend phone on the electric-blue field. Generic colours inside: never a real app's brand. */}
+      <div className="media-card blue-field px-3 py-8 sm:py-12">
+        <PracticeScreen key={step.id} screen={step.screen} look={exercise.look} reveal={reveal ? step.target : null} onTap={tap} />
+      </div>
     </div>
   );
 }

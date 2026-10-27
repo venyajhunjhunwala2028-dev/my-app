@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import Link from "next/link";
+import { Paren } from "@/components/app/AppShell";
 import { LIBRARY } from "@/lib/content/library";
 import { useT } from "@/lib/i18n";
 import { confidenceProgress, techConfidence } from "@/lib/progress/confidence";
@@ -13,10 +14,8 @@ const LIBRARY_QUESTIONS: Record<string, string[]> = Object.fromEntries(
   LIBRARY.map((c) => [c.id, c.questions.flatMap((q) => Object.values(q))]),
 );
 
-/** A ring filled to the percentage, with the number in the middle. The progress bar's value says it too. */
-function Ring({ percent, label }: { percent: number; label: string }) {
-  const r = 42;
-  const circumference = 2 * Math.PI * r;
+/** A thin bar filled to the percentage. The progress bar's value says it for screen readers. */
+function Bar({ percent, label }: { percent: number; label: string }) {
   return (
     <div
       role="progressbar"
@@ -25,25 +24,9 @@ function Ring({ percent, label }: { percent: number; label: string }) {
       aria-valuemax={100}
       aria-valuenow={percent}
       aria-valuetext={`${percent}%`}
-      className="relative h-28 w-28 shrink-0"
+      className="h-2.5 w-full overflow-hidden rounded-full bg-lavender-strong"
     >
-      <svg viewBox="0 0 100 100" aria-hidden="true" className="h-full w-full -rotate-90">
-        <circle cx="50" cy="50" r={r} fill="none" strokeWidth="12" className="stroke-lavender-strong" />
-        <circle
-          cx="50"
-          cy="50"
-          r={r}
-          fill="none"
-          strokeWidth="12"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - percent / 100)}
-          className="stroke-primary transition-[stroke-dashoffset] duration-700"
-        />
-      </svg>
-      <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center text-3xl font-black text-primary">
-        {percent}%
-      </span>
+      <div className="h-full rounded-full bg-primary transition-[width] duration-700" style={{ width: `${percent}%` }} />
     </div>
   );
 }
@@ -77,42 +60,42 @@ export default function TechConfidence({ compact = false }: { compact?: boolean 
 
   const nextLabel = next && (
     <>
-      <span className="text-base font-semibold opacity-90">{t("confidence.next")}</span>{" "}
-      <span className="text-xl">
-        <span aria-hidden="true">→ </span>
-        {t(next.topic.nextKey)}
-      </span>
+      <span className="text-base font-semibold text-muted">{t("confidence.next")}</span>{" "}
+      <span className="font-display text-[1.5rem] leading-tight font-medium tracking-[-0.02em]">{t(next.topic.nextKey)}</span>
     </>
   );
 
   return (
-    <section aria-labelledby={headingId} className="card flex flex-col gap-4">
-      <h2 id={headingId} className="text-lg font-bold text-muted">
-        <span aria-hidden="true" className="mr-2">
-          🌱
-        </span>
-        {t("confidence.title")}
+    <section aria-labelledby={headingId} className="flex flex-col gap-5">
+      <h2 id={headingId} className="label-paren text-base">
+        <Paren>{t("confidence.title")}</Paren>
       </h2>
-      <div className="flex flex-wrap items-center gap-4">
-        <Ring percent={progress.percent} label={t("confidence.title")} />
-        <div className="flex min-w-[10rem] flex-1 flex-col gap-1">
-          <p className="text-xl leading-snug font-extrabold">{cheer}</p>
-          <p className="text-lg text-muted">
-            {t("confidence.topics", { learned: progress.learned.length, total: progress.total })}
+      {/* A clean stat block: the big number, then what it means. */}
+      <div className="flex flex-col gap-4 border-t border-foreground pt-5">
+        <div className="flex flex-col gap-x-6 gap-y-3 sm:flex-row sm:items-end">
+          <p className="display-num text-[5.5rem] text-primary">
+            {progress.percent}
+            <span className="text-[0.5em]">%</span>
           </p>
-          <p className="text-base text-muted">
-            {t("confidence.level", { level: level.level })} · {t(level.nameKey)}
-          </p>
+          <div className="flex min-w-0 flex-1 flex-col gap-1 pb-1">
+            <p className="text-xl leading-snug font-semibold">{cheer}</p>
+            <p className="text-lg text-muted">
+              {t("confidence.topics", { learned: progress.learned.length, total: progress.total })}
+              {" · "}
+              {t("confidence.level", { level: level.level })} · {t(level.nameKey)}
+            </p>
+          </div>
         </div>
+        <Bar percent={progress.percent} label={t("confidence.title")} />
       </div>
       {progress.learned.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h3 id={learnedId} className="text-xl font-bold">
+        <div className="flex flex-col gap-3">
+          <h3 id={learnedId} className="text-lg font-semibold">
             {t("confidence.learned")}
           </h3>
           <ul aria-labelledby={learnedId} className="flex flex-wrap gap-2">
             {progress.learned.map((topic) => (
-              <li key={topic.id} className="rounded-full bg-safe-surface px-3 py-1 text-lg font-semibold text-safe">
+              <li key={topic.id} className="tag bg-safe-surface text-lg text-safe">
                 <span aria-hidden="true">{"✓ "}</span>
                 {t(topic.nameKey)}
               </li>
@@ -120,22 +103,25 @@ export default function TechConfidence({ compact = false }: { compact?: boolean 
           </ul>
         </div>
       )}
-      {next ? (
-        <Link href={next.href} className="btn-primary flex-col items-start! gap-1 py-4 text-left">
-          {nextLabel}
-        </Link>
-      ) : (
-        <p className="text-xl font-semibold text-safe">
-          <span aria-hidden="true">🎉 </span>
-          {t("confidence.allTopics")}
-        </p>
-      )}
+      <div className="border-y border-t-foreground border-b-border">
+        {next ? (
+            <Link href={next.href} className="row-action group">
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">{nextLabel}</span>
+              <span aria-hidden="true" className="row-arrow text-primary">
+                →
+              </span>
+            </Link>
+          ) : (
+            <p className="py-4 text-xl font-semibold text-safe">
+              <span aria-hidden="true">🎉 </span>
+              {t("confidence.allTopics")}
+            </p>
+          )}
+      </div>
       {compact ? (
-        <Link href="/app/learn" className="btn-soft justify-center">
+        <Link href="/app/learn" className="link-cta self-start text-lg">
           {t("confidence.keepLearning")}
-          <span aria-hidden="true" className="ml-2">
-            →
-          </span>
+          <span aria-hidden="true">→</span>
         </Link>
       ) : (
         <p className="text-base text-muted">

@@ -81,7 +81,7 @@ export default function PracticeScreen({
     switch (el.kind) {
       case "appBar":
         return (
-          <div key={i} className="flex items-center gap-1 px-2 pt-8 pb-2" style={{ background: colours.bar, color: colours.barText }}>
+          <div key={i} className="flex items-center gap-1 px-2 pt-10 pb-2" style={{ background: colours.bar, color: colours.barText }}>
             {el.back && (
               <Tap {...tapProps(el.back)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl font-bold">
                 {icon(el.back.icon)}
@@ -325,7 +325,7 @@ export default function PracticeScreen({
         );
       case "tabBar":
         return (
-          <div key={i} className="mt-auto flex justify-around border-t border-[#ecebf3] bg-white py-1">
+          <div key={i} className="mt-auto flex justify-around border-t border-[#ecebf3] bg-white pt-1 pb-4">
             {el.tabs.map((tab) => (
               <Tap key={tab.id} {...tapProps(tab)} className="flex h-14 min-w-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-xl px-1">
                 <span aria-hidden="true" className="text-xl leading-none text-[#1c1b2e]">
@@ -343,14 +343,19 @@ export default function PracticeScreen({
 
   return (
     <section aria-label={t("practice.screenLabel")} className="mx-auto w-[19rem] max-w-full">
-      <div className="rounded-[2.25rem] bg-[#1c1b2e] p-[0.45rem] shadow-raised">
+      {/* The same realistic phone as the landing page: a near-black body, side buttons, a Dynamic Island. */}
+      <div className="relative rounded-[2.75rem] bg-[#0b0b10] p-[0.55rem] shadow-[0_0_0_1.5px_#3a3a46,0_0_0_3px_#0b0b10,0_40px_80px_-20px_rgb(5_3_60/0.55),0_18px_36px_-18px_rgb(0_0_0/0.5)]">
+        <span aria-hidden="true" className="absolute top-[17%] -left-[0.3rem] h-[4%] w-[0.3rem] rounded-l-sm bg-[#2a2a33]" />
+        <span aria-hidden="true" className="absolute top-[25%] -left-[0.3rem] h-[7.5%] w-[0.3rem] rounded-l-sm bg-[#2a2a33]" />
+        <span aria-hidden="true" className="absolute top-[27%] -right-[0.3rem] h-[11%] w-[0.3rem] rounded-r-sm bg-[#2a2a33]" />
         <div
           data-testid="practice-screen"
-          className="relative flex min-h-[24rem] flex-col overflow-hidden rounded-[1.85rem]"
+          className="relative flex min-h-[30rem] flex-col overflow-hidden rounded-[2.2rem]"
           style={{ background: colours.page }}
         >
-          <div aria-hidden="true" className="absolute top-1.5 left-1/2 z-30 h-[0.9rem] w-[3.8rem] -translate-x-1/2 rounded-full bg-[#1c1b2e]" />
+          <div aria-hidden="true" className="absolute top-2 left-1/2 z-30 h-[1.35rem] w-[5.25rem] -translate-x-1/2 rounded-full bg-black" />
           {screen.map(element)}
+          <div aria-hidden="true" className="pointer-events-none absolute bottom-1.5 left-1/2 z-30 h-1 w-24 -translate-x-1/2 rounded-full bg-black/80" />
         </div>
       </div>
     </section>

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AppPage, BackLink, PageIntro } from "@/components/app/AppShell";
 import TechConfidence from "@/components/TechConfidence";
 import { ALL_LESSONS, LESSON_GROUPS, getLesson } from "@/lib/content/lessons";
 import { lessonHref } from "@/lib/learn/lessonFlow";
@@ -43,30 +44,23 @@ export default function LearnPage() {
   const progress = t("learn.progress", { done, total });
 
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-6">
-      <Link href="/app" className="btn-text self-start">
-        {t("common.backHome")}
-      </Link>
-      <h1 className="text-3xl font-extrabold">
-        <span aria-hidden="true">🧑‍🏫 </span>
-        {t("learn.title")}
-      </h1>
-      <p className="text-xl">{t("learn.intro")}</p>
-      <p className="flex flex-wrap items-center gap-x-2 text-lg text-muted">
-        {t("learn.helpInstead")}
-        <Link href="/app#question" className="btn-text min-h-12 px-1">
-          <span aria-hidden="true" className="mr-1">
-            🛠️
-          </span>
-          {t("home.helpMe")}
-        </Link>
-      </p>
+    <AppPage back={<BackLink href="/app">{t("common.backHome")}</BackLink>}>
+      <div className="flex flex-col gap-5">
+        <PageIntro label={t("home.tag.learn")} title={t("learn.title")} lead={t("learn.intro")} />
+        <p className="flex flex-wrap items-center gap-x-3 text-lg text-muted">
+          {t("learn.helpInstead")}
+          <Link href="/app#question" className="link-cta text-lg text-foreground">
+            {t("home.helpMe")}
+            <span aria-hidden="true">→</span>
+          </Link>
+        </p>
+      </div>
       <Suspense fallback={null}>
         <OpenLessonFromUrl />
       </Suspense>
       <TechConfidence />
-      <div className="flex flex-col gap-2">
-        <p id="lesson-progress" className="text-xl font-semibold text-muted">
+      <div className="flex flex-col gap-3">
+        <p id="lesson-progress" className="text-xl font-semibold">
           {progress}
         </p>
         <div
@@ -76,59 +70,69 @@ export default function LearnPage() {
           aria-valuemax={total}
           aria-valuenow={done}
           aria-valuetext={progress}
-          className="h-4 w-full overflow-hidden rounded-full bg-lavender-strong"
+          className="h-2.5 w-full overflow-hidden rounded-full bg-lavender-strong"
         >
-          <div className="h-full bg-primary" style={{ width: `${(done / total) * 100}%` }} />
+          <div className="h-full rounded-full bg-primary" style={{ width: `${(done / total) * 100}%` }} />
         </div>
       </div>
-      <Link href="/app/practice" aria-describedby="practice-card-desc" className="card-action items-center gap-4 bg-lavender!">
-        <span aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-card text-3xl">
-          🎯
+      {/* Practice on the night field, as on the landing page. */}
+      <Link
+        href="/app/practice"
+        aria-describedby="practice-card-desc"
+        className="night-field group flex flex-col gap-5 rounded-[1.2rem] p-5 transition-transform active:scale-[0.99] sm:p-8"
+      >
+        <span className="flex items-center justify-between">
+          <span aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-3xl">
+            🎯
+          </span>
+          <span aria-hidden="true" className="row-arrow text-3xl group-hover:translate-x-1">
+            →
+          </span>
         </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="text-xl leading-tight font-extrabold text-primary">{t("home.practice")}</span>
+        <span className="flex min-w-0 flex-col gap-1">
+          <span className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">{t("home.practice")}</span>
           {/* Heard as the link's description, not its name. */}
-          <span id="practice-card-desc" aria-hidden="true" className="text-base text-muted">
+          <span id="practice-card-desc" aria-hidden="true" className="text-lg leading-snug text-night-muted">
             {t("learn.practiceDesc")}
           </span>
         </span>
-        <span aria-hidden="true" className="text-3xl font-bold text-primary">
-          →
-        </span>
       </Link>
       {LESSON_GROUPS.map((group) => (
-        <section key={group.id} aria-labelledby={`lessons-${group.id}`} className="flex flex-col gap-3">
-          <h2 id={`lessons-${group.id}`} className="mt-2 text-2xl font-bold">
-            <span aria-hidden="true" className="mr-2">
+        <section key={group.id} aria-labelledby={`lessons-${group.id}`} className="flex flex-col gap-4">
+          <h2 id={`lessons-${group.id}`} className="flex items-center gap-3 font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
+            <span aria-hidden="true" className="row-icon">
               {group.emoji}
             </span>
             {group.title[language]}
           </h2>
-          <ul className="flex flex-col gap-3">
+          <ul className="hairline-list">
             {group.lessons.map((lesson) => (
               <li key={lesson.id}>
-                <Link href={lessonHref(lesson.id)} className="card-action items-center justify-between gap-3 text-xl font-semibold">
-                  <span className="flex flex-col gap-1">
-                    <span>{lesson.title[language]}</span>
+                <Link href={lessonHref(lesson.id)} className="row-action group">
+                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="text-xl leading-snug font-semibold">{lesson.title[language]}</span>
                     {lesson.practiceId && (
-                      <span className="text-base font-semibold text-primary">
+                      <span className="text-base font-medium text-primary">
                         <span aria-hidden="true">🎯 </span>
                         {t("learn.hasPractice")}
                       </span>
                     )}
                   </span>
                   {completed.has(lesson.id) && (
-                    <span className="shrink-0 rounded-full bg-safe-surface px-3 py-1 text-lg text-safe">
+                    <span className="tag shrink-0 bg-safe-surface text-lg text-safe">
                       <span aria-hidden="true">✓&nbsp;</span>
                       <span>{t("common.done")}</span>
                     </span>
                   )}
+                  <span aria-hidden="true" className="row-arrow">
+                    →
+                  </span>
                 </Link>
               </li>
             ))}
           </ul>
         </section>
       ))}
-    </main>
+    </AppPage>
   );
 }

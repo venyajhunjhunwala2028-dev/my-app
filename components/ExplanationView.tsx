@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import AskFamilySheet from "@/components/AskFamilySheet";
+import { Label, RowContent } from "@/components/app/AppShell";
 import Mascot from "@/components/Mascot";
 import ReadAloud from "@/components/ReadAloud";
 import SafetyNotice from "@/components/SafetyNotice";
@@ -106,7 +107,10 @@ export function ExplainOtherLanguage({
   mode,
   step,
   onReplace,
+  row = false,
 }: {
+  /** A row of a hairline list (More help) instead of a pill. */
+  row?: boolean;
   guide: SavedGuide<StepsAnswer | ExplanationAnswer>;
   /** "showMeHow" keeps a steps guide as steps; "ask" asks the explanation's question again. */
   mode: Extract<AskMode, "showMeHow" | "ask">;
@@ -151,17 +155,20 @@ export function ExplainOtherLanguage({
   if (status.kind === "limit") return <SafetyNotice kind="daily_limit" />;
   return (
     <>
-      <button
-        type="button"
-        className="btn-secondary"
-        onClick={explain}
-        disabled={status.kind === "waiting"}
-      >
-        <span aria-hidden="true" className="mr-2">
-          🌐
-        </span>
-        {t("answer.explainOther")}
-      </button>
+      {row ? (
+        <button type="button" className="row-action group" onClick={explain} disabled={status.kind === "waiting"}>
+          <RowContent icon="🌐" title={t("answer.explainOther")} />
+        </button>
+      ) : (
+        <button type="button" className="btn-secondary" onClick={explain} disabled={status.kind === "waiting"}>
+          <span>
+            <span aria-hidden="true" className="mr-2">
+              🌐
+            </span>
+            {t("answer.explainOther")}
+          </span>
+        </button>
+      )}
       {status.kind === "other" && <AnswerBody answer={status.answer} />}
       <WaitingAndErrors
         waiting={status.kind === "waiting"}
@@ -212,15 +219,16 @@ export default function ExplanationView({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="card flex flex-col gap-4 p-5 shadow-raised">
+    <div className="flex flex-col gap-8">
+      <section className="flex flex-col gap-6">
         <div className="flex items-center gap-3">
-          <Mascot mood="ready" size={3.5} />
-          <h1 lang={answer.language} className="text-3xl leading-snug font-extrabold">
-            {answer.title}
-          </h1>
+          <Mascot mood="ready" size={2.6} />
+          <Label>{t("guide.explanationLabel")}</Label>
         </div>
-        <p lang={answer.language} className="text-2xl">
+        <h1 lang={answer.language} className="display-lg max-w-[18ch]">
+          {answer.title}
+        </h1>
+        <p lang={answer.language} className="max-w-[40ch] border-t border-foreground pt-6 text-2xl leading-snug">
           {answer.text}
         </p>
         <ReadAloud text={[answer.title, answer.text].join(". ")} language={answer.language} autoStart={readNow} />
@@ -232,6 +240,9 @@ export default function ExplanationView({
           {answer.offerShowMeHow && (
             <button type="button" className="btn-primary min-h-20 text-2xl" onClick={showMeHow} disabled={status.kind === "waiting"}>
               {t("answer.showMeHow")}
+              <span aria-hidden="true" className="ml-3">
+                →
+              </span>
             </button>
           )}
           {status.kind === "other" && <AnswerBody answer={status.answer} />}
@@ -240,17 +251,24 @@ export default function ExplanationView({
             error={status.kind === "error" ? status.error : null}
             onRetry={() => void showMeHow()}
           />
-          {onReplace && <ExplainOtherLanguage guide={guide} mode="ask" onReplace={onReplace} />}
         </>
       )}
-      <SaveGuideButton id={guide.id} />
-      {/* An explanation has no success screen, so asking family is offered here. */}
-      <button type="button" className="btn-secondary" onClick={() => setAskFamily(true)}>
-        <span aria-hidden="true" className="mr-2">
-          👨‍👩‍👧
-        </span>
-        {t("askFamily.open")}
-      </button>
+      <ul className="hairline-list">
+        {onReplace && status.kind !== "limit" && (
+          <li>
+            <ExplainOtherLanguage guide={guide} mode="ask" onReplace={onReplace} row />
+          </li>
+        )}
+        <li>
+          <SaveGuideButton id={guide.id} row />
+        </li>
+        <li>
+          {/* An explanation has no success screen, so asking family is offered here. */}
+          <button type="button" className="row-action group" onClick={() => setAskFamily(true)}>
+            <RowContent icon="👨‍👩‍👧" title={t("askFamily.open")} />
+          </button>
+        </li>
+      </ul>
       {askFamily && <AskFamilySheet context={{ goal: guideGoal(guide) }} onClose={() => setAskFamily(false)} />}
     </div>
   );

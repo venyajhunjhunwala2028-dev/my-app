@@ -309,7 +309,7 @@ export default function AskBox({
   }
 
   const askAgain = (
-    <button type="button" className="btn-text" onClick={() => setStatus({ kind: "idle" })}>
+    <button type="button" className="btn-text self-start px-0" onClick={() => setStatus({ kind: "idle" })}>
       {t("ask.different")}
     </button>
   );
@@ -362,7 +362,7 @@ export default function AskBox({
               )}
             </div>
           )}
-          <p className={big ? "text-lg text-muted" : "text-xl"}>
+          <p className={big ? "text-base text-muted" : "text-xl"}>
             {t("ask.speakingLanguage")}{" "}
             {answerLanguage ? (
               <span lang={answerLanguage}>{languageName(answerLanguage)}</span>
@@ -370,7 +370,7 @@ export default function AskBox({
               <span lang={speakingLanguage}>{languageName(speakingLanguage)}</span>
             )}
           </p>
-          <button type="button" className={big ? "btn-text self-start px-0" : "btn-text"} onClick={() => setChoosingLanguage(true)}>
+          <button type="button" className={big ? "btn-text -mt-3 self-start px-0 text-base" : "btn-text self-start px-0"} onClick={() => setChoosingLanguage(true)}>
             {t("ask.changeLanguage")}
           </button>
         </div>
@@ -387,40 +387,62 @@ export default function AskBox({
       {showForm && (
         <form className="flex flex-col gap-4" onSubmit={submit}>
           {big ? (
-            <p className="flex items-start gap-3 text-2xl leading-snug font-extrabold">
-              <span aria-hidden="true">💬</span>
-              <label htmlFor="question">{t("ask.label")}</label>
-            </p>
+            <>
+              <label htmlFor="question" className="text-2xl leading-snug font-semibold">
+                {t("ask.label")}
+              </label>
+              {/* The landing page's pill: one thick-edged box holding the question and the blue Ask button. */}
+              <div className="pill-field sm:flex-row sm:items-end sm:rounded-[2rem]">
+                <textarea
+                  ref={textBox}
+                  id="question"
+                  name="question"
+                  aria-describedby="question-hint"
+                  rows={2}
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  className="min-h-[4.5rem] w-full flex-1 resize-none rounded-[1.2rem] bg-transparent px-4 py-3 text-xl leading-snug focus-visible:outline-none"
+                />
+                <button type="submit" className="btn-primary min-h-14 px-10 text-xl sm:w-auto" disabled={waiting}>
+                  {t("common.ask")}
+                </button>
+              </div>
+              <p id="question-hint" className="text-lg text-muted">
+                {t("ask.reassure")}
+              </p>
+            </>
           ) : (
-            <label htmlFor="question" className="text-xl">
-              {t("ask.label")}
-            </label>
+            <>
+              <label htmlFor="question" className="text-xl">
+                {t("ask.label")}
+              </label>
+              <p id="question-hint" className="text-lg text-muted">
+                {t("ask.reassure")}
+              </p>
+              <textarea
+                ref={textBox}
+                id="question"
+                name="question"
+                aria-describedby="question-hint"
+                rows={3}
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                className="field"
+              />
+              <button type="submit" className="btn-primary" disabled={waiting}>
+                {t("common.ask")}
+              </button>
+            </>
           )}
-          <p id="question-hint" className="text-lg text-muted">
-            {t("ask.reassure")}
-          </p>
-          <textarea
-            ref={textBox}
-            id="question"
-            name="question"
-            aria-describedby="question-hint"
-            rows={3}
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            className="field"
-          />
-          <button type="submit" className="btn-primary" disabled={waiting}>
-            {t("common.ask")}
-          </button>
           {examples.length > 0 && (
-            <div className="flex flex-col gap-3">
-              <p className="text-lg font-semibold text-muted">{t("home.tryAsking")}</p>
-              <ul className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-3 pt-1">
+              <p className="text-base font-medium text-muted">{t("home.tryAsking")}</p>
+              <ul className="flex flex-wrap gap-2.5">
                 {examples.map((example) => (
                   <li key={example} className="max-w-full">
                     <button
                       type="button"
-                      className="chip max-w-full text-left"
+                      className="chip max-w-full text-left text-[1.05rem]"
                       disabled={waiting}
                       onClick={() => askExample(example)}
                     >
@@ -436,7 +458,7 @@ export default function AskBox({
       {big && speechBlock}
       {status.kind === "message" && (
         <div className="card-lavender flex flex-col gap-3 text-xl">
-          <p>{status.message}</p>
+          <p className="text-2xl leading-snug">{status.message}</p>
           {status.examples && status.examples.length > 0 && (
             <>
               <p className="font-semibold">{t("ask.couldAsk")}</p>

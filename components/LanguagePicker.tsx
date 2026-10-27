@@ -39,19 +39,23 @@ export default function LanguagePicker({
   const t = useT();
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-2xl font-bold">{t("ask.whichLanguage")}</h2>
-      {LANGUAGES.map((l) => (
-        <button
-          key={l.code}
-          type="button"
-          lang={l.code}
-          aria-pressed={l.code === current}
-          className={l.code === current ? "btn-primary" : "btn-secondary"}
-          onClick={() => onChoose(l.code)}
-        >
-          {l.name}
-        </button>
-      ))}
+      <h2 className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">{t("ask.whichLanguage")}</h2>
+      <div className="@container">
+        <div className="grid grid-cols-1 gap-3 @[24rem]:grid-cols-2">
+          {LANGUAGES.map((l) => (
+            <button
+              key={l.code}
+              type="button"
+              lang={l.code}
+              aria-pressed={l.code === current}
+              className={l.code === current ? "btn-primary" : "btn-secondary"}
+              onClick={() => onChoose(l.code)}
+            >
+              {l.name}
+            </button>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }

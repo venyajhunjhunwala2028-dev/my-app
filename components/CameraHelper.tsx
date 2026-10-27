@@ -105,10 +105,12 @@ export default function CameraHelper() {
 
   const another = (
     <button type="button" className="btn-secondary" onClick={startAgain}>
-      <span aria-hidden="true" className="mr-2">
-        📸
+      <span>
+        <span aria-hidden="true" className="mr-2">
+          📸
+        </span>
+        {t("camera.another")}
       </span>
-      {t("camera.another")}
     </button>
   );
 
@@ -134,11 +136,11 @@ export default function CameraHelper() {
         <div className="flex flex-col gap-6">
           <section
             role="alert"
-            className={`flex flex-col gap-3 rounded-3xl border-2 p-5 ${sensitive ? "border-warning bg-warning-surface" : "border-lavender-strong bg-card"}`}
+            className={`flex flex-col gap-4 rounded-[1.2rem] p-5 sm:p-8 ${sensitive ? "border-l-4 border-warning bg-warning-surface" : "bg-lavender"}`}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <Mascot mood={sensitive ? "warning" : "thinking"} size={3.5} animate={false} />
-              <h2 className="text-2xl font-bold">{t(sensitive ? "camera.sensitiveHeading" : "camera.notClearHeading")}</h2>
+              <h2 className="font-display text-[1.6rem] leading-tight font-medium tracking-[-0.02em]">{t(sensitive ? "camera.sensitiveHeading" : "camera.notClearHeading")}</h2>
             </div>
             <p lang={answer.language} className="text-xl">
               {answer.message}
@@ -151,23 +153,25 @@ export default function CameraHelper() {
     const hasSteps = answer.steps.length > 0 && !!answer.title;
     return (
       <div className="flex flex-col gap-5">
-        <section className="card flex flex-col gap-4 p-5 shadow-raised">
-          <div className="flex items-center gap-3">
-            <Mascot mood="success" size={3.5} />
-            <h2 lang={answer.language} className="min-w-0 text-2xl leading-snug font-extrabold">
+        <section className="flex flex-col gap-5">
+          <div className="flex items-start justify-between gap-4">
+            <h2 lang={answer.language} className="display-md min-w-0">
               {answer.object}
             </h2>
+            <Mascot mood="success" size={3.5} />
           </div>
-          <h3 className="text-xl font-bold text-primary">{t("camera.detail")}</h3>
-          <p lang={answer.language} className="rounded-2xl bg-lavender p-4 text-xl font-semibold">
-            {answer.detail}
-          </p>
+          <div className="flex flex-col gap-3 border-t border-foreground pt-5">
+            <h3 className="text-lg font-semibold text-primary">{t("camera.detail")}</h3>
+            <p lang={answer.language} className="rounded-[1.2rem] bg-lavender p-5 text-xl leading-snug font-semibold">
+              {answer.detail}
+            </p>
+          </div>
         </section>
         {image && answer.box && (
           <div className="flex flex-col gap-3">
             <p
               role="status"
-              className="flex animate-scale-in items-center gap-2 self-start rounded-full bg-primary px-5 py-2 text-lg font-bold text-primary-foreground shadow-raised"
+              className="flex animate-scale-in items-center gap-2 self-start rounded-full bg-primary px-5 py-2 text-lg font-semibold text-primary-foreground"
             >
               <span aria-hidden="true">🔎</span>
               {t("show.found")}
@@ -178,15 +182,17 @@ export default function CameraHelper() {
         {hasSteps && (
           <>
             {answer.safety && (
-              <p role="note" lang={answer.language} className="rounded-3xl border-2 border-warning bg-warning-surface p-4 text-xl font-semibold">
+              <p role="note" lang={answer.language} className="rounded-[1.2rem] border-l-4 border-warning bg-warning-surface p-5 text-xl font-semibold">
                 {answer.safety}
               </p>
             )}
             <button type="button" className="btn-primary min-h-20 text-2xl" onClick={() => startSteps(answer)}>
-              <span aria-hidden="true" className="mr-2">
-                ▶
+              <span>
+                <span aria-hidden="true" className="mr-2">
+                  ▶
+                </span>
+                {t("camera.startSteps")}
               </span>
-              {t("camera.startSteps")}
             </button>
           </>
         )}
@@ -204,9 +210,9 @@ export default function CameraHelper() {
         <img
           src={screenshotSrc(image)}
           alt={t("camera.yourPhoto")}
-          className="mx-auto block max-h-64 w-auto rounded-2xl border-2 border-lavender-strong shadow-card"
+          className="mx-auto block max-h-64 w-auto rounded-[0.9rem] border border-border"
         />
-        <label htmlFor="camera-question" className="text-2xl font-bold">
+        <label htmlFor="camera-question" className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
           {t("camera.questionLabel")}
         </label>
         <p id="camera-question-hint" className="text-xl text-muted">
@@ -238,7 +244,7 @@ export default function CameraHelper() {
         <button type="submit" className="btn-primary min-h-20 text-2xl" disabled={state.kind === "waiting"}>
           {t("camera.ask")}
         </button>
-        <button type="button" className="btn-text" onClick={startAgain}>
+        <button type="button" className="btn-text self-start px-0" onClick={startAgain}>
           {t("camera.differentPhoto")}
         </button>
         <WaitingAndErrors waiting={false} error={state.kind === "error" ? state.error : null} onRetry={() => void send()} />

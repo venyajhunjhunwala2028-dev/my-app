@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import AskBox, { type AskBoxHandle } from "@/components/AskBox";
 import AskFamilySheet from "@/components/AskFamilySheet";
+import { BackLink, Paren } from "@/components/app/AppShell";
 import ExplanationView, { type ExplanationAnswer } from "@/components/ExplanationView";
 import Mascot from "@/components/Mascot";
 import ReadAloud from "@/components/ReadAloud";
@@ -37,7 +38,8 @@ function StageStrip({ stage }: { stage: LessonStage }) {
   return (
     <nav aria-label={t("lesson.stages")}>
       <p className="sr-only">{t("lesson.stageProgress", { stage: index + 1, name: t(STAGE_LABELS[stage]) })}</p>
-      <ol className="grid grid-cols-4 gap-1">
+      {/* A clean segmented label row: a rule over each stage, blue up to where the learner is. */}
+      <ol className="grid grid-cols-4 gap-2">
         {LESSON_STAGES.map((s, i) => {
           const state = stageState(s, stage);
           return (
@@ -46,28 +48,19 @@ function StageStrip({ stage }: { stage: LessonStage }) {
               data-testid="lesson-stage"
               data-state={state}
               aria-current={state === "current" ? "step" : undefined}
-              className="flex flex-col items-center gap-1 text-center"
+              className={`flex flex-col gap-2 border-t-4 pt-2 ${state === "todo" ? "border-lavender-strong" : "border-primary"}`}
             >
-              <span className="flex w-full items-center">
-                <span aria-hidden="true" className={`h-1 flex-1 rounded-full ${i === 0 ? "opacity-0" : state === "todo" ? "bg-lavender-strong" : "bg-primary"}`} />
-                <span
-                  aria-hidden="true"
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg font-extrabold ${
-                    state === "done"
-                      ? "bg-primary text-primary-foreground"
-                      : state === "current"
-                        ? "bg-primary text-primary-foreground ring-4 ring-lavender-strong"
-                        : "border-[3px] border-primary bg-card text-primary"
-                  }`}
-                >
-                  {state === "done" ? "✓" : i + 1}
-                </span>
-                <span
-                  aria-hidden="true"
-                  className={`h-1 flex-1 rounded-full ${i === LESSON_STAGES.length - 1 ? "opacity-0" : LESSON_STAGES.indexOf(stage) > i ? "bg-primary" : "bg-lavender-strong"}`}
-                />
+              <span
+                aria-hidden="true"
+                className={`text-base leading-none font-semibold ${state === "todo" ? "text-muted" : "text-primary"}`}
+              >
+                {state === "done" ? "✓" : i + 1}
               </span>
-              <span className={`text-base leading-tight ${state === "current" ? "font-extrabold text-primary" : "font-semibold text-muted"}`}>
+              <span
+                className={`text-base leading-tight [overflow-wrap:normal] ${
+                  state === "current" ? "font-bold text-foreground" : state === "done" ? "font-medium text-primary" : "font-medium text-muted"
+                }`}
+              >
                 {t(STAGE_LABELS[s])}
               </span>
             </li>
@@ -159,44 +152,41 @@ export default function LessonPlayer({ lesson }: { lesson: Lesson }) {
   const next = stage === "done" ? nextLessonAfter(lesson.id, [...getCompletedLessons(), lesson.id]) : null;
 
   const pageTitle = (
-    <h1 ref={heading} tabIndex={-1} className="text-3xl leading-tight font-extrabold outline-none">
+    <h1 ref={heading} tabIndex={-1} className="display-lg max-w-[16ch] outline-none">
       {title}
     </h1>
   );
 
   return (
-    <div className="flex flex-col gap-6">
-      <Link href="/app/learn" className="btn-text self-start">
-        <span aria-hidden="true" className="mr-2">
-          ←
-        </span>
-        {t("lesson.allLessons")}
-      </Link>
+    <div className="flex flex-col gap-7">
+      <BackLink href="/app/learn">{t("lesson.allLessons")}</BackLink>
       <StageStrip stage={stage} />
 
       {stage === "explain" && (
         <>
           {pageTitle}
-          <section aria-labelledby="explain-heading" className="card flex flex-col gap-4 p-5 shadow-raised">
+          <section aria-labelledby="explain-heading" className="flex flex-col gap-5 border-t border-foreground pt-6">
             <div className="flex items-center gap-3">
-              <Mascot mood="ready" size={3.5} />
-              <h2 id="explain-heading" className="text-2xl font-bold">
+              <Mascot mood="ready" size={3} />
+              <h2 id="explain-heading" className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
                 {t("lesson.explainHeading")}
               </h2>
             </div>
-            <p data-testid="lesson-explain" className="text-2xl leading-snug">
+            <p data-testid="lesson-explain" className="max-w-[40ch] text-2xl leading-snug">
               {lesson.explain[language]}
             </p>
             <ReadAloud text={lesson.explain[language]} language={getLocale(language).speechCode} />
           </section>
-          <p className="text-xl">{t("lesson.showLead")}</p>
+          <p className="rounded-[1.2rem] bg-lavender p-5 text-xl leading-snug">{t("lesson.showLead")}</p>
           <button type="button" className="btn-primary min-h-20 text-2xl" onClick={show}>
-            <span aria-hidden="true" className="mr-3">
-              📱
+            <span>
+              <span aria-hidden="true" className="mr-3">
+                📱
+              </span>
+              {t("lesson.showMe")}
             </span>
-            {t("lesson.showMe")}
           </button>
-          <button type="button" className="btn-text" onClick={() => go("try")}>
+          <button type="button" className="btn-text self-center" onClick={() => go("try")}>
             {t("lesson.skipToTry")}
           </button>
         </>
@@ -204,7 +194,9 @@ export default function LessonPlayer({ lesson }: { lesson: Lesson }) {
 
       {stage === "show" && (
         <>
-          <p className="text-lg font-bold text-primary">{title}</p>
+          <p className="label-paren text-base">
+            <Paren>{title}</Paren>
+          </p>
           {/* Asks the helper for this device's steps (with a device question first if needed), then plays them here. */}
           {!guide && <AskBox ref={askBox} showForm={false} onGuide={setGuide} />}
           {guide && kind === "steps" && (
@@ -228,51 +220,60 @@ export default function LessonPlayer({ lesson }: { lesson: Lesson }) {
 
       {stage === "try" && (
         <>
-          <h1 ref={heading} tabIndex={-1} className="text-3xl leading-tight font-extrabold outline-none">
-            <span aria-hidden="true">✋ </span>
+          <p className="label-paren text-base">
+            <Paren>{title}</Paren>
+          </p>
+          <h1 ref={heading} tabIndex={-1} className="display-lg max-w-[16ch] outline-none">
             {t("lesson.tryHeading")}
           </h1>
-          <p className="text-lg font-bold text-primary">{title}</p>
           {practice ? (
             <>
               <p className="text-xl">{t("lesson.tryPractice")}</p>
               <PracticePlayer exercise={practice} onComplete={() => go("done")} />
             </>
           ) : (
-            <section className="card flex flex-col gap-4 p-5 shadow-raised">
+            <section className="card flex flex-col gap-5 rounded-[1.6rem] p-5 sm:p-8">
               <div className="flex items-end gap-3">
-                <Mascot mood="ready" size={4} />
-                <p className="mb-4 rounded-3xl rounded-bl-md bg-lavender px-5 py-3 text-xl font-semibold">{t("lesson.tryOnPhone")}</p>
+                <Mascot mood="ready" size={3.5} />
+                <p className="mb-4 rounded-3xl rounded-bl-md bg-lavender px-5 py-3 text-xl font-medium">{t("lesson.tryOnPhone")}</p>
               </div>
               <button type="button" className="btn-primary min-h-20 text-2xl" onClick={() => go("done")}>
-                <span aria-hidden="true" className="mr-3">
-                  ✓
+                <span>
+                  <span aria-hidden="true" className="mr-3">
+                    ✓
+                  </span>
+                  {t("steps.next")}
                 </span>
-                {t("steps.next")}
               </button>
               <button type="button" className="btn-secondary min-h-16 text-xl" aria-expanded={stuck} onClick={() => setStuck((s) => !s)}>
-                <span aria-hidden="true" className="mr-3">
-                  ❓
+                <span>
+                  <span aria-hidden="true" className="mr-3">
+                    ❓
+                  </span>
+                  {t("steps.stuck")}
                 </span>
-                {t("steps.stuck")}
               </button>
             </section>
           )}
           {stuck && (
-            <section aria-label={t("steps.helpLabel")} className="card-lavender flex animate-fade-in flex-col gap-4">
-              <h2 className="text-2xl font-bold">{t("lesson.stuckHeading")}</h2>
-              <button type="button" className="btn-secondary" onClick={show}>
-                <span aria-hidden="true" className="mr-2">
-                  🔁
+            <section aria-label={t("steps.helpLabel")} className="card-lavender flex animate-fade-in flex-col gap-4 sm:p-8">
+              <h2 className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">{t("lesson.stuckHeading")}</h2>
+              <button type="button" className="btn-secondary bg-card" onClick={show}>
+                <span>
+                  <span aria-hidden="true" className="mr-2">
+                    🔁
+                  </span>
+                  {t("lesson.showAgain")}
                 </span>
-                {t("lesson.showAgain")}
               </button>
               <p className="text-xl">{t("askFamily.stuckLead")}</p>
               <button type="button" className="btn-primary" onClick={() => setAskFamily(true)}>
-                <span aria-hidden="true" className="mr-2">
-                  👨‍👩‍👧
+                <span>
+                  <span aria-hidden="true" className="mr-2">
+                    👨‍👩‍👧
+                  </span>
+                  {t("askFamily.stuckOpen")}
                 </span>
-                {t("askFamily.stuckOpen")}
               </button>
             </section>
           )}
@@ -280,40 +281,41 @@ export default function LessonPlayer({ lesson }: { lesson: Lesson }) {
       )}
 
       {stage === "done" && (
-        <section className="flex flex-col items-center gap-5 text-center">
-          <span
-            data-testid="lesson-done-tick"
-            aria-hidden="true"
-            className="flex h-24 w-24 animate-pop items-center justify-center rounded-full bg-safe text-5xl font-black text-white shadow-raised"
-          >
-            ✓
-          </span>
-          <h1 ref={heading} tabIndex={-1} className="text-4xl font-extrabold outline-none">
-            <span aria-hidden="true">🎉 </span>
-            {t("lesson.doneTitle")}
-          </h1>
-          <div className="flex items-end gap-3 text-left">
-            <Mascot mood="celebrate" size={5} />
-            <p className="mb-6 rounded-3xl rounded-bl-md bg-card px-5 py-3 text-xl font-semibold shadow-card">
+        <div className="flex flex-col gap-6">
+          <section className="media-card blue-field flex flex-col gap-5 px-6 py-8 sm:px-10 sm:py-12">
+            <div className="flex items-start justify-between gap-4">
+              <span
+                data-testid="lesson-done-tick"
+                aria-hidden="true"
+                className="flex h-14 w-14 animate-pop items-center justify-center rounded-full bg-white text-3xl font-black text-primary"
+              >
+                ✓
+              </span>
+              <Mascot mood="celebrate" size={4.5} tone="white" />
+            </div>
+            <h1 ref={heading} tabIndex={-1} className="display-lg text-white outline-none">
+              {t("lesson.doneTitle")}
+            </h1>
+            <p className="self-start rounded-3xl rounded-tl-md bg-white px-5 py-3 text-xl font-medium text-foreground">
               {t("lesson.doneText", { lesson: title })}
             </p>
-          </div>
-          <p role="status" className="rounded-full bg-safe-surface px-5 py-2 text-xl font-semibold text-safe">
-            <span aria-hidden="true">🌱 </span>
-            {t("lesson.confidenceUp")}
-          </p>
-          <div className="flex w-full flex-col gap-3">
+            <p role="status" className="text-xl font-medium text-on-blue-muted">
+              <span aria-hidden="true">🌱 </span>
+              {t("lesson.confidenceUp")}
+            </p>
             {next ? (
-              <Link href={lessonHref(next.id)} className="btn-primary min-h-20 flex-col items-start! gap-1 py-4 text-left">
-                <span className="text-base font-semibold opacity-90">{t("lesson.nextLesson")}</span>
+              <Link href={lessonHref(next.id)} className="btn-light min-h-20 flex-col items-start! gap-1 py-4 text-left">
+                <span className="text-base font-semibold text-muted">{t("lesson.nextLesson")}</span>
                 <span className="text-2xl">
                   <span aria-hidden="true">→ </span>
                   {next.title[language]}
                 </span>
               </Link>
             ) : (
-              <p className="text-xl font-semibold text-safe">{t("confidence.allLessons")}</p>
+              <p className="text-xl font-semibold text-white">{t("confidence.allLessons")}</p>
             )}
+          </section>
+          <div className="flex w-full flex-col gap-3">
             <Link href="/app/learn" className="btn-secondary">
               {t("lesson.allLessons")}
             </Link>
@@ -321,7 +323,7 @@ export default function LessonPlayer({ lesson }: { lesson: Lesson }) {
               {t("success.goHome")}
             </Link>
           </div>
-        </section>
+        </div>
       )}
 
       {askFamily && <AskFamilySheet context={{ goal: title }} onClose={() => setAskFamily(false)} />}

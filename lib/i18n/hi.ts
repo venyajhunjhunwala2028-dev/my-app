@@ -20,6 +20,7 @@ export const hi: Messages = {
   "common.thinking": "सोच रहा हूँ, एक पल रुकिए…",
   "common.iUnderstand": "ठीक है, समझ लिया",
   "common.thankYou": "धन्यवाद।",
+  "common.close": "बंद करें",
 
   // Home
   "home.title": "Tech Helper",
@@ -184,6 +185,8 @@ export const hi: Messages = {
 
   // Guide page
   "guide.notFound": "मुझे यह गाइड नहीं मिली",
+  "guide.explanationLabel": "आसान भाषा में",
+  "success.label": "सब हो गया",
   "answer.anotherWay": "दूसरा तरीका",
   "answer.showMeHow": "करके दिखाइए",
   "answer.explainOther": "इसे अंग्रेज़ी में समझाइए",
@@ -303,6 +306,7 @@ export const hi: Messages = {
 
   // Is this a scam?
   "scam.title": "क्या यह धोखा है?",
+  "scam.label": "सुरक्षा",
   "scam.lead": "किसी मैसेज पर शक है? मुझे भेजिए। मैं जाँचने में मदद करूँगा।",
   "scam.upload": "स्क्रीनशॉट भेजें",
   "scam.paste": "मैसेज चिपकाएँ",

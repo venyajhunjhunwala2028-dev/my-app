@@ -35,28 +35,33 @@ export default function SavedGuides({ limit, page = false }: { limit?: number; p
   }
 
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-4">
-      <Heading id={headingId} className={page ? "text-3xl font-extrabold" : "text-2xl font-bold"}>
-        <span aria-hidden="true" className="mr-2">
-          ⭐
-        </span>
+    <section aria-labelledby={headingId} className="flex flex-col gap-5">
+      <Heading id={headingId} className={page ? "display-lg" : "display-md"}>
         {t("saved.heading")}
       </Heading>
       {guides.length === 0 ? (
-        <p className="card-lavender text-xl">{t("saved.empty")}</p>
+        <p className="border-t border-foreground pt-5 text-xl text-muted">{t("saved.empty")}</p>
       ) : (
-        <ul className="flex flex-col gap-4">
+        <ul className="hairline-list">
           {shown.map((g) => (
-            <li key={g.id} className="flex flex-col gap-2">
-              <button type="button" className="card-action flex-col items-start gap-1 text-left" onClick={() => open(g.id)}>
-                <span className="text-xl font-bold">{g.title || g.question}</span>
-                {g.title && g.title !== g.question && <span className="text-lg">{g.question}</span>}
-                <span className="text-lg text-muted">{simpleDate(g.savedAt, speechCode, t)}</span>
+            <li key={g.id} className="flex items-center gap-2">
+              <button type="button" className="row-action group min-w-0 flex-1" onClick={() => open(g.id)}>
+                <span aria-hidden="true" className="row-icon">
+                  ⭐
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="text-xl leading-snug font-semibold">{g.title || g.question}</span>
+                  {g.title && g.title !== g.question && <span className="text-lg leading-snug">{g.question}</span>}
+                  <span className="text-base text-muted">{simpleDate(g.savedAt, speechCode, t)}</span>
+                </span>
+                <span aria-hidden="true" className="row-arrow">
+                  →
+                </span>
               </button>
               {!preview && (
                 <button
                   type="button"
-                  className="btn-text self-end"
+                  className="btn-text shrink-0 px-2 text-base text-muted"
                   aria-label={t("saved.removeItem", { question: g.question })}
                   onClick={() => remove(g.id)}
                 >
@@ -68,11 +73,9 @@ export default function SavedGuides({ limit, page = false }: { limit?: number; p
         </ul>
       )}
       {preview && (
-        <Link href="/app/saved" className="btn-soft justify-center">
+        <Link href="/app/saved" className="link-cta self-start text-lg">
           {t("saved.seeAll")}
-          <span aria-hidden="true" className="ml-2">
-            →
-          </span>
+          <span aria-hidden="true">→</span>
         </Link>
       )}
     </section>

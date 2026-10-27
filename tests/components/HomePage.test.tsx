@@ -91,10 +91,11 @@ describe("Home page", () => {
     expect(document.getElementById("my-guides")).toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Ways I can help" });
     expect(screen.getByRole("link", { name: "My saved guides" })).toHaveAttribute("href", "/app/saved");
-    // The big cards: Ask, What do I press?, Teach me how this works and Show me with my camera (Speak and Talk me
-    // through it are hidden here); then Is this a scam?, Show me with my camera, Practice, Help library,
-    // Ask my family, Call my family, Recent help, My saved guides and Settings.
-    expect(within(nav).getAllByRole("listitem")).toHaveLength(13);
+    // The numbered ways: Ask and What do I press? (Speak and Talk me through it are hidden here); the big rows
+    // Teach me how this works and Show me with my camera; then Is this a scam?, Show me with my camera, Practice,
+    // Help library, Ask my family, Call my family, Recent help and My saved guides. Settings is in the top bar.
+    expect(within(nav).getAllByRole("listitem")).toHaveLength(12);
+    expect(within(screen.getByTestId("app-header")).getByRole("button", { name: "Settings" })).toBeInTheDocument();
   });
 
   it("offers goals as chips and Show me with my camera, as a big card and in More ways", () => {

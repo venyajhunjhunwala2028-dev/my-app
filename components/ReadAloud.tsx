@@ -79,20 +79,24 @@ export default function ReadAloud({ text, language, autoStart = false }: { text:
 
   return (
     <div className="@container">
-      <div className="grid grid-cols-1 gap-3 @[17rem]:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 @[24rem]:grid-cols-2">
         {voice === "playing" ? (
           <button type="button" className="btn-secondary col-span-full" onClick={pause}>
-            <span aria-hidden="true" className="mr-3">
-              ⏸
+            <span>
+              <span aria-hidden="true" className="mr-3">
+                ⏸
+              </span>
+              {t("steps.pause")}
             </span>
-            {t("steps.pause")}
           </button>
         ) : (
           <button type="button" className="btn-secondary col-span-full" onClick={play}>
-            <span aria-hidden="true" className="mr-3">
-              🔊
+            <span>
+              <span aria-hidden="true" className="mr-3">
+                🔊
+              </span>
+              {t("steps.play")}
             </span>
-            {t("steps.play")}
           </button>
         )}
         <button type="button" className="btn-soft" onClick={() => read()}>
@@ -100,8 +104,10 @@ export default function ReadAloud({ text, language, autoStart = false }: { text:
           {t("steps.replay")}
         </button>
         <button type="button" className="btn-soft" aria-pressed={slow} onClick={toggleSlow}>
-          <span aria-hidden="true">{slow ? "✓ " : "🐢 "}</span>
-          {t("steps.slower")}
+          <span>
+            <span aria-hidden="true">{slow ? "✓ " : "🐢 "}</span>
+            {t("steps.slower")}
+          </span>
         </button>
       </div>
     </div>

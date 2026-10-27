@@ -5,13 +5,21 @@ export type MascotMood = "ready" | "thinking" | "success" | "warning" | "celebra
 export const MASCOT_MOODS: readonly MascotMood[] = ["ready", "thinking", "success", "warning", "celebrate"];
 
 // Flat and minimal: one electric-blue shape with white features, no shading or blush.
+// On the electric-blue field the colours swap: a white shape with blue features.
 const INK = "#0a0a0a";
-const BODY = "#3d33f0";
-const FEATURE = "#ffffff";
+const BLUE = "#3d33f0";
+const WHITE = "#ffffff";
 const GREEN = "#1d6b3a";
 const AMBER = "#f5c54a";
 
-function Eyes({ mood }: { mood: MascotMood }) {
+type Palette = { body: string; feature: string };
+const PALETTES: Record<"blue" | "white", Palette> = {
+  blue: { body: BLUE, feature: WHITE },
+  white: { body: WHITE, feature: BLUE },
+};
+
+function Eyes({ mood, c }: { mood: MascotMood; c: Palette }) {
+  const FEATURE = c.feature;
   switch (mood) {
     case "success":
     case "celebrate":
@@ -54,7 +62,8 @@ function Eyes({ mood }: { mood: MascotMood }) {
   }
 }
 
-function Mouth({ mood }: { mood: MascotMood }) {
+function Mouth({ mood, c }: { mood: MascotMood; c: Palette }) {
+  const FEATURE = c.feature;
   const stroke = { fill: "none", stroke: FEATURE, strokeWidth: 5, strokeLinecap: "round" as const };
   switch (mood) {
     case "thinking":
@@ -71,7 +80,9 @@ function Mouth({ mood }: { mood: MascotMood }) {
 }
 
 /** The small extra that makes each mood readable at a glance. */
-function Accessory({ mood }: { mood: MascotMood }) {
+function Accessory({ mood, c }: { mood: MascotMood; c: Palette }) {
+  const BODY = c.body;
+  const RING = c.body === WHITE ? BLUE : "#fff";
   switch (mood) {
     case "thinking":
       return (
@@ -85,14 +96,14 @@ function Accessory({ mood }: { mood: MascotMood }) {
       // A green check badge (the thumbs-up moment).
       return (
         <g>
-          <circle cx="106" cy="92" r="13" fill={GREEN} stroke="#fff" strokeWidth="3" />
+          <circle cx="106" cy="92" r="13" fill={GREEN} stroke={RING} strokeWidth="3" />
           <path d="M100 92 l4.5 4.5 l8 -9" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
         </g>
       );
     case "warning":
       return (
         <g>
-          <circle cx="108" cy="22" r="12" fill={AMBER} stroke="#fff" strokeWidth="3" />
+          <circle cx="108" cy="22" r="12" fill={AMBER} stroke={RING} strokeWidth="3" />
           <path d="M108 15 v8" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
           <circle cx="108" cy="28.5" r="2" fill={INK} />
         </g>
@@ -101,9 +112,9 @@ function Accessory({ mood }: { mood: MascotMood }) {
       return (
         <g>
           <rect x="8" y="14" width="7" height="7" rx="1.5" fill={AMBER} transform="rotate(20 11 17)" />
-          <rect x="106" y="8" width="7" height="7" rx="1.5" fill={INK} transform="rotate(-15 109 11)" />
+          <rect x="106" y="8" width="7" height="7" rx="1.5" fill={c.body === WHITE ? WHITE : INK} transform="rotate(-15 109 11)" />
           <circle cx="116" cy="36" r="4" fill={BODY} />
-          <circle cx="6" cy="44" r="3.5" fill={INK} />
+          <circle cx="6" cy="44" r="3.5" fill={c.body === WHITE ? AMBER : INK} />
           <path d="M20 4 l3 6" stroke={BODY} strokeWidth="3" strokeLinecap="round" />
           <path d="M98 0 l-2 6" stroke={AMBER} strokeWidth="3" strokeLinecap="round" />
         </g>
@@ -122,9 +133,12 @@ export default function Mascot({
   size = 4,
   label,
   animate = true,
+  tone = "blue",
   children,
   className = "",
 }: {
+  /** "white": a white shape with blue features, for the electric-blue field. */
+  tone?: "blue" | "white";
   mood?: MascotMood;
   /** Width in rem, so it grows with the text size setting. */
   size?: number;
@@ -135,6 +149,8 @@ export default function Mascot({
   children?: ReactNode;
   className?: string;
 }) {
+  const c = PALETTES[tone];
+  const BODY = c.body;
   const a11y = label ? { role: "img", "aria-label": label } : { "aria-hidden": true as const };
   const figure = (
     <svg
@@ -153,9 +169,9 @@ export default function Mascot({
       <circle cx="64" cy="7" r="5.5" fill={BODY} />
       {/* Body: one flat, soft squircle. */}
       <path d="M64 18 C104 18 116 32 116 64 C116 98 102 114 64 114 C26 114 12 98 12 64 C12 32 24 18 64 18Z" fill={BODY} />
-      <Eyes mood={mood} />
-      <Mouth mood={mood} />
-      <Accessory mood={mood} />
+      <Eyes mood={mood} c={c} />
+      <Mouth mood={mood} c={c} />
+      <Accessory mood={mood} c={c} />
     </svg>
   );
 
@@ -163,7 +179,7 @@ export default function Mascot({
   return (
     <div className={`flex items-end gap-3 ${className}`}>
       {figure}
-      <p className="relative mb-6 rounded-3xl rounded-bl-md border border-border bg-card px-5 py-3 text-lg font-semibold">
+      <p className="relative mb-6 rounded-3xl rounded-bl-md border border-border bg-card px-5 py-3 text-lg font-medium">
         {children}
       </p>
     </div>

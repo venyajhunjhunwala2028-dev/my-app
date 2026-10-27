@@ -50,7 +50,7 @@ export default function PicturePicker({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <PrivacyReminder understood={understood} onUnderstand={onUnderstand} message={privacy} />
       {buttons.map((b) => (
         <div key={b.testId}>
@@ -79,7 +79,7 @@ export default function PicturePicker({
         </div>
       ))}
       {problem && (
-        <p role="alert" className="rounded-2xl border-2 border-warning bg-warning-surface p-4 text-xl">
+        <p role="alert" className="rounded-[1.2rem] border-l-4 border-warning bg-warning-surface p-4 text-xl">
           {t(problem)}
         </p>
       )}

@@ -1,8 +1,8 @@
 "use client";
 
 import { Suspense } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { AppPage, BackLink, PageIntro } from "@/components/app/AppShell";
 import ScamChecker from "@/components/ScamChecker";
 import { useT } from "@/lib/i18n";
 
@@ -15,15 +15,12 @@ function CheckerFromUrl() {
 export default function ScamPage() {
   const t = useT();
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-6">
-      <Link href="/app" className="btn-text self-start">
-        {t("common.backHome")}
-      </Link>
-      <h1 className="text-3xl font-bold">{t("scam.title")}</h1>
+    <AppPage back={<BackLink href="/app">{t("common.backHome")}</BackLink>}>
+      <PageIntro label={t("scam.label")} title={t("scam.title")} />
       {/* Search params are only known per request, so they are read inside Suspense (Cache Components). */}
       <Suspense fallback={null}>
         <CheckerFromUrl />
       </Suspense>
-    </main>
+    </AppPage>
   );
 }

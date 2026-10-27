@@ -34,9 +34,9 @@ export default function WaitingAndErrors({
   const english = useUiLanguage() === "en";
   if (waiting) {
     return (
-      <div role="status" className="card-lavender flex animate-fade-in items-center gap-4">
-        <Mascot mood="thinking" size={3.5} />
-        <p className="flex flex-col gap-2 text-2xl font-semibold">
+      <div role="status" className="card-lavender flex animate-fade-in items-center gap-5 sm:p-8">
+        <Mascot mood="thinking" size={3.75} />
+        <p className="flex flex-col gap-3 font-display text-[1.6rem] leading-tight font-medium tracking-[-0.02em]">
           {t("common.thinking")}
           <span aria-hidden="true" className="flex gap-2">
             <span className="waiting-dot" />
@@ -50,10 +50,10 @@ export default function WaitingAndErrors({
   if (!error) return null;
   return (
     <div className="flex flex-col gap-4">
-      <section role="alert" className="card flex flex-col gap-4 border-2 border-warning/40">
+      <section role="alert" className="flex flex-col gap-5 rounded-[1.2rem] border-l-4 border-warning bg-warning-surface p-5 sm:p-8">
         <div className="flex items-center gap-4">
           <Mascot mood="warning" size={3.5} animate={false} />
-          <p className="text-xl">{learnerMessage(error, english, t)}</p>
+          <p className="text-xl leading-snug">{learnerMessage(error, english, t)}</p>
         </div>
         <button type="button" className="btn-primary" onClick={onRetry}>
           {t("common.tryAgain")}

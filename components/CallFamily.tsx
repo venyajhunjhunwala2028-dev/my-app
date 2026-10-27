@@ -42,48 +42,52 @@ export default function CallFamily({
   }
 
   return (
-    <section className="card flex flex-col gap-4">
+    <section className="flex flex-col gap-4 rounded-[1.2rem] bg-surface p-5 sm:p-8">
       {view === "closed" && (
-        <button type="button" className="btn-secondary min-h-[4.5rem] text-xl" onClick={() => setMode("form")}>
-          <span aria-hidden="true" className="mr-2">
-            📞
+        <button type="button" className="btn-secondary min-h-[4.5rem] bg-card text-xl" onClick={() => setMode("form")}>
+          <span>
+            <span aria-hidden="true" className="mr-2">
+              📞
+            </span>
+            {t("family.setUp")}
           </span>
-          {t("family.setUp")}
         </button>
       )}
       {view === "form" && <ContactForm initial={contact} askCallMe={askCallMe} onSave={save} />}
       {view === "confirm" && contact && (
         <div className="flex flex-col gap-4">
-          <h2 className="text-2xl font-bold">{t("family.isRight")}</h2>
-          <p className="text-2xl font-semibold">{contact.name}</p>
-          <p className="text-2xl">{contact.phone}</p>
+          <h2 className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">{t("family.isRight")}</h2>
+          <div className="border-t border-foreground pt-4">
+            <p className="text-2xl font-semibold">{contact.name}</p>
+            <p className="text-2xl">{contact.phone}</p>
+          </div>
           <button type="button" className="btn-primary" onClick={() => setMode("auto")}>
             {t("common.yes")}
           </button>
-          <button type="button" className="btn-secondary" onClick={() => setMode("form")}>
+          <button type="button" className="btn-secondary bg-card" onClick={() => setMode("form")}>
             {t("family.change")}
           </button>
         </div>
       )}
       {view === "ready" && contact && (
         <div className="flex flex-col gap-4">
-          <h2 className="text-2xl font-bold">
-            <span aria-hidden="true" className="mr-2">
+          <h2 className="flex items-center gap-4 display-md">
+            <span aria-hidden="true" className="row-icon h-14 w-14 bg-card text-2xl">
               📞
             </span>
-            {t("family.callName", { name: contact.name })}
+            <span>{t("family.callName", { name: contact.name })}</span>
           </h2>
           <div className="@container">
             <div className="grid grid-cols-1 gap-3 @[17rem]:grid-cols-2">
               <a href={`tel:${contact.phone}`} className="btn-primary">
                 {t("family.call")}
               </a>
-              <a href={`https://wa.me/${contact.phone.replace(/\D/g, "")}`} className="btn-secondary">
+              <a href={`https://wa.me/${contact.phone.replace(/\D/g, "")}`} className="btn-secondary bg-card">
                 {t("family.whatsapp")}
               </a>
             </div>
           </div>
-          <button type="button" className="btn-text" onClick={() => setMode("form")}>
+          <button type="button" className="btn-text self-start px-0" onClick={() => setMode("form")}>
             {t("family.changeContact")}
           </button>
         </div>
@@ -116,13 +120,13 @@ function ContactForm({
 
   return (
     <form className="flex flex-col gap-4" onSubmit={submit}>
-      <h2 className="text-2xl font-bold">
-        <span aria-hidden="true" className="mr-2">
+      <h2 className="flex flex-col items-start gap-4 font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
+        <span aria-hidden="true" className="row-icon bg-card">
           📞
         </span>
-        {t("family.who")}
+        <span>{t("family.who")}</span>
       </h2>
-      <label htmlFor={`${id}-name`} className="text-xl">
+      <label htmlFor={`${id}-name`} className="text-xl font-medium">
         {t("family.name")}
       </label>
       <input
@@ -132,7 +136,7 @@ function ContactForm({
         onChange={(e) => setName(e.target.value)}
         className="field"
       />
-      <label htmlFor={`${id}-phone`} className="text-xl">
+      <label htmlFor={`${id}-phone`} className="text-xl font-medium">
         {t("family.phone")}
       </label>
       <input
@@ -145,7 +149,7 @@ function ContactForm({
       />
       {askCallMe && (
         <>
-          <label htmlFor={`${id}-call-me`} className="text-xl">
+          <label htmlFor={`${id}-call-me`} className="text-xl font-medium">
             {t("family.callMe")}
           </label>
           <p id={`${id}-call-me-hint`} className="-mt-2 text-lg text-muted">

@@ -18,13 +18,24 @@ export default function SafetyNotice({ kind, message }: { kind: SafetyNoticeKind
   const copy = COPY[kind];
   return (
     <div className="flex flex-col gap-6">
-      <section role="alert" className="flex flex-col gap-4 rounded-3xl border-2 border-warning bg-warning-surface p-5 animate-fade-in">
+      <section
+        role="alert"
+        className={`flex animate-fade-in flex-col gap-4 rounded-[1.2rem] p-5 sm:p-8 ${
+          kind === "daily_limit" ? "bg-lavender" : "border-l-4 border-warning bg-warning-surface"
+        }`}
+      >
         <div className="flex items-center gap-4">
           {/* The daily limit is not a danger, so the mascot only looks worried for safety notices. */}
           <Mascot mood={kind === "daily_limit" ? "thinking" : "warning"} size={3.5} animate={false} />
-          <h2 className="text-2xl font-bold text-warning">{t(copy.heading)}</h2>
+          <h2
+            className={`font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em] ${
+              kind === "daily_limit" ? "" : "text-warning"
+            }`}
+          >
+            {t(copy.heading)}
+          </h2>
         </div>
-        <p className="text-xl">{message || t(copy.message)}</p>
+        <p className="text-xl leading-snug">{message || t(copy.message)}</p>
       </section>
       <CallFamily />
     </div>

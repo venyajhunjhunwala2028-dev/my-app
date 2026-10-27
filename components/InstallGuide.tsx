@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { AppHeader, PAGE_COLUMN } from "@/components/app/AppShell";
 import { useT, withNodes, type MessageKey } from "@/lib/i18n";
 import { noSubscribe } from "@/lib/useIsClient";
 
@@ -26,20 +27,33 @@ export default function InstallGuide({ children }: { children: ReactNode }) {
   if (!install || skipped) return <>{children}</>;
 
   const bold = (key: MessageKey) => <strong>{t(key)}</strong>;
+  const steps = [
+    withNodes(t("install.step1"), { share: bold("install.share") }),
+    withNodes(t("install.step2"), { add: bold("install.addToHome") }),
+    withNodes(t("install.step3"), { add: bold("install.add") }),
+    t("install.step4"),
+    t("install.step5"),
+  ];
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-8">
-      <h1 className="text-3xl font-bold">{t("install.title")}</h1>
-      <p className="text-xl text-muted">{t("install.forHelper")}</p>
-      <ol className="flex list-decimal flex-col gap-4 pl-8 text-xl">
-        <li>{withNodes(t("install.step1"), { share: bold("install.share") })}</li>
-        <li>{withNodes(t("install.step2"), { add: bold("install.addToHome") })}</li>
-        <li>{withNodes(t("install.step3"), { add: bold("install.add") })}</li>
-        <li>{t("install.step4")}</li>
-        <li>{t("install.step5")}</li>
-      </ol>
-      <button type="button" className="btn-text" onClick={() => setSkipped(true)}>
-        {t("install.continue")}
-      </button>
-    </main>
+    <>
+      <AppHeader />
+      <main className={`${PAGE_COLUMN} flex flex-1 flex-col gap-8 pt-4 pb-20`}>
+        <h1 className="display-lg max-w-[16ch]">{t("install.title")}</h1>
+        <p className="max-w-[36ch] text-xl text-muted sm:text-2xl">{t("install.forHelper")}</p>
+        <ol className="hairline-list">
+          {steps.map((step, i) => (
+            <li key={i} className="flex items-start gap-5 py-5 text-xl leading-snug">
+              <span aria-hidden="true" className="display-num w-12 shrink-0 pt-1 text-[2.25rem] text-primary">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <span className="pt-1">{step}</span>
+            </li>
+          ))}
+        </ol>
+        <button type="button" className="btn-text self-start px-0" onClick={() => setSkipped(true)}>
+          {t("install.continue")}
+        </button>
+      </main>
+    </>
   );
 }

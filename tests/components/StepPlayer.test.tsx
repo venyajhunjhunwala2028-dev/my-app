@@ -481,7 +481,7 @@ describe("StepPlayer phase 1 help, voice and progress", () => {
   it("the success screen offers three ways on and saves whether it helped", async () => {
     render(<StepPlayer guide={seed()} />);
     for (let i = 0; i < 4; i++) await done();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("🎉 You did it!");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("You did it!");
     expect(screen.getByRole("link", { name: "Go home" })).toHaveAttribute("href", "/app");
     expect(screen.getByRole("link", { name: "Ask another question" }).getAttribute("href")).toMatch(/^\/app/);
     expect(screen.getByRole("link", { name: "Learn something else" }).getAttribute("href")).toMatch(/^\/app/);
