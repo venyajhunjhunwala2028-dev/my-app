@@ -114,6 +114,29 @@ describe("Show me with my camera page", () => {
     expect(screen.getByRole("button", { name: "Take a photo" })).toBeInTheDocument();
   });
 
+  it("shows the money refusal when asked to help send money", async () => {
+    answerWith({ kind: "money_refusal", language: "en", message: "I can't help with sending money or payments." });
+    render(<CameraPage />);
+    const u = user();
+    await takePhoto(u);
+    await u.type(screen.getByLabelText("What would you like to know?"), "How do I send money with this?");
+    await u.click(screen.getByRole("button", { name: "Tell me about it" }));
+    expect(await screen.findByRole("heading", { name: "I can't help with sending money" })).toBeInTheDocument();
+    expect(screen.getByText("I can't help with sending money or payments.")).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Take another photo" }));
+    expect(screen.getByRole("button", { name: "Take a photo" })).toBeInTheDocument();
+  });
+
+  it("does not spend a use when the request fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "retry", message: "Sorry, something went wrong. Please try again." }), { status: 502 })));
+    render(<CameraPage />);
+    const u = user();
+    await takePhoto(u);
+    await u.click(screen.getByRole("button", { name: "Tell me about it" }));
+    expect(await screen.findByText("Sorry, something went wrong. Please try again.")).toBeInTheDocument();
+    expect(getUsage().count).toBe(0);
+  });
+
   it("at 30 uses today, says ready tomorrow and sends nothing", async () => {
     for (let i = 0; i < 30; i++) requestAllowance();
     render(<CameraPage />);

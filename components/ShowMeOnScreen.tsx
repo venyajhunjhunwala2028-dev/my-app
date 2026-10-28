@@ -6,14 +6,14 @@ import Mascot from "@/components/Mascot";
 import PrivacyReminder from "@/components/PrivacyReminder";
 import SafetyNotice from "@/components/SafetyNotice";
 import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErrors";
+import { postCounted } from "@/lib/ai/countedRequest";
 import type { Box, LocateAnswer } from "@/lib/ai/locate";
 import { deviceLabel, screenshotHowTo as howToFor } from "@/lib/device";
 import { useT, useUiLanguage, type MessageKey } from "@/lib/i18n";
-import { postJson } from "@/lib/http/postJson";
 import { prepareScreenshot } from "@/lib/image/prepare";
 import type { PreparedImage } from "@/lib/image/resize";
 import { MIC_HELP, useDictation } from "@/lib/speech/useDictation";
-import { requestAllowance, setPreferredDevice } from "@/lib/store/localStore";
+import { setPreferredDevice } from "@/lib/store/localStore";
 
 const DEVICE_OPTIONS = ["iPhone", "Android phone", "iPad or tablet", "Windows computer", "Mac"];
 
@@ -164,9 +164,10 @@ export default function ShowMeOnScreen({
   const input = useRef<HTMLInputElement>(null);
   const dictation = useDictation(setQuestion);
 
+  // Every send counts against today's cap, including Try again, but only once it is answered.
   async function send(prepared: PreparedImage) {
     setState({ kind: "waiting" });
-    const result = await postJson<LocateAnswer>("/api/locate", {
+    const result = await postCounted<LocateAnswer>("/api/locate", {
       image: prepared.base64,
       mediaType: prepared.mediaType,
       width: prepared.width,
@@ -176,15 +177,13 @@ export default function ShowMeOnScreen({
       lookFor,
       language,
     });
-    if ("kind" in result) setState({ kind: "answer", answer: result });
-    else if (result.code === "rate_limited") setState({ kind: "limit" });
-    else setState({ kind: "error", error: result });
+    if (result.type === "answer") setState({ kind: "answer", answer: result.answer });
+    else if (result.type === "limit") setState({ kind: "limit" });
+    else setState({ kind: "error", error: { code: result.code, message: result.message } });
   }
 
-  // Every send counts against today's cap, including Try again.
   function retry() {
     if (!image) return;
-    if (!requestAllowance().allowed) return setState({ kind: "limit" });
     void send(image);
   }
 
@@ -198,8 +197,7 @@ export default function ShowMeOnScreen({
     setImage(prepared);
     onImage?.(prepared);
     if (asking) return setState({ kind: "question" });
-    // Count the use only once there is a picture to send.
-    if (!requestAllowance().allowed) return setState({ kind: "limit" });
+    // A use is counted only once there is a picture to send.
     await send(prepared);
   }
 
@@ -208,7 +206,6 @@ export default function ShowMeOnScreen({
     if (!image) return;
     if (!question.trim()) return setState({ kind: "question", problem: "show.noQuestion" });
     dictation.stop();
-    if (!requestAllowance().allowed) return setState({ kind: "limit" });
     void send(image);
   }
 
@@ -234,10 +231,10 @@ export default function ShowMeOnScreen({
 
   if (state.kind === "answer") {
     const { answer } = state;
-    if (answer.kind === "scam_warning") {
+    if (answer.kind === "scam_warning" || answer.kind === "money_refusal") {
       return (
         <div className="flex flex-col gap-6">
-          <SafetyNotice kind="scam_warning" message={answer.message} />
+          <SafetyNotice kind={answer.kind} message={answer.message} />
           {anotherScreen}
         </div>
       );

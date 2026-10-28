@@ -233,6 +233,22 @@ describe("Is this a scam? page", () => {
       expect(sentBody().question).toBeUndefined();
     });
 
+    it("with only a question from the home screen, asks for the message instead of sending or failing", async () => {
+      nav.search = new URLSearchParams("q=Should I reply to this text?");
+      render(<ScamPage />);
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Paste message" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Upload screenshot" })).toBeInTheDocument();
+      await user().click(screen.getByRole("button", { name: "Check it" }));
+      expect(screen.getByRole("alert")).toHaveTextContent(/paste a message or add a screenshot/i);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(getUsage().count).toBe(0);
+      await pasteAndCheck("Hi Mum, I lost my phone. Reply on this number.");
+      await screen.findByRole("heading", { name: "Probably safe" });
+      expect(sentBody().question).toBe("Should I reply to this text?");
+      nav.search = new URLSearchParams();
+    });
+
     it("picks up a safety question asked on the home screen", async () => {
       nav.search = new URLSearchParams("q=Is this really from my bank?");
       render(<ScamPage />);

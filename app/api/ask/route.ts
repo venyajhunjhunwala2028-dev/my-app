@@ -1,4 +1,14 @@
-import { callAndParseAnswer, makeFail, parseImageFields } from "@/lib/ai/route";
+import {
+  callAndParseAnswer,
+  isInvalid,
+  makeFail,
+  optionalApp,
+  optionalDevices,
+  optionalLanguage,
+  optionalText,
+  parseImageFields,
+  type Invalid,
+} from "@/lib/ai/route";
 import { fakeAskAnswer } from "@/lib/ai/fakes";
 import { ASK_SYSTEM_PROMPT, buildAskUserMessage } from "@/lib/ai/prompts";
 import {
@@ -17,11 +27,7 @@ import {
 } from "@/lib/ai/schemas";
 import { isObj } from "@/lib/guards";
 import {
-  MAX_APP_CHARS,
-  MAX_DEVICE_CHARS,
-  MAX_DEVICES,
   MAX_GUIDE_CONTEXT_CHARS,
-  MAX_LANGUAGE_CHARS,
   MAX_PREVIOUS_EXPLANATION_CHARS,
   MAX_QUESTION_CHARS,
   MAX_TROUBLE_CHARS,
@@ -47,21 +53,6 @@ const DEFAULT_QUESTIONS: Partial<Record<AskMode, string>> = {
   checkScreen: "Am I in the right place?",
 };
 
-type Invalid = "bad_request" | "too_long";
-
-/** A BCP 47 language tag: "en", "hi-IN", "hi-Latn", "zh-Hant-TW", "es-419". */
-const LANGUAGE_TAG = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}$/;
-
-/** An optional string field: undefined when absent, the trimmed text when valid, otherwise an error code. */
-function optionalText(v: unknown, max: number): string | undefined | Invalid {
-  if (v === undefined) return undefined;
-  if (typeof v !== "string") return "bad_request";
-  const text = v.trim();
-  if (text.length > max) return "too_long";
-  return text || undefined;
-}
-const isInvalid = (v: unknown): v is Invalid => v === "bad_request" || v === "too_long";
-
 function parseRequest(raw: unknown): AskRequest | Invalid {
   if (!isObj(raw)) return "bad_request";
   if (raw.mode !== undefined && !ASK_MODES.includes(raw.mode as AskMode)) return "bad_request";
@@ -77,9 +68,9 @@ function parseRequest(raw: unknown): AskRequest | Invalid {
   const req: AskRequest = { question };
   if (mode) req.mode = mode;
 
-  const app = optionalText(raw.app, MAX_APP_CHARS);
-  if (app === "too_long") return "bad_request";
-  if (isInvalid(app)) return app;
+  // From a tapped clarifying option, which the model wrote: a long one is shortened, not refused.
+  const app = optionalApp(raw.app);
+  if (app === "bad_request") return app;
   if (app) req.app = app;
 
   if (raw.level !== undefined) {
@@ -109,23 +100,17 @@ function parseRequest(raw: unknown): AskRequest | Invalid {
   if (isInvalid(previous)) return previous;
   if (previous) req.previousExplanation = previous;
 
-  if (raw.language !== undefined) {
-    if (typeof raw.language !== "string" || raw.language.length > MAX_LANGUAGE_CHARS) return "bad_request";
-    req.language = raw.language;
-  }
-  if (raw.answerLanguage !== undefined) {
-    if (typeof raw.answerLanguage !== "string" || raw.answerLanguage.length > MAX_LANGUAGE_CHARS) return "bad_request";
-    const answerLanguage = raw.answerLanguage.trim();
-    // A language code such as "hi-IN", "en-IN" or "hi-Latn" (Hinglish), nothing else: it goes into the prompt.
-    if (answerLanguage && !LANGUAGE_TAG.test(answerLanguage)) return "bad_request";
-    if (answerLanguage) req.answerLanguage = answerLanguage;
-  }
-  if (raw.devices !== undefined) {
-    const d = raw.devices;
-    if (!Array.isArray(d) || d.length > MAX_DEVICES) return "bad_request";
-    if (!d.every((x) => typeof x === "string" && x.length <= MAX_DEVICE_CHARS)) return "bad_request";
-    req.devices = d as string[];
-  }
+  // Language codes such as "hi-IN", "en-IN" or "hi-Latn" (Hinglish), nothing else: they go into the prompt.
+  const language = optionalLanguage(raw.language);
+  if (language === "bad_request") return language;
+  if (language) req.language = language;
+  const answerLanguage = optionalLanguage(raw.answerLanguage);
+  if (answerLanguage === "bad_request") return answerLanguage;
+  if (answerLanguage) req.answerLanguage = answerLanguage;
+
+  const devices = optionalDevices(raw.devices);
+  if (devices === "bad_request") return devices;
+  if (devices) req.devices = devices;
   if (raw.guideContext !== undefined) {
     const g = raw.guideContext;
     if (!isObj(g) || typeof g.title !== "string" || !Array.isArray(g.steps)) return "bad_request";

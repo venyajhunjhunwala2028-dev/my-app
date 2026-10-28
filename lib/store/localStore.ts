@@ -344,7 +344,8 @@ export function setPreferredDevice(device: string): void {
   const name = normalizeDevice(device);
   if (!name) return;
   update((s) => {
-    s.devices = [name, ...s.devices.filter((d) => d !== name)];
+    // At most MAX_DEVICES: the oldest (last) ones are dropped.
+    s.devices = normalizeDevices([name, ...s.devices.filter((d) => d !== name)]);
     s.deviceChosen = true;
   });
 }
@@ -354,7 +355,7 @@ export function addDevice(device: string): void {
   const name = normalizeDevice(device);
   if (!name) return;
   update((s) => {
-    if (!s.devices.includes(name)) s.devices.push(name);
+    if (!s.devices.includes(name)) s.devices = normalizeDevices([...s.devices, name]);
     s.deviceChosen = true;
   });
 }
@@ -493,6 +494,7 @@ export function getUsage(): Usage {
 }
 
 // Call before every AI request: counts the request if under today's cap, and writes nothing when denied.
+// Call refundAllowance when the request then gets no answer.
 export function requestAllowance(): Allowance {
   const state = load();
   const date = today();
@@ -502,6 +504,17 @@ export function requestAllowance(): Allowance {
   state.usage = { date, count };
   save(state);
   return { allowed: true, remaining: DAILY_LIMIT - count };
+}
+
+/**
+ * Gives back the use counted by requestAllowance when the request got no answer (offline, refused, rate limited
+ * or failed), so only answered requests count toward today's cap. Never below zero, never for an earlier day.
+ */
+export function refundAllowance(): void {
+  const state = load();
+  if (state.usage.date !== today() || state.usage.count <= 0) return;
+  state.usage = { date: state.usage.date, count: state.usage.count - 1 };
+  save(state);
 }
 
 export function getCompletedLessons(): string[] {

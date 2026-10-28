@@ -9,6 +9,7 @@ import WaitingAndErrors, { type RequestError } from "@/components/WaitingAndErro
 import { askHelper } from "@/lib/ai/askClient";
 import type { AskAnswer, AskMode, ClarifyAbout } from "@/lib/ai/schemas";
 import { useT, type MessageKey } from "@/lib/i18n";
+import { phraseCheck } from "@/lib/safety/phraseCheck";
 import { isSafetyQuestion, scamCheckHref } from "@/lib/safety/safetyIntent";
 import { isSpeechSupported, startListening, type ListenError } from "@/lib/speech/speech";
 import { cancelTalkThrough, requestTalkThrough } from "@/lib/speech/talkIntent";
@@ -213,6 +214,13 @@ export default function AskBox({
     // Once a question is sent, a late voice result must not replace it.
     cancelListening();
     const { mode, lessonId } = options.current;
+    // A handover ("The caller asked me for my OTP, is this real?") gets the scam warning straight away, as the
+    // server would give it, before anything else; it spends no use.
+    const flagged = phraseCheck(q);
+    if (flagged?.kind === "scam_warning") {
+      setStatus({ kind: "safety", safety: flagged.kind, message: flagged.message });
+      return;
+    }
     // "Is this message safe?" is checked, not guided: open the scam check with the question, spending no use.
     if (!mode && isSafetyQuestion(q)) {
       router.push(scamCheckHref(q));

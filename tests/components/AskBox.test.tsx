@@ -312,6 +312,18 @@ describe("AskBox", () => {
       expect(getUsage().count).toBe(0);
     });
 
+    it("warns first when a safety question says someone asked for an OTP, instead of opening the scam check", async () => {
+      const fetchMock = mockFetch(stepsAnswer);
+      render(<AskBox />);
+      await userEvent.type(screen.getByLabelText("What would you like to do?"), "The caller asked me for my OTP, is this real?");
+      await userEvent.click(screen.getByRole("button", { name: "Ask" }));
+      expect(await screen.findByText("Stop — this looks like a scam")).toBeInTheDocument();
+      expect(screen.getByText(/Never give your OTP, code, PIN or password to anyone/)).toBeInTheDocument();
+      expect(push).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(getUsage().count).toBe(0);
+    });
+
     it("opens the scam check when the helper says it is a safety question", async () => {
       mockFetch({ kind: "safety_check", language: "en", message: "Let's check it together." });
       render(<AskBox />);

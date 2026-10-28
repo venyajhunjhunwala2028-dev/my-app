@@ -97,6 +97,28 @@ describe("ShowMeOnScreen", () => {
     expect(screen.queryByTestId("tap-circle")).not.toBeInTheDocument();
   });
 
+  it("shows the money refusal and no circle for a money_refusal answer", async () => {
+    answerWith({ kind: "money_refusal", message: "I can't help with sending money or payments." });
+    render(<ShowMeOnScreen {...props} />);
+    await chooseScreenshot();
+    expect(await screen.findByText("I can't help with sending money or payments.")).toBeInTheDocument();
+    expect(screen.getByText("I can't help with sending money")).toBeInTheDocument();
+    expect(screen.queryByTestId("tap-circle")).not.toBeInTheDocument();
+  });
+
+  it("gives the use back when the request fails, and counts Try again only when it answers", async () => {
+    fetchMock = vi.fn(async () => new Response(JSON.stringify({ error: "retry", message: "Sorry, something went wrong. Please try again." }), { status: 502 }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ShowMeOnScreen {...props} />);
+    await chooseScreenshot();
+    expect(await screen.findByText("Sorry, something went wrong. Please try again.")).toBeInTheDocument();
+    expect(getUsage().count).toBe(0);
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ kind: "not_found", description: "Look at the bottom." })));
+    await user().click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Look at the bottom.")).toBeInTheDocument();
+    expect(getUsage().count).toBe(1);
+  });
+
   it("rejects a file that is not a picture with a friendly message", async () => {
     render(<ShowMeOnScreen {...props} />);
     await chooseScreenshot(new File(["hello"], "notes.txt", { type: "text/plain" }));

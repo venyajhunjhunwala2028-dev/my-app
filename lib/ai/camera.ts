@@ -39,7 +39,9 @@ export type CameraAnswer =
   | { kind: "sensitive"; language: string; message: string }
   /** The photo is too blurry or dark, or shows nothing technical. */
   | { kind: "not_clear"; language: string; message: string }
-  | { kind: "scam_warning"; language: string; message: string };
+  | { kind: "scam_warning"; language: string; message: string }
+  /** Never from the model: the route's own deterministic answer when the question asks to send money. */
+  | { kind: "money_refusal"; language: string; message: string };
 
 // Kept byte-for-byte stable (no per-request text) so it can be cached.
 export const CAMERA_SYSTEM_PROMPT = `You help an older person who is new to technology understand a piece of technology in front of them. They took a photo with their phone camera of something physical, such as a Wi-Fi router, a printer, a TV, a remote control, a laptop, a phone or a screen, and they may ask a question (for example "What does this light mean?" or "Which button turns it on?"). You get the photo, its size in pixels, and their question if they asked one.

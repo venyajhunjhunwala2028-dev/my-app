@@ -69,6 +69,40 @@ describe("phraseCheck (handover patterns)", () => {
     );
   });
 
+  it("lets questions about telling what an OTP is, or whether one is real, through", () => {
+    expect(phraseCheck("How can I tell if an OTP message is real?")).toBeNull();
+    expect(phraseCheck("Can you tell me what an OTP is?")).toBeNull();
+    expect(phraseCheck("How do I tell whether the OTP is fake?")).toBeNull();
+    expect(phraseCheck("What does it say in the OTP message?")).toBeNull();
+  });
+
+  it("still flags telling or saying the OTP to someone", () => {
+    for (const q of [
+      "Should I tell him the OTP?",
+      "Can I tell the caller my OTP",
+      "tell them the OTP",
+      "He said tell me the OTP quickly",
+      "Should I say the OTP to the man on the phone?",
+      "telling the agent my OTP",
+      "Should I share my OTP?",
+      "read out the OTP",
+    ]) {
+      expect(phraseCheck(q)?.kind, q).toBe("scam_warning");
+    }
+  });
+
+  it("flags someone having asked for an OTP, PIN or password", () => {
+    for (const q of [
+      "The caller asked me for my OTP, is this real?",
+      "The caller asked for my PIN",
+      "A man asked me for my password",
+      "the bank is asking me for the OTP",
+      "Customer care asked me my OTP",
+    ]) {
+      expect(phraseCheck(q)?.kind, q).toBe("scam_warning");
+    }
+  });
+
   it("refuses a Devanagari money phrase in Hindi", () => {
     const r = phraseCheck("पैसे भेजो");
     expect(r?.kind).toBe("money_refusal");

@@ -47,6 +47,25 @@ describe("localStore", () => {
     expect(store.DAILY_LIMIT).toBe(30);
   });
 
+  it("gives back a use that got no answer, never below zero and never one from an earlier day", async () => {
+    const store = await loadStore();
+    store.requestAllowance();
+    store.requestAllowance();
+    store.refundAllowance();
+    expect(store.getUsage().count).toBe(1);
+    store.refundAllowance();
+    store.refundAllowance();
+    expect(store.getUsage().count).toBe(0);
+    for (let i = 0; i < 30; i++) store.requestAllowance();
+    expect(store.requestAllowance().allowed).toBe(false);
+    store.refundAllowance();
+    expect(store.requestAllowance()).toEqual({ allowed: true, remaining: 0 });
+
+    localStorage.setItem("tech-helper:v1", JSON.stringify({ usage: { date: "2000-01-01", count: 5 } }));
+    store.refundAllowance();
+    expect(JSON.parse(localStorage.getItem("tech-helper:v1")!).usage).toEqual({ date: "2000-01-01", count: 5 });
+  });
+
   it("resets the count when the stored date is yesterday", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 9, 21, 23, 59));

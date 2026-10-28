@@ -22,7 +22,9 @@ export interface LocateRequest {
 export type LocateAnswer =
   | { kind: "found"; box: Box; instruction: string }
   | { kind: "not_found"; description: string }
-  | { kind: "scam_warning"; message: string };
+  | { kind: "scam_warning"; message: string }
+  /** Never from the model: the route's own deterministic answer when the question asks to send money. */
+  | { kind: "money_refusal"; message: string };
 
 // Kept byte-for-byte stable (no per-request text) so it can be cached.
 export const LOCATE_SYSTEM_PROMPT = `You help an older person who is new to technology find where to tap on their own screen. You get one screenshot of their phone, tablet or computer, its size in pixels, and the step they are trying to do, or their own question about the screen (for example "What do I press to send this?"), or both.

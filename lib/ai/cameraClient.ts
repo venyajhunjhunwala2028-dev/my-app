@@ -1,18 +1,14 @@
 import type { CameraAnswer, CameraRequest } from "@/lib/ai/camera";
-import type { ApiErrorCode } from "@/lib/ai/schemas";
-import { postJson } from "@/lib/http/postJson";
-import { requestAllowance } from "@/lib/store/localStore";
+import { postCounted, type CountedResult } from "@/lib/ai/countedRequest";
+import { devicesForHelper } from "@/lib/deviceCatalog";
 
-export type CameraResult =
-  | { type: "limit" }
-  | { type: "answer"; answer: CameraAnswer }
-  | { type: "error"; code: ApiErrorCode; message: string };
+export type CameraResult = CountedResult<CameraAnswer>;
 
-/** POSTs to /api/camera, after counting the request against today's cap. */
+/**
+ * POSTs to /api/camera within today's cap; only an answered request counts. The devices are cleaned here too
+ * (no "Other", at most the server's limits), so an older save can never make the request fail.
+ */
 export async function askCamera(request: CameraRequest): Promise<CameraResult> {
-  if (!requestAllowance().allowed) return { type: "limit" };
-  const result = await postJson<CameraAnswer>("/api/camera", request);
-  if ("kind" in result) return { type: "answer", answer: result };
-  if (result.code === "rate_limited") return { type: "limit" };
-  return { type: "error", code: result.code, message: result.message };
+  const { devices, ...rest } = request;
+  return postCounted<CameraAnswer>("/api/camera", { ...rest, ...(devices ? { devices: devicesForHelper(devices) } : {}) });
 }

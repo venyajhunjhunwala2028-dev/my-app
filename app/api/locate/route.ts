@@ -1,15 +1,23 @@
-import { callAndParseAnswer, makeFail, parseImageFields } from "@/lib/ai/route";
+import {
+  callAndParseAnswer,
+  isInvalid,
+  makeFail,
+  optionalLanguage,
+  optionalQuestion,
+  parseImageFields,
+  type Invalid,
+} from "@/lib/ai/route";
 import {
   LOCATE_ANSWER_JSON_SCHEMA,
   LOCATE_SYSTEM_PROMPT,
   buildLocateText,
   fakeLocateAnswer,
   parseLocateAnswer,
+  type LocateAnswer,
   type LocateRequest,
 } from "@/lib/ai/locate";
 import type { ApiErrorCode } from "@/lib/ai/schemas";
 import { isObj } from "@/lib/guards";
-import { MAX_LANGUAGE_CHARS, MAX_QUESTION_CHARS } from "@/lib/http/limits";
 import { phraseCheck } from "@/lib/safety/phraseCheck";
 
 const MESSAGES: Record<ApiErrorCode, string> = {
@@ -21,25 +29,14 @@ const MESSAGES: Record<ApiErrorCode, string> = {
 // Logs only a code, never the image or step text.
 const fail = makeFail("locate_error", MESSAGES);
 
-type Invalid = "bad_request" | "too_long";
-
-/** An optional text field: undefined when absent or blank, the trimmed text when valid, otherwise an error code. */
-function optionalText(v: unknown): string | undefined | Invalid {
-  if (v === undefined) return undefined;
-  if (typeof v !== "string") return "bad_request";
-  if (v.length > MAX_QUESTION_CHARS) return "too_long";
-  return v.trim() || undefined;
-}
-
 function parseRequest(raw: unknown): LocateRequest | Invalid {
   if (!isObj(raw)) return "bad_request";
-  const { lookFor, language } = raw;
   const img = parseImageFields(raw, true);
   if (typeof img === "string") return img;
-  const instruction = optionalText(raw.instruction);
-  if (instruction === "bad_request" || instruction === "too_long") return instruction;
-  const question = optionalText(raw.question);
-  if (question === "bad_request" || question === "too_long") return question;
+  const instruction = optionalQuestion(raw.instruction);
+  if (isInvalid(instruction)) return instruction;
+  const question = optionalQuestion(raw.question);
+  if (isInvalid(question)) return question;
   // A guide step, the learner's own question, or both.
   if (!instruction && !question) return "bad_request";
   const req: LocateRequest = {
@@ -50,15 +47,12 @@ function parseRequest(raw: unknown): LocateRequest | Invalid {
   };
   if (instruction) req.instruction = instruction;
   if (question) req.question = question;
-  if (lookFor !== undefined) {
-    if (typeof lookFor !== "string") return "bad_request";
-    if (lookFor.length > MAX_QUESTION_CHARS) return "too_long";
-    req.lookFor = lookFor;
-  }
-  if (language !== undefined) {
-    if (typeof language !== "string" || language.length > MAX_LANGUAGE_CHARS) return "bad_request";
-    req.language = language;
-  }
+  const lookFor = optionalQuestion(raw.lookFor);
+  if (isInvalid(lookFor)) return lookFor;
+  if (lookFor) req.lookFor = lookFor;
+  const language = optionalLanguage(raw.language);
+  if (language === "bad_request") return language;
+  if (language) req.language = language;
   return req;
 }
 
@@ -76,9 +70,10 @@ export async function POST(request: Request): Promise<Response> {
   const req = parseRequest(raw);
   if (typeof req === "string") return fail(req);
 
-  // A typed question such as "the caller wants my OTP" gets the scam warning before any AI call.
+  // A typed question such as "the caller wants my OTP" gets the scam warning, and "how do I send money" the
+  // refusal, before any AI call, in this route's answer shape (no language field).
   const flagged = req.question ? phraseCheck(req.question) : null;
-  if (flagged?.kind === "scam_warning") return Response.json({ kind: "scam_warning", message: flagged.message });
+  if (flagged) return Response.json({ kind: flagged.kind, message: flagged.message } satisfies LocateAnswer);
 
   if (process.env.FAKE_AI === "1") return Response.json(fakeLocateAnswer(req));
 

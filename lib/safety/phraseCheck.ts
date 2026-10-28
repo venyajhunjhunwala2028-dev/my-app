@@ -29,7 +29,12 @@ const SCAM_EN = [
   // "share my password with the caller"
   rx(String.raw`\b${HANDOVER_VERB}\b${GAP}\b${SECRET}\b${GAP}\b(?:to|with)\s+${RECIPIENT}\b`),
   // an OTP is never meant for another person: "share my OTP", "read out the OTP"
-  rx(String.raw`\b(?:give|giving|share|sharing|tell|telling|read(?:ing)? out|say|reveal|forward)\b[^.?!]{0,20}\botps?\b`),
+  rx(String.raw`\b(?:give|giving|share|sharing|read(?:ing)? out|reveal|forward)\b[^.?!]{0,20}\botps?\b`),
+  // "tell" and "say" only count when the OTP itself is what is told: "tell me the OTP", "say the OTP".
+  // "How can I tell if an OTP message is real?" and "Can you tell me what an OTP is?" are questions, not handovers;
+  // telling a recipient ("tell him the OTP", "tell the caller my OTP") is caught by the rules above.
+  rx(String.raw`\b(?:tell|telling)\s+(?:me|us)\s+(?:my|the|your|our|this|that)\s+otps?\b`),
+  rx(String.raw`\b(?:say|saying)\s+(?:my|the|your|our|this|that)\s+otps?\b`),
   // gift cards for someone else
   rx(String.raw`\b(?:buy|buying|purchase|get|send)\b${GAP}\bgift ?cards?\b${GAP}\b(?:for|to)\s+${RECIPIENT}\b`),
   rx(String.raw`\b${REQUESTER}\b${GAP}\b${ASKS}\b${GAP}\bgift ?cards?\b`),

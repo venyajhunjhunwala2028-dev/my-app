@@ -184,7 +184,7 @@ export const ASK_ANSWER_JSON_SCHEMA: Record<string, unknown> = {
         }),
         askVariant("clarify", {
           prompt: str("One simple question, e.g. Which app do you want to use?"),
-          options: strArray("Two to five short choices, e.g. Instagram, WhatsApp, Facebook."),
+          options: strArray("Two to five short choices, each at most 40 characters (just the name), e.g. Instagram, WhatsApp, Facebook."),
           about: { type: "string", enum: [...CLARIFY_ABOUT], description: "What the question is about." },
         }),
         askVariant("unclear", {

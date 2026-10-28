@@ -1,4 +1,13 @@
-import { callAndParseAnswer, makeFail, parseImageFields } from "@/lib/ai/route";
+import {
+  callAndParseAnswer,
+  isInvalid,
+  makeFail,
+  optionalLanguage,
+  optionalQuestion,
+  optionalText,
+  parseImageFields,
+  type Invalid,
+} from "@/lib/ai/route";
 import {
   SCAM_ANSWER_JSON_SCHEMA,
   SCAM_SYSTEM_PROMPT,
@@ -9,7 +18,7 @@ import {
 } from "@/lib/ai/scam";
 import type { ApiErrorCode } from "@/lib/ai/schemas";
 import { isObj } from "@/lib/guards";
-import { MAX_LANGUAGE_CHARS, MAX_QUESTION_CHARS, MAX_SCAM_TEXT_CHARS } from "@/lib/http/limits";
+import { MAX_SCAM_TEXT_CHARS } from "@/lib/http/limits";
 import { applyScamChecks } from "@/lib/safety/scamPrecheck";
 
 const MESSAGES: Record<ApiErrorCode, string> = {
@@ -21,31 +30,24 @@ const MESSAGES: Record<ApiErrorCode, string> = {
 // Logs only a code, never the message or the image.
 const fail = makeFail("scam_error", MESSAGES);
 
-function parseRequest(raw: unknown): ScamRequest | "bad_request" | "too_long" {
+function parseRequest(raw: unknown): ScamRequest | Invalid {
   if (!isObj(raw)) return "bad_request";
   const req: ScamRequest = {};
-  if (raw.text !== undefined) {
-    if (typeof raw.text !== "string") return "bad_request";
-    if (raw.text.length > MAX_SCAM_TEXT_CHARS) return "too_long";
-    const text = raw.text.trim();
-    if (text) req.text = text;
-  }
+  const text = optionalText(raw.text, MAX_SCAM_TEXT_CHARS);
+  if (isInvalid(text)) return text;
+  if (text) req.text = text;
   if (raw.image !== undefined || raw.mediaType !== undefined) {
     const img = parseImageFields(raw, false);
     if (typeof img === "string") return img;
     Object.assign(req, img);
   }
   if (!req.text && !req.image) return "bad_request";
-  if (raw.question !== undefined) {
-    if (typeof raw.question !== "string") return "bad_request";
-    if (raw.question.length > MAX_QUESTION_CHARS) return "too_long";
-    const question = raw.question.trim();
-    if (question) req.question = question;
-  }
-  if (raw.language !== undefined) {
-    if (typeof raw.language !== "string" || raw.language.length > MAX_LANGUAGE_CHARS) return "bad_request";
-    req.language = raw.language;
-  }
+  const question = optionalQuestion(raw.question);
+  if (isInvalid(question)) return question;
+  if (question) req.question = question;
+  const language = optionalLanguage(raw.language);
+  if (language === "bad_request") return language;
+  if (language) req.language = language;
   return req;
 }
 

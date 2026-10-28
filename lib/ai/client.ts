@@ -3,6 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 
 /** The one place the model is chosen. Switch to "claude-haiku-5-5" to cut cost. */
 export const MODEL = "claude-opus-5-5";
+/** One attempt's limit; it ends well inside the routes' 60 s maxDuration. */
+const CALL_TIMEOUT_MS = 50_000;
 /** Thinking is always on for this model and counts toward this limit. */
 const MAX_TOKENS = 8000;
 
@@ -24,8 +26,11 @@ export async function callClaudeJson(args: {
   user: string | Anthropic.Beta.BetaContentBlockParam[];
   schema: Record<string, unknown>;
 }): Promise<ClaudeJsonResult> {
-  // One 50 s attempt plus one retry; the route's maxDuration (60 s) is the hard cap.
-  client ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 50_000, maxRetries: 1 });
+  // One 50 s attempt and no retry. A retry would run its own full timeout after a wait (up to a minute when the
+  // API sends retry-after), past the route's maxDuration (60 s): the platform would cut the request off before the
+  // route could answer with its own JSON error. A failed or timed-out call throws, and callAndParseAnswer turns
+  // that into a "retry" error the learner can act on.
+  client ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: CALL_TIMEOUT_MS, maxRetries: 0 });
   const response = await client.beta.messages.create({
     model: MODEL,
     max_tokens: MAX_TOKENS,

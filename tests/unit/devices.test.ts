@@ -100,6 +100,38 @@ describe("My Devices in the store", () => {
     expect(store.getCurrentDevice()).toBe("iPhone");
   });
 
+  it("keeps at most 10 devices, dropping the oldest, when the helper keeps offering new ones", async () => {
+    const store = await loadStore();
+    for (let i = 0; i < 14; i++) store.setPreferredDevice(`Tablet model ${i}`);
+    const devices = store.getDevices();
+    expect(devices).toHaveLength(10);
+    expect(devices[0]).toBe("Tablet model 13");
+    expect(devices).not.toContain("Tablet model 3");
+    expect(devices).toContain("Tablet model 4");
+  });
+
+  it("shortens a long offered device name to 60 characters and tidies its spaces", async () => {
+    const store = await loadStore();
+    const long = "Samsung Galaxy Tab S9 FE with the keyboard cover, the stylus and a very long name";
+    store.setPreferredDevice(long);
+    const [name] = store.getDevices();
+    expect(name.length).toBeLessThanOrEqual(60);
+    expect(long.startsWith(name)).toBe(true);
+    store.setPreferredDevice("  Nokia\n  feature   phone ");
+    expect(store.getCurrentDevice()).toBe("Nokia feature phone");
+  });
+
+  it("repairs older saves with too many or too long devices, so requests are not refused", async () => {
+    const saved = ["x".repeat(200), ...Array.from({ length: 15 }, (_, i) => `Phone ${i}`)];
+    localStorage.setItem(KEY, JSON.stringify({ devices: saved }));
+    const store = await loadStore();
+    const devices = store.getDevices();
+    expect(devices).toHaveLength(10);
+    expect(devices[0]).toBe("x".repeat(60));
+    expect(devicesForHelper(saved)).toHaveLength(10);
+    expect(devicesForHelper(saved).every((d) => d.length <= 60)).toBe(true);
+  });
+
   it("ignores a malformed chosen flag", async () => {
     localStorage.setItem(KEY, JSON.stringify({ deviceChosen: "yes", devices: ["Mac"] }));
     const store = await loadStore();

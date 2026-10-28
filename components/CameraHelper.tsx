@@ -122,10 +122,10 @@ export default function CameraHelper() {
 
   if (state.kind === "answer") {
     const { answer } = state;
-    if (answer.kind === "scam_warning") {
+    if (answer.kind === "scam_warning" || answer.kind === "money_refusal") {
       return (
         <div className="flex flex-col gap-6">
-          <SafetyNotice kind="scam_warning" message={answer.message} />
+          <SafetyNotice kind={answer.kind} message={answer.message} />
           {another}
         </div>
       );

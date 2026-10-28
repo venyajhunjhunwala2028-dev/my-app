@@ -1,15 +1,24 @@
-import { callAndParseAnswer, makeFail, parseImageFields } from "@/lib/ai/route";
+import {
+  callAndParseAnswer,
+  isInvalid,
+  makeFail,
+  optionalDevices,
+  optionalLanguage,
+  optionalQuestion,
+  parseImageFields,
+  type Invalid,
+} from "@/lib/ai/route";
 import {
   CAMERA_ANSWER_JSON_SCHEMA,
   CAMERA_SYSTEM_PROMPT,
   buildCameraText,
   fakeCameraAnswer,
   parseCameraAnswer,
+  type CameraAnswer,
   type CameraRequest,
 } from "@/lib/ai/camera";
 import type { ApiErrorCode } from "@/lib/ai/schemas";
 import { isObj } from "@/lib/guards";
-import { MAX_DEVICE_CHARS, MAX_DEVICES, MAX_LANGUAGE_CHARS, MAX_QUESTION_CHARS } from "@/lib/http/limits";
 import { phraseCheck } from "@/lib/safety/phraseCheck";
 
 const MESSAGES: Record<ApiErrorCode, string> = {
@@ -21,7 +30,7 @@ const MESSAGES: Record<ApiErrorCode, string> = {
 // Logs only a code, never the photo or the question.
 const fail = makeFail("camera_error", MESSAGES);
 
-function parseRequest(raw: unknown): CameraRequest | "bad_request" | "too_long" {
+function parseRequest(raw: unknown): CameraRequest | Invalid {
   if (!isObj(raw)) return "bad_request";
   const img = parseImageFields(raw, true);
   if (typeof img === "string") return img;
@@ -31,22 +40,15 @@ function parseRequest(raw: unknown): CameraRequest | "bad_request" | "too_long" 
     width: img.width as number,
     height: img.height as number,
   };
-  if (raw.question !== undefined) {
-    if (typeof raw.question !== "string") return "bad_request";
-    if (raw.question.length > MAX_QUESTION_CHARS) return "too_long";
-    const question = raw.question.trim();
-    if (question) req.question = question;
-  }
-  if (raw.language !== undefined) {
-    if (typeof raw.language !== "string" || raw.language.length > MAX_LANGUAGE_CHARS) return "bad_request";
-    req.language = raw.language;
-  }
-  if (raw.devices !== undefined) {
-    const d = raw.devices;
-    if (!Array.isArray(d) || d.length > MAX_DEVICES) return "bad_request";
-    if (!d.every((x) => typeof x === "string" && x.length <= MAX_DEVICE_CHARS)) return "bad_request";
-    req.devices = d as string[];
-  }
+  const question = optionalQuestion(raw.question);
+  if (isInvalid(question)) return question;
+  if (question) req.question = question;
+  const language = optionalLanguage(raw.language);
+  if (language === "bad_request") return language;
+  if (language) req.language = language;
+  const devices = optionalDevices(raw.devices);
+  if (devices === "bad_request") return devices;
+  if (devices) req.devices = devices;
   return req;
 }
 
@@ -64,9 +66,10 @@ export async function POST(request: Request): Promise<Response> {
   const req = parseRequest(raw);
   if (typeof req === "string") return fail(req);
 
-  // A typed question such as "the caller wants my OTP" gets the warning before any AI call.
+  // A typed question such as "the caller wants my OTP" gets the warning, and "how do I send money" the refusal,
+  // before any AI call, exactly as the ask route answers them.
   const flagged = req.question ? phraseCheck(req.question) : null;
-  if (flagged?.kind === "scam_warning") return Response.json(flagged);
+  if (flagged) return Response.json(flagged satisfies CameraAnswer);
 
   if (process.env.FAKE_AI === "1") return Response.json(fakeCameraAnswer(req));
 
