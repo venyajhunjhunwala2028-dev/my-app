@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import AskBox, { type AskBoxHandle } from "@/components/AskBox";
 import AskFamilySheet from "@/components/AskFamilySheet";
+import { usePlusGate } from "@/components/billing/PlusSheet";
 import { BackLink, Paren } from "@/components/app/AppShell";
 import ExplanationView, { type ExplanationAnswer } from "@/components/ExplanationView";
 import Mascot from "@/components/Mascot";
@@ -96,6 +97,8 @@ export default function LessonPlayer({ lesson }: { lesson: Lesson }) {
   const [showRound, setShowRound] = useState(0);
   const [stuck, setStuck] = useState(false);
   const [askFamily, setAskFamily] = useState(false);
+  // Lessons are already behind Plus; Ask my family checks again, as everywhere.
+  const { requirePlus, sheet: plusSheet } = usePlusGate();
   // Set by "Show me how": the question is asked once SHOW (and its ask box) is on screen.
   const askPending = useRef(false);
   const askBox = useRef<AskBoxHandle>(null);
@@ -267,7 +270,7 @@ export default function LessonPlayer({ lesson }: { lesson: Lesson }) {
                 </span>
               </button>
               <p className="text-xl">{t("askFamily.stuckLead")}</p>
-              <button type="button" className="btn-primary" onClick={() => setAskFamily(true)}>
+              <button type="button" className="btn-primary" onClick={() => requirePlus(() => setAskFamily(true))}>
                 <span>
                   <span aria-hidden="true" className="mr-2">
                     👨‍👩‍👧
@@ -327,6 +330,7 @@ export default function LessonPlayer({ lesson }: { lesson: Lesson }) {
       )}
 
       {askFamily && <AskFamilySheet context={{ goal: title }} onClose={() => setAskFamily(false)} />}
+      {plusSheet}
     </div>
   );
 }

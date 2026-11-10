@@ -15,6 +15,7 @@ import {
 } from "@/lib/store/localStore";
 import StepPlayer, { type StepsAnswer } from "@/components/StepPlayer";
 import GuidePage from "@/app/guide/[id]/page";
+import { givePlus } from "../helpers/plus";
 
 const push = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
@@ -86,6 +87,8 @@ function mockFetch(body: unknown) {
 describe("StepPlayer", () => {
   beforeEach(() => {
     localStorage.setItem(STORAGE_KEY, "{}");
+    // Lessons, practice and Ask my family are part of Tech Helper Plus.
+    givePlus();
   });
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -270,6 +273,8 @@ describe("StepPlayer", () => {
 describe("StepPlayer phase 1 help, voice and progress", () => {
   beforeEach(() => {
     localStorage.setItem(STORAGE_KEY, "{}");
+    // Lessons, practice and Ask my family are part of Tech Helper Plus.
+    givePlus();
   });
   afterEach(() => {
     vi.unstubAllGlobals();

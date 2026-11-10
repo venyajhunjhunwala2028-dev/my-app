@@ -3,6 +3,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { STORAGE_KEY, saveGuide, setCurrentGuide, setGuideStep } from "@/lib/store/localStore";
 import Home from "@/app/app/page";
+import { givePlus } from "../helpers/plus";
 
 const push = vi.fn();
 const nav = vi.hoisted(() => ({ search: new URLSearchParams() }));
@@ -32,6 +33,8 @@ describe("Home page", () => {
     nav.search = new URLSearchParams();
     FakeRecognition.instances = [];
     localStorage.setItem(STORAGE_KEY, "{}");
+    // Lessons, practice and Ask my family are part of Tech Helper Plus.
+    givePlus();
   });
   afterEach(() => vi.unstubAllGlobals());
 

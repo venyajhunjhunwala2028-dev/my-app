@@ -16,7 +16,8 @@ export default defineConfig({
   webServer: {
     command: `npm run build && npx next start -p ${port}`,
     url: `http://localhost:${port}`,
-    env: { FAKE_AI: "1" },
+    // Fixed AI answers and a pretend Razorpay: no real API is ever called.
+    env: { FAKE_AI: "1", FAKE_BILLING: "1" },
     timeout: 240_000,
     reuseExistingServer: !process.env.CI,
   },

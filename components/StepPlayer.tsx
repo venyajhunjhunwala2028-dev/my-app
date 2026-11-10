@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, 
 import Link from "next/link";
 import AskBox, { type AskBoxHandle } from "@/components/AskBox";
 import AskFamilySheet from "@/components/AskFamilySheet";
+import PlusTag from "@/components/billing/PlusTag";
+import { PlusLink, usePlusGate } from "@/components/billing/PlusSheet";
 import { BackLink, Label as MetaLabel, Paren, RowContent } from "@/components/app/AppShell";
 import { AnswerBody, ExplainOtherLanguage } from "@/components/ExplanationView";
 import Mascot, { type MascotMood } from "@/components/Mascot";
@@ -293,6 +295,8 @@ export default function StepPlayer({
   const [helpful, setHelpful] = useState<boolean | null>(null);
   const [showMe, setShowMe] = useState(false);
   const [askFamily, setAskFamily] = useState(false);
+  // Ask my family and "Teach me" are part of Tech Helper Plus: without it they open the paywall.
+  const { locked, requirePlus, sheet: plusSheet } = usePlusGate();
   const [specific, setSpecific] = useState("");
   const [troubleText, setTroubleText] = useState("");
   const [listening, setListening] = useState(false);
@@ -599,11 +603,11 @@ export default function StepPlayer({
 
   function openFamily() {
     talk.stop();
-    setAskFamily(true);
+    requirePlus(() => setAskFamily(true));
   }
 
   function teach() {
-    teachBox.current?.ask(t("success.teachQuestion", { task: answer.title }), { mode: "teach" });
+    requirePlus(() => teachBox.current?.ask(t("success.teachQuestion", { task: answer.title }), { mode: "teach" }));
   }
 
   function openTrouble() {
@@ -694,7 +698,7 @@ export default function StepPlayer({
           </li>
           <li>
             <button type="button" className="row-action group" onClick={teach}>
-              <RowContent icon="🧑‍🏫" title={t("success.teach")} />
+              <RowContent icon="🧑‍🏫" title={t("success.teach")} badge={locked ? <PlusTag /> : undefined} />
             </button>
           </li>
           <li>
@@ -703,13 +707,14 @@ export default function StepPlayer({
             </Link>
           </li>
           <li>
-            <Link href="/app/learn" className="row-action group">
-              <RowContent icon="📚" title={t("success.learn")} />
-            </Link>
+            <PlusLink href="/app/learn" className="row-action group">
+              <RowContent icon="📚" title={t("success.learn")} badge={locked ? <PlusTag /> : undefined} />
+            </PlusLink>
           </li>
         </ul>
         {/* Asks the teach-style question and opens the new guide, as Teach me does. */}
         <AskBox ref={teachBox} showForm={false} />
+        {plusSheet}
 
         <section aria-labelledby="helpful-heading" className="flex flex-col gap-4 rounded-[1.2rem] bg-surface p-5 sm:p-8">
           <h2 id="helpful-heading" className="font-display text-[1.75rem] leading-tight font-medium tracking-[-0.02em]">
@@ -807,8 +812,9 @@ export default function StepPlayer({
   const familyOffer = (
     <div className="flex flex-col gap-3 rounded-[1.2rem] bg-card p-5">
       <p className="text-xl font-semibold">{t("askFamily.stuckLead")}</p>
-      <button type="button" className="btn-primary" onClick={openFamily}>
+      <button type="button" className="btn-primary flex-wrap gap-x-2 gap-y-1" onClick={openFamily}>
         <Label emoji="👨‍👩‍👧">{t("askFamily.stuckOpen")}</Label>
+        {locked && <PlusTag tone="blue" />}
       </button>
     </div>
   );
@@ -1130,7 +1136,7 @@ export default function StepPlayer({
             </li>
             <li>
               <button type="button" className="row-action group" onClick={openFamily}>
-                <RowContent icon="👨‍👩‍👧" title={t("askFamily.open")} />
+                <RowContent icon="👨‍👩‍👧" title={t("askFamily.open")} badge={locked ? <PlusTag /> : undefined} />
               </button>
             </li>
             <li>
@@ -1182,6 +1188,7 @@ export default function StepPlayer({
           onClose={() => setAskFamily(false)}
         />
       )}
+      {plusSheet}
     </div>
   );
 }

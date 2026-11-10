@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import AskFamilySheet from "@/components/AskFamilySheet";
+import PlusTag from "@/components/billing/PlusTag";
+import { usePlusGate } from "@/components/billing/PlusSheet";
 import { Label, RowContent } from "@/components/app/AppShell";
 import Mascot from "@/components/Mascot";
 import ReadAloud from "@/components/ReadAloud";
@@ -193,6 +195,8 @@ export default function ExplanationView({
   const t = useT();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [askFamily, setAskFamily] = useState(false);
+  // Ask my family is part of Tech Helper Plus.
+  const { locked, requirePlus, sheet: plusSheet } = usePlusGate();
   // Voice help from home ("Talk me through it"): an explanation is simply read aloud once.
   const [readNow] = useState(isTalkThroughRequested);
   const busy = useRef(false);
@@ -264,12 +268,13 @@ export default function ExplanationView({
         </li>
         <li>
           {/* An explanation has no success screen, so asking family is offered here. */}
-          <button type="button" className="row-action group" onClick={() => setAskFamily(true)}>
-            <RowContent icon="👨‍👩‍👧" title={t("askFamily.open")} />
+          <button type="button" className="row-action group" onClick={() => requirePlus(() => setAskFamily(true))}>
+            <RowContent icon="👨‍👩‍👧" title={t("askFamily.open")} badge={locked ? <PlusTag /> : undefined} />
           </button>
         </li>
       </ul>
       {askFamily && <AskFamilySheet context={{ goal: guideGoal(guide) }} onClose={() => setAskFamily(false)} />}
+      {plusSheet}
     </div>
   );
 }

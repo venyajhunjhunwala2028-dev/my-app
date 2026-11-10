@@ -1,6 +1,6 @@
 import Hero from "@/components/landing/Hero";
 import MagicLensDemo from "@/components/landing/MagicLensDemo";
-import { Families, Faq, FinalCta, Footer, LearnTechnology, ScamCheck, SeeHowItWorks } from "@/components/landing/Sections";
+import { Families, Faq, FinalCta, Footer, LearnTechnology, Pricing, ScamCheck, SeeHowItWorks } from "@/components/landing/Sections";
 import TopBar from "@/components/landing/TopBar";
 import TopicGrid from "@/components/landing/TopicGrid";
 import WaysToAsk from "@/components/landing/WaysToAsk";
@@ -22,6 +22,7 @@ export default function Landing() {
         <LearnTechnology />
         <ScamCheck />
         <Families />
+        <Pricing />
         <Faq />
         <FinalCta />
       </main>

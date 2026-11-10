@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { givePlus } from "./helpers/plus";
 
 // "Do it with me" at phone size (Pixel 7) against FAKE_AI=1: a 3-step Instagram guide; a screenshot sent with
 // "That's not what I see" adds a fix step before the rest, and "Check my screen" always says you're on track.
@@ -48,6 +49,8 @@ test("That's not what I see corrects the step from my screenshot without startin
 test("Check my screen says I'm in the right place, then I'm stuck uses that screenshot, and Teach me follows the finish", async ({
   page,
 }) => {
+  // "Teach me how to do this myself next time" is part of Tech Helper Plus.
+  await givePlus(page);
   await startGuide(page);
   await sendScreenshot(page, "Check my screen");
   await expect(page.getByText("Yes, you're in the right place.")).toBeVisible();

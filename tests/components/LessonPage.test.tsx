@@ -14,6 +14,7 @@ import {
 import { LESSON_STAGES, nextLessonAfter, nextStage, previousStage, stageState } from "@/lib/learn/lessonFlow";
 import { ALL_LESSONS } from "@/lib/content/lessons";
 import LessonPage from "@/app/app/learn/[id]/page";
+import { givePlus } from "../helpers/plus";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
@@ -76,6 +77,8 @@ describe("lesson page", () => {
   beforeEach(() => {
     push.mockReset();
     localStorage.setItem(STORAGE_KEY, "{}");
+    // Lessons, practice and Ask my family are part of Tech Helper Plus.
+    givePlus();
     setDevices(["Android phone"]);
   });
   afterEach(() => vi.unstubAllGlobals());

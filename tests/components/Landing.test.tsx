@@ -139,4 +139,25 @@ describe("Landing page", () => {
     expect(screen.queryByText(/\b\d[\d,.]*\s*(k|\+)?\s*(users|people|families|reviews)\b/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/testimonial|trusted by|as seen/i)).not.toBeInTheDocument();
   });
+  it("shows honest pricing above the FAQ: Free vs Plus ₹99 a month, with the scam check free", async () => {
+    render(<Landing />);
+    const pricing = document.getElementById("pricing")!;
+    const faq = document.getElementById("faq")!;
+    expect(pricing.compareDocumentPosition(faq) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(pricing).getByText(/Scam checks, and automatic scam warnings/)).toBeInTheDocument();
+    expect(within(pricing).getByText("Call my family")).toBeInTheDocument();
+    for (const plus of [/Teach me lessons/, "Practice on a pretend phone", /Ask my family: send them/]) {
+      expect(within(pricing).getByText(plus)).toBeInTheDocument();
+    }
+    expect(within(pricing).getByText(/Cancel anytime/)).toBeInTheDocument();
+    expect(within(pricing).getByRole("link", { name: "Get Tech Helper Plus →" })).toHaveAttribute("href", "/app/plus");
+
+    const free = within(faq).getByText("Is it free?").closest("details")!;
+    expect(within(free).getByText("The main helper is free. Lessons, practice and Ask my family are part of Plus, ₹99 a month, cancel anytime.")).toBeInTheDocument();
+
+    const legal = screen.getByRole("navigation", { name: "Legal" });
+    for (const [name, href] of [["Terms", "/terms"], ["Privacy", "/privacy"], ["Cancellations and refunds", "/refunds"], ["Contact us", "/contact"]]) {
+      expect(within(legal).getByRole("link", { name })).toHaveAttribute("href", href);
+    }
+  });
 });

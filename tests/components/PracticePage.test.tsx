@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { STORAGE_KEY, getCompletedPractice, setUiLanguage } from "@/lib/store/localStore";
 import PracticePage from "@/app/app/practice/page";
+import { givePlus } from "../helpers/plus";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 
@@ -12,6 +13,8 @@ const instruction = () => screen.getByTestId("practice-instruction");
 describe("Practice page", () => {
   beforeEach(() => {
     localStorage.setItem(STORAGE_KEY, "{}");
+    // Lessons, practice and Ask my family are part of Tech Helper Plus.
+    givePlus();
   });
 
   it("lists the exercises and says the screens are pretend", () => {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AppPage, BackLink, PageIntro, Paren } from "@/components/app/AppShell";
 import PracticePlayer from "@/components/practice/PracticePlayer";
+import PlusGate from "@/components/billing/PlusGate";
 import { ALL_LESSONS } from "@/lib/content/lessons";
 import { PRACTICE, type PracticeExercise } from "@/lib/content/practice";
 import { lessonHref } from "@/lib/learn/lessonFlow";
@@ -12,7 +13,17 @@ import { getCompletedPractice } from "@/lib/store/localStore";
 import { useIsClient } from "@/lib/useIsClient";
 
 /** Practice: pretend screens to tap on, one instruction at a time. Nothing real is sent or changed. */
+/** Practice is part of Tech Helper Plus. */
 export default function PracticePage() {
+  const t = useT();
+  return (
+    <PlusGate frame={(view) => <AppPage back={<BackLink href="/app">{t("common.backHome")}</BackLink>}>{view}</AppPage>}>
+      <Practice />
+    </PlusGate>
+  );
+}
+
+function Practice() {
   const t = useT();
   const language = useUiLanguage();
   // Finished exercises live in localStorage, so read them only in the browser.

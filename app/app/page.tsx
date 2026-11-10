@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import AskBox, { type AskBoxHandle } from "@/components/AskBox";
 import { AppHeader, Paren, RowContent } from "@/components/app/AppShell";
 import AskFamilySheet from "@/components/AskFamilySheet";
+import PlusTag from "@/components/billing/PlusTag";
+import { PlusLink, usePlusGate } from "@/components/billing/PlusSheet";
 import CallFamily from "@/components/CallFamily";
 import InstallGuide from "@/components/InstallGuide";
 import Mascot from "@/components/Mascot";
@@ -118,6 +120,8 @@ export default function Home() {
   // Which big card started the microphone, so only that one says "Listening…".
   const [micCard, setMicCard] = useState<"speak" | "talk">("speak");
   const [askFamily, setAskFamily] = useState(false);
+  // Teach me, Practice and Ask my family are part of Tech Helper Plus: shown locked, they open the paywall.
+  const { locked, requirePlus, sheet: plusSheet } = usePlusGate();
   // Easy Mode shows the main things only; "More" shows the rest of the home screen.
   const [moreOpen, setMoreOpen] = useState(false);
   const full = !easy || moreOpen;
@@ -275,10 +279,10 @@ export default function Home() {
               {/* The two bigger ways to learn, as large hairline rows. */}
               <ul className="hairline-list lg:col-span-4">
                 <li>
-                  <Link
+                  <PlusLink
                     href="/app/learn"
                     aria-labelledby="card-learn-title"
-                    aria-describedby="card-learn-desc"
+                    aria-describedby={locked ? "card-learn-desc card-learn-plus" : "card-learn-desc"}
                     className="row-action group min-h-[6.5rem] py-5"
                   >
                     <RowContent
@@ -288,8 +292,9 @@ export default function Home() {
                       titleId="card-learn-title"
                       descId="card-learn-desc"
                       titleClassName="font-display text-[1.6rem] font-medium tracking-[-0.02em]"
+                      badge={locked ? <PlusTag id="card-learn-plus" /> : undefined}
                     />
-                  </Link>
+                  </PlusLink>
                 </li>
                 <li>
                   <Link
@@ -326,9 +331,9 @@ export default function Home() {
                     </Link>
                   </li>
                   <li>
-                    <Link href="/app/practice" className="row-action group">
-                      <RowContent icon="🎯" title={t("home.practice")} />
-                    </Link>
+                    <PlusLink href="/app/practice" className="row-action group">
+                      <RowContent icon="🎯" title={t("home.practice")} badge={locked ? <PlusTag /> : undefined} />
+                    </PlusLink>
                   </li>
                   <li>
                     <Link href="/app/library" className="row-action group">
@@ -336,8 +341,8 @@ export default function Home() {
                     </Link>
                   </li>
                   <li>
-                    <button type="button" className="row-action group" onClick={() => setAskFamily(true)}>
-                      <RowContent icon="👨‍👩‍👧" title={t("home.family")} />
+                    <button type="button" className="row-action group" onClick={() => requirePlus(() => setAskFamily(true))}>
+                      <RowContent icon="👨‍👩‍👧" title={t("home.family")} badge={locked ? <PlusTag /> : undefined} />
                     </button>
                   </li>
                   <li>
@@ -398,6 +403,7 @@ export default function Home() {
         </div>
         {/* From home there is no guide yet, so the message is the generic one. */}
         {askFamily && <AskFamilySheet context={{}} onClose={() => setAskFamily(false)} />}
+        {plusSheet}
       </main>
     </InstallGuide>
   );

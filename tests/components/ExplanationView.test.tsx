@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { STORAGE_KEY, getGuide, saveGuide } from "@/lib/store/localStore";
 import GuidePage from "@/app/guide/[id]/page";
 import ExplanationView, { type ExplanationAnswer } from "@/components/ExplanationView";
+import { givePlus } from "../helpers/plus";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
@@ -30,6 +31,8 @@ const steps = {
 describe("ExplanationView (AE6)", () => {
   beforeEach(() => {
     localStorage.setItem(STORAGE_KEY, "{}");
+    // Lessons, practice and Ask my family are part of Tech Helper Plus.
+    givePlus();
   });
   afterEach(() => {
     vi.unstubAllGlobals();

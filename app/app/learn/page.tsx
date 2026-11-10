@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppPage, BackLink, PageIntro } from "@/components/app/AppShell";
 import TechConfidence from "@/components/TechConfidence";
+import PlusGate from "@/components/billing/PlusGate";
 import { ALL_LESSONS, LESSON_GROUPS, getLesson } from "@/lib/content/lessons";
 import { lessonHref } from "@/lib/learn/lessonFlow";
 import { useT, useUiLanguage } from "@/lib/i18n";
@@ -45,6 +46,11 @@ export default function LearnPage() {
 
   return (
     <AppPage back={<BackLink href="/app">{t("common.backHome")}</BackLink>}>
+      <Suspense fallback={null}>
+        <OpenLessonFromUrl />
+      </Suspense>
+      {/* Lessons are part of Tech Helper Plus. */}
+      <PlusGate>
       <div className="flex flex-col gap-5">
         <PageIntro label={t("home.tag.learn")} title={t("learn.title")} lead={t("learn.intro")} />
         <p className="flex flex-wrap items-center gap-x-3 text-lg text-muted">
@@ -55,9 +61,6 @@ export default function LearnPage() {
           </Link>
         </p>
       </div>
-      <Suspense fallback={null}>
-        <OpenLessonFromUrl />
-      </Suspense>
       <TechConfidence />
       <div className="flex flex-col gap-3">
         <p id="lesson-progress" className="text-xl font-semibold">
@@ -133,6 +136,7 @@ export default function LearnPage() {
           </ul>
         </section>
       ))}
+      </PlusGate>
     </AppPage>
   );
 }

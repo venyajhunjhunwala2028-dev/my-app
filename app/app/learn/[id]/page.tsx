@@ -3,6 +3,7 @@
 import { Suspense, use } from "react";
 import Link from "next/link";
 import LessonPlayer from "@/components/LessonPlayer";
+import PlusGate from "@/components/billing/PlusGate";
 import Mascot from "@/components/Mascot";
 import { AppHeader, PAGE_COLUMN } from "@/components/app/AppShell";
 import { getLesson } from "@/lib/content/lessons";
@@ -31,7 +32,14 @@ function Lesson({ params }: { params: Promise<{ id: string }> }) {
   if (!isClient) return null;
 
   const lesson = getLesson(decodeURIComponent(id));
-  if (lesson) return <LessonPlayer key={lesson.id} lesson={lesson} />;
+  // Lessons are part of Tech Helper Plus.
+  if (lesson) {
+    return (
+      <PlusGate>
+        <LessonPlayer key={lesson.id} lesson={lesson} />
+      </PlusGate>
+    );
+  }
   return (
     <>
       <div className="flex flex-col items-start gap-6 pt-6">

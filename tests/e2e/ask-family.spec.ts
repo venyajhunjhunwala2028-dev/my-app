@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { givePlus } from "./helpers/plus";
 
 // Ask my family at phone size (Pixel 7) against FAKE_AI=1, which answers with a fixed 3-step Instagram guide.
 
@@ -8,6 +9,8 @@ test.beforeEach(async ({ page }) => {
       localStorage.setItem("tech-helper:v1", JSON.stringify({ familyContact: { name: "Priya", phone: "+44 7700 900123" } }));
     }
   });
+  // Ask my family is part of Tech Helper Plus (added after the contact, which is set only on a first visit).
+  await givePlus(page);
 });
 
 test("Ask my family from home: shows the message and a WhatsApp link to the saved number", async ({ page }) => {

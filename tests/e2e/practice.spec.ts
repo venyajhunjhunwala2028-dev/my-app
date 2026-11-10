@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { givePlus } from "./helpers/plus";
 
 // Practice mode at phone size (Pixel 7): pretend screens only, no AI.
+
+// Practice is part of Tech Helper Plus.
+test.beforeEach(async ({ page }) => givePlus(page));
 
 test("Practice: send a photo in a chat app, with a hint, the glowing target and a finish", async ({ page }) => {
   await page.goto("/app");

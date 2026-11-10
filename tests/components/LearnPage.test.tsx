@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import { ALL_LESSONS } from "@/lib/content/lessons";
 import { STORAGE_KEY, markLessonComplete, markPracticeComplete, saveGuide, setGuideStep, setUiLanguage } from "@/lib/store/localStore";
 import LearnPage from "@/app/app/learn/page";
+import { givePlus } from "../helpers/plus";
 
 const push = vi.fn();
 const replace = vi.fn();
@@ -14,6 +15,8 @@ describe("Teach me how this works page", () => {
     push.mockReset();
     replace.mockReset();
     localStorage.setItem(STORAGE_KEY, "{}");
+    // Lessons, practice and Ask my family are part of Tech Helper Plus.
+    givePlus();
   });
   afterEach(() => vi.unstubAllGlobals());
 

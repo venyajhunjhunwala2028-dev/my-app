@@ -123,6 +123,7 @@ export function RowContent({
   arrow = "→",
   titleClassName = "text-xl font-semibold",
   extra,
+  badge,
 }: {
   icon?: ReactNode;
   title: ReactNode;
@@ -133,6 +134,8 @@ export function RowContent({
   titleClassName?: string;
   /** Something after the words, before the arrow (a "✓ Done" tag). */
   extra?: ReactNode;
+  /** A small tag under the words (the "🔒 Plus" tag), so a long title keeps its width. */
+  badge?: ReactNode;
 }) {
   return (
     <>
@@ -150,6 +153,7 @@ export function RowContent({
             {desc}
           </span>
         )}
+        {badge && <span className="mt-1.5 flex">{badge}</span>}
       </span>
       {extra}
       {arrow && (

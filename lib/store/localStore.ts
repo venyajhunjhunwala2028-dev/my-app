@@ -1,6 +1,7 @@
 // Everything the app remembers lives on the phone, under one versioned key.
 
 import { EXPLANATION_LEVELS, type ExplanationLevel } from "@/lib/ai/schemas";
+import { MAX_TOKEN_CHARS, SUBSCRIPTION_ID } from "@/lib/billing/plan";
 import { normalizeDevice, normalizeDevices } from "@/lib/deviceCatalog";
 import { DEFAULT_UI_LANGUAGE, getLocale, isUiLanguage, uiLanguageFor, type UiLanguage } from "@/lib/i18n/locales";
 
@@ -34,6 +35,25 @@ export type Allowance = { allowed: boolean; remaining: number };
 export type TextSize = "normal" | "large" | "xl";
 export const TEXT_SIZES: readonly TextSize[] = ["normal", "large", "xl"];
 
+/**
+ * Tech Helper Plus on this phone (lib/billing/plus). The subscription id is the restore code and is kept even
+ * when Plus locks, so it can be restored. `token` comes from the server and is opaque here; Plus is on only
+ * while there is a token and `validUntil` (ms) is in the future.
+ */
+export type PlusRecord = {
+  subscriptionId: string;
+  token: string | null;
+  validUntil: number | null;
+  /** When the server was last asked (ms); 0 when never. */
+  checkedAt: number;
+  /** Razorpay's last status ("active", "cancelled", …), when known. */
+  status?: string;
+  /** The next payment (ms), when known. */
+  nextBillingAt?: number | null;
+  /** "Cancel my plan" was done on this phone: no more payments, Plus stays on until `validUntil`. */
+  cancelAtEnd?: boolean;
+};
+
 type State = {
   guides: SavedGuide[];
   currentGuideId: string | null;
@@ -62,6 +82,7 @@ type State = {
    * "" once they chose to leave it out, so they are asked only once.
    */
   familyCallMe: string | null;
+  plus: PlusRecord | null;
 };
 
 function today(): string {
@@ -93,6 +114,7 @@ function defaults(): State {
     easyMode: false,
     completedPractice: [],
     familyCallMe: null,
+    plus: null,
   };
 }
 
@@ -123,6 +145,24 @@ function cleanGuide(guide: SavedGuide): SavedGuide {
 export const CALL_ME_MAX = 40;
 function cleanCallMe(name: string): string {
   return name.replace(/\s+/g, " ").trim().slice(0, CALL_ME_MAX);
+}
+
+const isTime = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0;
+
+/** A saved Plus record; a malformed token or date is dropped (Plus locks) but a valid restore code is kept. */
+function cleanPlus(raw: unknown): PlusRecord | null {
+  if (!isRecord(raw) || !isString(raw.subscriptionId) || !SUBSCRIPTION_ID.test(raw.subscriptionId)) return null;
+  const tokenOk = isString(raw.token) && raw.token.length > 0 && raw.token.length <= MAX_TOKEN_CHARS && isTime(raw.validUntil);
+  const plus: PlusRecord = {
+    subscriptionId: raw.subscriptionId,
+    token: tokenOk ? (raw.token as string) : null,
+    validUntil: tokenOk ? (raw.validUntil as number) : null,
+    checkedAt: isTime(raw.checkedAt) ? raw.checkedAt : 0,
+  };
+  if (isString(raw.status) && /^[a-z_]{1,30}$/.test(raw.status)) plus.status = raw.status;
+  if (isTime(raw.nextBillingAt)) plus.nextBillingAt = raw.nextBillingAt;
+  if (raw.cancelAtEnd === true) plus.cancelAtEnd = true;
+  return plus;
 }
 
 // Keeps each valid field and falls back to its default for anything missing or malformed.
@@ -160,6 +200,8 @@ function sanitize(raw: unknown): State {
       ? [...new Set(raw.completedPractice.filter(isString))]
       : base.completedPractice,
     familyCallMe: isString(raw.familyCallMe) ? cleanCallMe(raw.familyCallMe) : base.familyCallMe,
+    // Saves from before Tech Helper Plus have no plus field: free.
+    plus: cleanPlus(raw.plus),
   };
 }
 
@@ -548,5 +590,17 @@ export function getFamilyCallMe(): string | null {
 export function setFamilyCallMe(name: string): void {
   update((s) => {
     s.familyCallMe = cleanCallMe(name);
+  });
+}
+
+/** Tech Helper Plus on this phone, or null when it was never bought or restored here. */
+export function getPlus(): PlusRecord | null {
+  return load().plus;
+}
+
+/** Saves (or, with null, forgets) Tech Helper Plus on this phone. Use lib/billing/plus, which re-renders the app. */
+export function setPlus(plus: PlusRecord | null): void {
+  update((s) => {
+    s.plus = plus === null ? null : cleanPlus(plus);
   });
 }

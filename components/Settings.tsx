@@ -22,6 +22,7 @@ import {
   type TextSize,
 } from "@/lib/store/localStore";
 import { applyTextSize } from "@/lib/textSize";
+import { usePlus } from "@/lib/billing/plus";
 import { useIsClient } from "@/lib/useIsClient";
 
 const SIZES: { size: TextSize; label: MessageKey; className: string }[] = [
@@ -107,6 +108,7 @@ export default function Settings({
   const t = useT();
   const uiLanguage = useUiLanguage();
   const easy = useEasyMode();
+  const { isPlus } = usePlus();
   const [ownOpen, setOwnOpen] = useState(false);
   const controlled = controlledOpen !== undefined;
   const open = controlled ? controlledOpen : ownOpen;
@@ -205,6 +207,18 @@ export default function Settings({
             <span aria-hidden="true">🔒</span>
             <span>{t("settings.privacy")}</span>
           </p>
+          <Group id="plus-heading" heading={t("settings.plus")}>
+            <p data-testid="settings-plus-status" className="flex items-center gap-3 text-xl font-semibold">
+              <span aria-hidden="true" className={`tag ${isPlus ? "bg-primary text-white" : "bg-surface text-foreground"}`}>
+                {isPlus ? `✓ ${t("plus.tag")}` : t("settings.plusFreeTag")}
+              </span>
+              <span>{isPlus ? t("settings.plusOn") : t("settings.plusFree")}</span>
+            </p>
+            <Link href="/app/plus" className="link-cta self-start text-lg">
+              {t("settings.plusOpen")}
+              <span aria-hidden="true">→</span>
+            </Link>
+          </Group>
           <Group id="easy-heading" heading={t("settings.easy")}>
             <p className="text-lg">{t("settings.easyDesc")}</p>
             <Choices>

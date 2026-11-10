@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { givePlus } from "./helpers/plus";
 
 // Teach me and the Help library at phone size (Pixel 7) against FAKE_AI=1, which answers with a fixed 3-step guide.
+
+// Lessons are part of Tech Helper Plus.
+test.beforeEach(async ({ page }) => givePlus(page));
 
 test("Help library: open a category and ask one of its questions", async ({ page }) => {
   await page.goto("/app");

@@ -34,11 +34,11 @@ export function LearnTechnology() {
         label="Learn"
         id="learn-title"
         title="Learn technology, at your own pace."
-        intro="Short, friendly lessons for beginners. No question is too small."
+        intro="Short, friendly lessons for beginners. Lessons and practice are part of Tech Helper Plus, ₹99 a month."
       />
       <div className="mt-12 grid grid-cols-1 gap-5 md:mt-16 md:grid-cols-2">
         <div className="flex flex-col gap-6 rounded-[1.2rem] bg-surface p-6 sm:p-10">
-          <Label>Teach me</Label>
+          <Label>Teach me · Plus</Label>
           <h3 className="display-md">Lessons that explain, show, then let you try.</h3>
           <ul className="flex flex-wrap gap-2.5">
             {LESSONS.map((l) => (
@@ -54,7 +54,7 @@ export function LearnTechnology() {
           </Link>
         </div>
         <div className="flex flex-col gap-6 rounded-[1.2rem] bg-night p-6 text-white sm:p-10">
-          <Label className="text-night-muted!">Practice</Label>
+          <Label className="text-night-muted!">Practice · Plus</Label>
           <h3 className="display-md text-white">Practise on a pretend phone.</h3>
           <p className="max-w-[34ch] text-xl text-night-muted">
             Tap where you think you should go. Nothing real happens, so there&apos;s nothing to worry about.
@@ -186,6 +186,7 @@ export function Families() {
         <div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="flex flex-col gap-5 rounded-[1.2rem] bg-card p-6 sm:p-10">
             <h3 className="display-md">Ask my family</h3>
+            <p className="text-lg text-muted">Part of Tech Helper Plus. Call my family is always free.</p>
             <NumberedList items={ASK_FAMILY} />
           </div>
           <div className="flex flex-col gap-5 rounded-[1.2rem] bg-card p-6 sm:p-10">
@@ -201,10 +202,79 @@ export function Families() {
   );
 }
 
+export const FREE_FEATURES = [
+  "Ask, type or speak any question",
+  "Step-by-step guides for your own phone, read aloud",
+  "“What do I press?” screenshot help and camera help",
+  "Scam checks, and automatic scam warnings",
+  "Help library, recent and saved help",
+  "Easy Mode, English, Hindi and Hinglish, and voice",
+  "Call my family",
+] as const;
+
+export const PLUS_FEATURES = [
+  "Teach me lessons: explain, show, then you try",
+  "Practice on a pretend phone",
+  "Ask my family: send them exactly where you're stuck",
+] as const;
+
+function Ticks({ items, tone }: { items: readonly string[]; tone: "light" | "blue" }) {
+  return (
+    <ul className={`flex flex-col border-t ${tone === "blue" ? "border-white/30" : "border-border"}`}>
+      {items.map((item) => (
+        <li key={item} className={`flex gap-4 border-b py-3.5 text-lg ${tone === "blue" ? "border-white/30" : "border-border"}`}>
+          <span aria-hidden="true" className={`font-bold ${tone === "blue" ? "text-white" : "text-primary"}`}>
+            ✓
+          </span>
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Free vs Plus, honestly: the main helper (and the scam check) is free; lessons, practice and Ask my family are Plus. */
+export function Pricing() {
+  return (
+    <section id="pricing" aria-labelledby="pricing-title" className={`${CONTAINER} scroll-mt-24 py-20 sm:py-28`}>
+      <SectionHeader
+        label="Pricing"
+        id="pricing-title"
+        title="Free to ask. Plus if you'd like to learn more."
+        intro="The main helper is free for everyone. Plus adds lessons, practice and Ask my family."
+      />
+      <div className="mt-12 grid grid-cols-1 gap-5 md:mt-16 md:grid-cols-2">
+        <div className="flex flex-col gap-6 rounded-[1.2rem] bg-surface p-6 sm:p-10">
+          <Label>Free</Label>
+          <h3 className="display-md">
+            ₹0 <span className="text-xl font-normal text-muted">· always</span>
+          </h3>
+          <Ticks items={FREE_FEATURES} tone="light" />
+          <Link href="/app" className="btn-secondary mt-auto sm:w-auto sm:self-start sm:px-8">
+            Start asking
+          </Link>
+        </div>
+        <div className="media-card blue-field flex flex-col gap-6 p-6 sm:p-10">
+          <Label className="text-on-blue-muted!">Tech Helper Plus</Label>
+          <h3 className="display-md text-white">
+            ₹99 <span className="text-xl font-normal text-on-blue-muted">a month</span>
+          </h3>
+          <p className="text-lg text-on-blue-muted">Everything in Free, plus:</p>
+          <Ticks items={PLUS_FEATURES} tone="blue" />
+          <p className="text-lg text-on-blue-muted">Pay by UPI AutoPay or card. Cancel anytime: you keep Plus until the end of the month you paid for.</p>
+          <Link href="/app/plus" className="btn-light mt-auto px-4 whitespace-nowrap sm:w-auto sm:self-start sm:px-8">
+            Get Tech Helper Plus →
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export const FAQS = [
   {
     q: "Is it free?",
-    a: "Yes. Tech Helper is free to use. There's nothing to buy and no card to enter.",
+    a: "The main helper is free. Lessons, practice and Ask my family are part of Plus, ₹99 a month, cancel anytime.",
   },
   {
     q: "Do I need to sign up?",
@@ -224,7 +294,7 @@ export const FAQS = [
   },
   {
     q: "What if I get stuck?",
-    a: "Tap I'm stuck on any step. Send me a screenshot and I'll point to the right button, or tap Ask my family to send a message to someone you trust.",
+    a: "Tap I'm stuck on any step. Send me a screenshot and I'll point to the right button. With Plus, you can also tap Ask my family to send a message to someone you trust.",
   },
 ] as const;
 
@@ -296,6 +366,30 @@ export function FinalCta() {
   );
 }
 
+export const LEGAL_LINKS = [
+  { href: "/terms", label: "Terms" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/refunds", label: "Cancellations and refunds" },
+  { href: "/contact", label: "Contact us" },
+] as const;
+
+/** The small print, in the footer of the landing and legal pages. */
+export function LegalNav() {
+  return (
+    <nav aria-label="Legal">
+      <ul className="flex flex-wrap gap-x-6 gap-y-1 text-base">
+        {LEGAL_LINKS.map((l) => (
+          <li key={l.href}>
+            <Link href={l.href} className="inline-flex min-h-12 items-center text-night-muted underline decoration-1 underline-offset-[6px] hover:text-white">
+              {l.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
 export function Footer() {
   return (
     <footer className="night-field">
@@ -315,6 +409,11 @@ export function Footer() {
                 </li>
               ))}
               <li>
+                <a href="#pricing" className="inline-flex min-h-12 items-center text-white decoration-2 underline-offset-[6px] hover:underline">
+                  Pricing
+                </a>
+              </li>
+              <li>
                 <a href="#faq" className="inline-flex min-h-12 items-center text-white decoration-2 underline-offset-[6px] hover:underline">
                   Questions
                 </a>
@@ -327,10 +426,13 @@ export function Footer() {
             </ul>
           </nav>
         </div>
-        <p className="max-w-2xl border-t border-night-line pt-8 text-base text-night-muted">
-          <span aria-hidden="true">🔒 </span>Nothing you ask is stored on our servers. Questions are sent to an AI service
-          to be answered.
-        </p>
+        <div className="flex flex-col gap-6 border-t border-night-line pt-8">
+          <p className="max-w-2xl text-base text-night-muted">
+            <span aria-hidden="true">🔒 </span>Nothing you ask is stored on our servers. Questions are sent to an AI service
+            to be answered.
+          </p>
+          <LegalNav />
+        </div>
       </div>
     </footer>
   );
