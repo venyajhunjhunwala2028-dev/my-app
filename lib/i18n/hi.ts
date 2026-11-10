@@ -601,6 +601,7 @@ export const hi: Messages = {
   "plus.terms": "नियम और शर्तें",
   "plus.privacy": "प्राइवेसी",
   "plus.refunds": "रद्द करना और रिफ़ंड",
+  "plus.shipping": "शिपिंग और डिलीवरी",
   "plus.contact": "हमसे संपर्क करें",
   "plus.fake.title": "टेस्ट पेमेंट",
   "plus.fake.text": "यह टेस्ट के लिए नकली पेमेंट है। कोई पैसा नहीं कटता।",

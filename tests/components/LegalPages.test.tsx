@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import ContactPage from "@/app/contact/page";
 import PrivacyPage from "@/app/privacy/page";
 import RefundsPage from "@/app/refunds/page";
+import ShippingPage from "@/app/shipping/page";
 import TermsPage from "@/app/terms/page";
 import { BUSINESS, isPlaceholder } from "@/lib/business";
 
@@ -28,6 +29,13 @@ describe("legal pages", () => {
     render(<RefundsPage />);
     expect(screen.getByText(/Plus stays on until the end of the month you have already paid for/)).toBeInTheDocument();
     expect(screen.getByText(/We do not give partial refunds for the unused part of a month, except where the law requires it/)).toBeInTheDocument();
+    expect(screen.getAllByText(BUSINESS.email).length).toBeGreaterThan(0);
+  });
+
+  it("Shipping says nothing is shipped and Plus unlocks on the phone after payment", () => {
+    render(<ShippingPage />);
+    expect(screen.getByRole("heading", { level: 1, name: "Shipping and delivery" })).toBeInTheDocument();
+    expect(screen.getByText(/Nothing is shipped/)).toBeInTheDocument();
     expect(screen.getAllByText(BUSINESS.email).length).toBeGreaterThan(0);
   });
 

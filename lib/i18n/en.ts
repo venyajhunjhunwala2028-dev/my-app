@@ -600,6 +600,7 @@ export const en = {
   "plus.terms": "Terms",
   "plus.privacy": "Privacy",
   "plus.refunds": "Cancellations and refunds",
+  "plus.shipping": "Shipping and delivery",
   "plus.contact": "Contact us",
   "plus.fake.title": "Test payment",
   "plus.fake.text": "This is a pretend payment for testing. No money is taken.",

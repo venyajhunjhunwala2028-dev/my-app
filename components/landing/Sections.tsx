@@ -370,6 +370,7 @@ export const LEGAL_LINKS = [
   { href: "/terms", label: "Terms" },
   { href: "/privacy", label: "Privacy" },
   { href: "/refunds", label: "Cancellations and refunds" },
+  { href: "/shipping", label: "Shipping and delivery" },
   { href: "/contact", label: "Contact us" },
 ] as const;
 

@@ -7,6 +7,7 @@ const LEGAL: { href: string; label: MessageKey }[] = [
   { href: "/terms", label: "plus.terms" },
   { href: "/privacy", label: "plus.privacy" },
   { href: "/refunds", label: "plus.refunds" },
+  { href: "/shipping", label: "plus.shipping" },
   { href: "/contact", label: "plus.contact" },
 ];
 

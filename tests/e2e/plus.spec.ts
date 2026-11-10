@@ -98,7 +98,7 @@ test("the landing page shows Free and Plus, and links to the legal pages", async
   await expect(pricing.getByRole("heading", { name: /Free to ask/ })).toBeVisible();
   await pricing.getByRole("link", { name: "Get Tech Helper Plus →" }).click();
   await expect(page).toHaveURL(/\/app\/plus$/);
-  for (const [path, heading] of [["/terms", "Terms of use"], ["/privacy", "Privacy policy"], ["/refunds", "Cancellations and refunds"], ["/contact", "Contact us"]]) {
+  for (const [path, heading] of [["/terms", "Terms of use"], ["/privacy", "Privacy policy"], ["/refunds", "Cancellations and refunds"], ["/shipping", "Shipping and delivery"], ["/contact", "Contact us"]]) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
     await noOverflow(page);

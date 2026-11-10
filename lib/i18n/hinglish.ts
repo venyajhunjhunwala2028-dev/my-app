@@ -604,6 +604,7 @@ export const hinglish: Messages = {
   "plus.terms": "Terms",
   "plus.privacy": "Privacy",
   "plus.refunds": "Cancel karna aur refund",
+  "plus.shipping": "Shipping aur delivery",
   "plus.contact": "Humse contact kijiye",
   "plus.fake.title": "Test payment",
   "plus.fake.text": "Yeh test ke liye nakli payment hai. Koi paisa nahin katta.",
