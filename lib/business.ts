@@ -1,28 +1,27 @@
 // The business behind Tech Helper, shown on the legal pages (/terms, /privacy, /refunds, /contact), the Plus page
 // and the paywall. Razorpay checks these pages before it gives live keys.
 //
-// OWNER: replace every "[...]" value below with your real details before applying for Razorpay live keys.
-// Nothing here is a real person's or company's details: they are placeholders.
+// The owner's details, as registered with Razorpay (an individual account trading as Tech Helper).
 
 export const BUSINESS = {
   /** The legal name of the business (or your own name, for an individual account). */
-  name: "[Your business name]",
+  name: "Venya Jhunjhunwala",
   /** The name customers' bank and UPI statements show for the ₹99 payment (with Razorpay, often your legal name). */
-  statementName: "[Name shown on bank statements]",
+  statementName: "VENYA JHUNJHUNWALA",
   /** Where customers can write to you about payments, cancellations and refunds. */
-  email: "[your-email@example.com]",
+  email: "venyajhunjhunwala06@gmail.com",
   /** A phone number customers can call or WhatsApp. */
-  phone: "[Your phone number]",
+  phone: "+91 89610 67953",
   /** Your postal address, as registered with Razorpay. */
-  address: "[Your address, city, state, PIN code, India]",
+  address: "Jhunjhunwala House, 140/4B NSC Bose Road, Tollygunge, Kolkata, West Bengal 700040, India",
   /** The city whose courts handle disputes (Terms). */
-  jurisdiction: "[Your city], India",
+  jurisdiction: "Kolkata, India",
   /** How soon you reply to messages. */
   responseTime: "within 2 working days",
   /** How long an approved refund usually takes to reach the customer. Check this with Razorpay. */
   refundTime: "5–7 working days",
   /** When the legal pages were last changed. */
-  lastUpdated: "[Date you publish these pages]",
+  lastUpdated: "11 November 2026",
 } as const;
 
 /** True for a value that still needs filling in. */

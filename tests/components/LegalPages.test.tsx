@@ -9,9 +9,9 @@ import { BUSINESS, isPlaceholder } from "@/lib/business";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 describe("legal pages", () => {
-  it("every business detail is still a clearly marked placeholder (the owner fills them in)", () => {
-    for (const key of ["name", "statementName", "email", "phone", "address", "lastUpdated"] as const) {
-      expect(isPlaceholder(BUSINESS[key]), key).toBe(true);
+  it("every business detail is filled in (no placeholders left on the live pages)", () => {
+    for (const key of ["name", "statementName", "email", "phone", "address", "jurisdiction", "lastUpdated"] as const) {
+      expect(isPlaceholder(BUSINESS[key]), key).toBe(false);
     }
   });
 
