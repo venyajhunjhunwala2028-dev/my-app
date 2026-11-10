@@ -1,0 +1,868 @@
+@import "tailwindcss";
+
+/*
+ * Tech Helper design system: editorial and calm. A pure white canvas, black ink, one electric blue,
+ * huge grotesk headlines, pill buttons and hairline cards. Large text (20px+ base) and 56px+ buttons
+ * for older learners.
+ *
+ * Contrast (WCAG 2.x):
+ *   ink #0A0A0A on white 19.8:1 · muted #525252 on white 7.8:1 (on #F4F4F1 7.1:1)
+ *   white on blue #3D33F0 7.17:1 (AAA) · blue text on white 7.17:1 · blue on lavender #EEEDFE 6.2:1
+ *   white on night #0B0B12 19.6:1 · night-muted #A1A1B5 on night 7.7:1 · on-blue-muted #E6E4FF on blue 5.8:1
+ *   safe/caution/danger text on their surfaces 5.8–6.3:1, and on white 6.5–7.1:1.
+ */
+:root {
+  /* Canvas and ink */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --muted: #525252;
+  --card: #ffffff;
+  /* Hairlines are decorative; anything that must be seen to be used (inputs) uses --input-border. */
+  --border: #e5e5e5;
+  --border-strong: #d4d4d4;
+  --input-border: #737373; /* 4.7:1 on white */
+  --surface: #f4f4f1; /* light warm grey: alternate sections */
+
+  /* Electric blue: the one strong colour */
+  --primary: #3d33f0;
+  --primary-strong: #2a21c9; /* hover / pressed, 9.7:1 with white */
+  --primary-foreground: #ffffff;
+
+  /* A very light blue tint (the old "lavender" name is kept so every screen keeps working) */
+  --lavender: #eeedfe;
+  --lavender-strong: #d9d6fc;
+
+  /* Deep night surface for dark sections */
+  --night: #0b0b12;
+  --night-muted: #a1a1b5;
+  --night-line: #26263a;
+  --on-blue-muted: #e6e4ff;
+
+  /* Danger (muted red) — kept as --warning for existing screens */
+  --warning: #a8261b;
+  --warning-surface: #fdeeec;
+  --danger: var(--warning);
+  --danger-surface: var(--warning-surface);
+  /* Scam check results: always shown with an icon and a word too, never colour alone. */
+  --safe: #1d6b3a;
+  --safe-surface: #e8f5ec;
+  --caution: #8a4a06;
+  --caution-surface: #fff5d6;
+  --caution-accent: #f5c54a; /* decorative only, never text */
+
+  /* Shadows: barely there. Edges come from hairlines, not drop shadows, so both tokens carry a 1px ring
+     (anything on the white canvas that used a soft shadow still gets a visible edge). */
+  --shadow-color: 10 10 30;
+  --shadow-card: 0 0 0 1px rgb(var(--shadow-color) / 0.08), 0 1px 2px rgb(var(--shadow-color) / 0.04);
+  --shadow-raised: 0 0 0 1px rgb(var(--shadow-color) / 0.07), 0 12px 32px rgb(var(--shadow-color) / 0.08);
+
+  /* Fonts: next/font sets --nf-* on <html> (app/layout.tsx); the rest are fallbacks, Devanagari included. */
+  --font-text-stack:
+    var(--nf-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans",
+    "Noto Sans Devanagari", sans-serif;
+  --font-display-stack:
+    var(--nf-inter-tight, "Inter Tight"), var(--nf-inter, "Inter"), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", sans-serif;
+  --font-brand-stack: var(--nf-brand, "Fredoka"), ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-ink: var(--foreground);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-surface: var(--surface);
+  --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-lavender: var(--lavender);
+  --color-lavender-strong: var(--lavender-strong);
+  --color-night: var(--night);
+  --color-night-muted: var(--night-muted);
+  --color-night-line: var(--night-line);
+  --color-on-blue-muted: var(--on-blue-muted);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+  --color-safe: var(--safe);
+  --color-safe-surface: var(--safe-surface);
+  --color-caution: var(--caution);
+  --color-caution-surface: var(--caution-surface);
+  --color-caution-accent: var(--caution-accent);
+  --shadow-card: var(--shadow-card);
+  --shadow-raised: var(--shadow-raised);
+  --font-sans: var(--font-text-stack);
+  --font-display: var(--font-display-stack);
+  --font-brand: var(--font-brand-stack);
+}
+
+html {
+  font-size: 20px;
+  scroll-behavior: smooth;
+}
+
+/* Text size from Settings; every size in the app is in rem, so buttons and spacing grow with it. */
+html[data-text-size="large"] {
+  font-size: 24px;
+}
+
+html[data-text-size="xl"] {
+  font-size: 28px;
+}
+
+/*
+ * Easy Mode (Settings): at least the "Large" text size, pure black text, no grey text, thicker
+ * borders on every card and button, and a stronger blue. Set on <html> before the first paint.
+ * Components also show fewer things in Easy Mode (see useEasyMode).
+ */
+html[data-easy="on"] {
+  font-size: 24px;
+  --foreground: #000000; /* 21:1 */
+  --muted: #1a1a1a; /* no grey text: nearly as dark as body text */
+  --border: #404040;
+  --border-strong: #262626;
+  --input-border: #000000;
+  --primary: #2a20d8; /* 9.1:1 with white */
+  --primary-strong: #1d15a8;
+  --lavender: #e8e6fe;
+  --lavender-strong: #b8b3f7;
+  --card-edge: #404040;
+  --soft-edge: #2a20d8;
+  --chip-edge: #2a20d8;
+  --edge-width: 2px;
+  --btn-min-height: 4rem;
+  --soft-font-size: 1.125rem;
+}
+
+html[data-easy="on"][data-text-size="xl"] {
+  font-size: 28px;
+}
+
+html[data-easy="on"] body {
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-text-stack);
+  line-height: 1.5;
+  /* Long words and pasted links wrap instead of making the page wider than the phone. */
+  overflow-wrap: anywhere;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display-stack);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+:focus-visible {
+  outline: 4px solid var(--primary);
+  outline-offset: 3px;
+}
+
+/* ---------- Editorial type ---------- */
+
+/* Huge, tight display headline (the landing hero). Shrinks with the screen so long words never overflow. */
+@utility display-xl {
+  font-family: var(--font-display-stack);
+  font-size: min(max(2.75rem, 8vw), 15vw, 8rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  overflow-wrap: normal;
+}
+
+/* Section headlines. */
+@utility display-lg {
+  font-family: var(--font-display-stack);
+  font-size: min(max(2.25rem, 5vw), 12vw, 5rem);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  overflow-wrap: normal;
+}
+
+@utility display-md {
+  font-family: var(--font-display-stack);
+  font-size: min(max(1.75rem, 3vw), 10vw, 3rem);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
+/* Small editorial label, Metabrand style: "(Review)". */
+@utility label-paren {
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+/* ---------- Cards: white, 24px corners, hairline edge ---------- */
+
+@utility card {
+  border-radius: 1.2rem;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgb(var(--shadow-color) / 0.04);
+  padding: 1.5rem;
+  /* Easy Mode makes the edge darker and thicker. */
+  border: var(--edge-width, 1px) solid var(--card-edge, var(--border));
+}
+
+@utility card-lavender {
+  border-radius: 1.2rem;
+  background: var(--lavender);
+  padding: 1.5rem;
+}
+
+/* Images, mockups and colour fields: 24px corners, nothing else. */
+@utility media-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.2rem;
+}
+
+/* The electric-blue field behind phone mockups, with a soft glow in the middle. */
+@utility blue-field {
+  background-color: var(--primary);
+  background-image:
+    radial-gradient(60% 55% at 50% 45%, rgb(120 112 255 / 0.55), transparent 70%),
+    radial-gradient(90% 70% at 50% 110%, rgb(20 12 140 / 0.45), transparent 70%);
+  color: #ffffff;
+}
+
+/* The deep night surface for dark sections, with an optional blue glow. */
+@utility night-field {
+  background-color: var(--night);
+  background-image: radial-gradient(70% 60% at 85% 0%, rgb(61 51 240 / 0.28), transparent 65%);
+  color: #ffffff;
+}
+
+/* ---------- Buttons: pills, solid or outlined, no fake 3D ---------- */
+
+@utility btn {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  /* A full pill for any one-line button (all are 5rem tall or less); a soft rounded box if text wraps. */
+  border-radius: 2.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  /* Easy Mode buttons are a little taller, on top of the bigger text. */
+  min-height: var(--btn-min-height, 3.5rem);
+  line-height: 1.25;
+  text-align: center;
+  /* A label that wraps splits evenly, never leaving one word alone on the last line. */
+  text-wrap: balance;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+  &:focus-visible {
+    outline: 4px solid var(--primary);
+    outline-offset: 3px;
+  }
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+@utility btn-primary {
+  @apply btn bg-primary text-primary-foreground;
+  &:hover:not(:disabled) {
+    background-color: var(--primary-strong);
+  }
+}
+
+@utility btn-secondary {
+  @apply btn border-2 border-foreground bg-card text-foreground;
+  &:hover:not(:disabled) {
+    background-color: var(--surface);
+  }
+}
+
+/* A white pill for dark or blue backgrounds. */
+@utility btn-light {
+  @apply btn bg-white text-foreground;
+  &:hover:not(:disabled) {
+    background-color: var(--lavender);
+  }
+  &:focus-visible {
+    outline-color: #ffffff;
+  }
+}
+
+/* A quiet text action: ink, a thick underline, still a 3.5rem tap target. */
+@utility btn-text {
+  @apply inline-flex min-h-14 items-center justify-center rounded-lg px-2 text-lg font-semibold text-foreground underline decoration-2 underline-offset-[6px];
+  &:hover {
+    text-decoration-color: var(--primary);
+  }
+}
+
+/* Editorial text CTA: ink, a thick underline and an arrow ("Open the app →"). */
+@utility link-cta {
+  display: inline-block;
+  min-height: 3rem;
+  padding-block: 0.6rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: inherit;
+  white-space: nowrap;
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+  border-radius: 0.25rem;
+  /* The arrow is an inline-block, so the underline runs under the words only. */
+  & > [aria-hidden="true"] {
+    display: inline-block;
+    margin-left: 0.35em;
+    transition: transform 150ms ease;
+  }
+  &:hover > [aria-hidden="true"] {
+    transform: translateX(0.25rem);
+  }
+}
+
+/* A quieter, still large button for secondary actions (light blue tint, no border). */
+@utility btn-soft {
+  @apply btn bg-lavender text-primary;
+  gap: 0.25rem;
+  padding: 0.75rem 1.25rem;
+  font-size: var(--soft-font-size, 1.125rem);
+  min-height: var(--btn-min-height, 3.5rem);
+  border: var(--edge-width, 2px) solid var(--soft-edge, transparent);
+  &:hover:not(:disabled) {
+    background-color: var(--lavender-strong);
+  }
+}
+
+/* A big tappable card (home actions, topics, lessons). */
+@utility card-action {
+  display: flex;
+  width: 100%;
+  min-height: 4.5rem;
+  border-radius: 1.2rem;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgb(var(--shadow-color) / 0.04);
+  padding: 1rem 1.25rem;
+  color: var(--foreground);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  border: var(--edge-width, 1px) solid var(--card-edge, var(--border));
+  transition:
+    transform 120ms ease,
+    box-shadow 150ms ease,
+    border-color 150ms ease;
+  &:hover {
+    border-color: var(--foreground);
+  }
+  &:active {
+    transform: scale(0.99);
+  }
+  &:focus-visible {
+    outline: 4px solid var(--primary);
+    outline-offset: 3px;
+  }
+}
+
+/* Text inputs: big, rounded, clear border (4.7:1, so the box is easy to see). */
+@utility field {
+  width: 100%;
+  border-radius: 1rem;
+  border: 2px solid var(--input-border);
+  background: var(--card);
+  padding: 1rem 1.25rem;
+  font-size: 1.25rem;
+  &:focus-visible {
+    border-color: var(--primary);
+    outline: 4px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+
+/* A pill "Try asking" chip with a hairline edge; still at least 3rem tall for easy tapping. */
+@utility chip {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: var(--edge-width, 1.5px) solid var(--chip-edge, var(--border-strong));
+  background: var(--card);
+  padding: 0.5rem 1.125rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--foreground);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    transform 120ms ease;
+  &:hover {
+    border-color: var(--foreground);
+  }
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+/* ---------- App shell: hairline lists, back links, sheets ---------- */
+
+/* "← Back to home": the editorial back link, ink with an underline on the words only. */
+@utility back-link {
+  display: inline-flex;
+  min-height: 3.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--foreground);
+  text-decoration: none;
+  & > span:not([aria-hidden="true"]) {
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 6px;
+    text-decoration-color: var(--border-strong);
+  }
+  &:hover > span:not([aria-hidden="true"]) {
+    text-decoration-color: currentColor;
+  }
+  & > [aria-hidden="true"] {
+    transition: transform 150ms ease;
+  }
+  &:hover > [aria-hidden="true"] {
+    transform: translateX(-0.2rem);
+  }
+}
+
+/* A hairline list: a strong rule on top, a light rule under every row (Easy Mode darkens both). */
+@utility hairline-list {
+  display: flex;
+  flex-direction: column;
+  border-top: var(--edge-width, 1px) solid var(--foreground);
+  & > li {
+    border-bottom: var(--edge-width, 1px) solid var(--border);
+  }
+}
+
+/* One tappable row of a hairline list: icon, words, arrow. At least 4.5rem tall. */
+@utility row-action {
+  display: flex;
+  width: 100%;
+  min-height: 4.5rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 0.25rem;
+  text-align: left;
+  color: var(--foreground);
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: background-color 150ms ease;
+  /* Hover only where there is a mouse, so a tapped row does not stay grey on a phone. */
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background-color: var(--surface);
+    }
+    &:hover:not(:disabled) .row-arrow {
+      transform: translateX(0.25rem);
+    }
+  }
+  &:focus-visible {
+    outline: 4px solid var(--primary);
+    outline-offset: 2px;
+  }
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+/* The round icon at the start of a row. */
+@utility row-icon {
+  display: flex;
+  height: 3rem;
+  width: 3rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--surface);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+@utility row-arrow {
+  flex-shrink: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  transition: transform 150ms ease;
+}
+
+/* A full-screen sheet (Settings, Ask my family): white, scrolls on its own. */
+@utility sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--background);
+}
+
+/* A big editorial number ("01", "72%"). */
+@utility display-num {
+  font-family: var(--font-display-stack);
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+/* The step instruction and other screen headlines: large, tight, never overflowing a phone. */
+@utility display-step {
+  font-family: var(--font-display-stack);
+  font-size: min(max(2rem, 3.2vw), 11vw, 3rem);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  overflow-wrap: break-word;
+}
+
+/* The pill-shaped question box from the landing page: a thick ink edge around a field and a blue button. */
+@utility pill-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: 1.6rem;
+  border: 2px solid var(--input-border);
+  background: var(--card);
+  padding: 0.5rem;
+  &:focus-within {
+    border-color: var(--foreground);
+    outline: 4px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+
+/* A small status tag inside a tinted panel ("✓ Done", "Saved"). */
+@utility tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* ---------- Tiny motion, all switched off under prefers-reduced-motion ---------- */
+
+@keyframes th-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes th-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes th-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(61 51 240 / 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 0.6rem rgb(61 51 240 / 0);
+  }
+}
+
+/* The mascot's idle motion: a barely-there breath, not a cartoon bounce. */
+@keyframes th-float {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.025);
+  }
+}
+
+@keyframes th-scan {
+  from {
+    top: 0%;
+  }
+  to {
+    top: 100%;
+  }
+}
+
+@utility animate-fade-in {
+  animation: th-fade-in 400ms ease-out both;
+}
+
+@utility animate-scale-in {
+  animation: th-scale-in 300ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+@utility animate-pulse-ring {
+  animation: th-pulse 1.8s ease-in-out infinite;
+}
+
+@utility animate-float {
+  animation: th-float 5s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+/* A thin glowing line that sweeps down its positioned parent. */
+@utility scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0.25rem;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, transparent, #5b52ff, transparent);
+  box-shadow: 0 0 1rem 0.25rem rgb(61 51 240 / 0.5);
+  animation: th-scan 1.6s ease-in-out infinite alternate;
+}
+
+/* Waiting: three dots taking turns. */
+@keyframes th-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-0.2rem);
+  }
+}
+
+@utility waiting-dot {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  animation: th-dot 1.2s ease-in-out infinite;
+}
+
+/* Magic lens: 📷 → 🔎 → ✨ → ✓ light up in turn (4 × 0.6s). */
+@keyframes th-lens-step {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  12%,
+  30% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@utility lens-step {
+  animation: th-lens-step 2.4s ease-in-out infinite;
+}
+
+/* The found spot. `spotlight` dims the rest of the picture (its parent clips the shadow);
+   `lens-ring` is a soft glowing ring that breathes gently. */
+@utility spotlight {
+  border-radius: 9999px;
+  box-shadow: 0 0 0 9999px rgb(10 10 20 / 0.5);
+}
+
+@keyframes th-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0.3rem rgb(61 51 240 / 0.45),
+      0 0 1.4rem 0.5rem rgb(61 51 240 / 0.6);
+  }
+  50% {
+    box-shadow:
+      0 0 0 0.55rem rgb(61 51 240 / 0.28),
+      0 0 2rem 0.8rem rgb(61 51 240 / 0.5);
+  }
+}
+
+@utility lens-ring {
+  border-radius: 9999px;
+  border: 0.25rem solid #fff;
+  outline: 0.2rem solid #3d33f0;
+  box-shadow:
+    0 0 0 0.3rem rgb(61 51 240 / 0.45),
+    0 0 1.4rem 0.5rem rgb(61 51 240 / 0.6);
+  animation: th-glow 2s ease-in-out infinite;
+}
+
+/* "You did it!": a short, one-off burst of confetti from the middle. Hidden under reduced motion. */
+@keyframes th-confetti {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(1);
+  }
+}
+
+@utility confetti-piece {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.6rem;
+  height: 0.9rem;
+  border-radius: 0.15rem;
+  opacity: 0;
+  animation: th-confetti 1.4s cubic-bezier(0.15, 0.7, 0.3, 1) both;
+}
+
+@keyframes th-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility animate-pop {
+  animation: th-pop 500ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+/* ---------- Landing page "magic lens" demo (a gentle 9s loop) ---------- */
+
+@keyframes lens-shot {
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  8%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lens-scanning {
+  0%,
+  10% {
+    opacity: 0;
+  }
+  14%,
+  48% {
+    opacity: 1;
+  }
+  52%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes lens-found {
+  0%,
+  50% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  58% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  64%,
+  94% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes lens-dim {
+  0%,
+  50% {
+    opacity: 0;
+  }
+  58%,
+  94% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Without animation (reduced motion) these show the final frame: lens on the button, "Tap here". */
+@utility lens-shot {
+  animation: lens-shot 9s ease-out infinite;
+}
+@utility lens-scanning {
+  opacity: 0;
+  animation: lens-scanning 9s ease-in-out infinite;
+}
+@utility lens-found {
+  animation: lens-found 9s ease-out infinite;
+}
+@utility lens-dim {
+  animation: lens-dim 9s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .scan-line,
+  .confetti-piece {
+    display: none;
+  }
+}
